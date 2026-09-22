@@ -111,6 +111,41 @@ export interface Ticket {
   resolvedAt: string | null
 }
 
+/** Pogodak semantičke pretrage baze znanja (RAG). */
+export interface KbHit {
+  source: string
+  title: string
+  section: string
+  category: string
+  tags: string
+  /** sličnost upitu, 0..1 */
+  score: number
+  content: string
+}
+
+export interface KbSourceStatus {
+  source: string
+  title: string
+  chunks: number
+}
+
+export interface KbStatus {
+  available: boolean
+  chunks: number
+  sources: KbSourceStatus[]
+  lastIngest: string | null
+  topK: number
+  similarityThreshold: number
+}
+
+export interface KbIngestResult {
+  files: number
+  addedChunks: number
+  skippedFiles: number
+  replacedFiles: number
+  totalChunks: number
+}
+
 export interface TicketRequest {
   customerId: number
   transactionId: number | null

@@ -79,6 +79,17 @@ if ($javaVersion -notmatch 'version "25') {
     throw "Treba JDK 25 (JAVA_HOME=$env:JAVA_HOME). Instaliraj ga u $env:ProgramFiles\Java\jdk-25*."
 }
 
+# 3b) OpenAI kljuc (Faza 2+: embeddinzi za bazu znanja). Datoteka openai.key je gitignored.
+$keyFile = Join-Path $PSScriptRoot "openai.key"
+if (Test-Path $keyFile) {
+    $env:OPENAI_API_KEY = (Get-Content $keyFile -Raw).Trim()
+    Write-Host "OpenAI kljuc: ucitan iz openai.key"
+} elseif ($env:OPENAI_API_KEY) {
+    Write-Host "OpenAI kljuc: iz okoline (OPENAI_API_KEY)"
+} else {
+    Write-Host "OpenAI kljuc: nije pronadjen - baza znanja (RAG) nece biti dostupna" -ForegroundColor Yellow
+}
+
 # 4) Build
 $jar = Join-Path $PSScriptRoot "target\nottrilix-2026.jar"
 if ($NoBuild -and (Test-Path $jar)) {

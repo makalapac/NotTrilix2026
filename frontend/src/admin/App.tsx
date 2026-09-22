@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
 import { api, getToken, isUnauthorized, setToken } from '../shared/api'
 import { LoginPage } from '../shared/LoginPage'
 import { VoucherCheckResult } from '../shared/VoucherCheckResult'
@@ -6,6 +7,8 @@ import type {
   AuthUser,
   Brand,
   Customer,
+  KbHit,
+  KbStatus,
   StockRow,
   Ticket,
   Transaction,
@@ -27,14 +30,20 @@ import {
   signedEur,
 } from '../shared/format'
 
-type Tab = 'transactions' | 'customers' | 'stock' | 'tickets'
+type Tab = 'transactions' | 'customers' | 'stock' | 'tickets' | 'knowledge'
 type Notice = { kind: 'ok' | 'err'; text: string } | null
 /** Izvrši akciju; uspjeh/greška ide u banner na vrhu (401 = natrag na prijavu). */
 type Runner = (successText: string, action: () => Promise<unknown>) => Promise<void>
 /** Prijavi grešku iz učitavanja (bez poruke o uspjehu). */
 type Reporter = (e: unknown) => void
 
-const TAB_LABEL: Record<Tab, string> = { transactions: 'Transakcije', customers: 'Kupci', stock: 'Zalihe', tickets: 'Podrška' }
+const TAB_LABEL: Record<Tab, string> = {
+  transactions: 'Transakcije',
+  customers: 'Kupci',
+  stock: 'Zalihe',
+  tickets: 'Podrška',
+  knowledge: 'Znanje',
+}
 const BRANDS: Brand[] = ['A1', 'HT', 'STEAM', 'SONY', 'XBOX']
 
 /** Prijava (korisničko ime + lozinka) pa admin konzola. */
@@ -162,8 +171,151 @@ function AdminConsole({
         {tab === 'customers' && <CustomersTab customers={customers} reloadCustomers={loadCustomers} run={run} report={report} />}
         {tab === 'stock' && <StockTab run={run} report={report} />}
         {tab === 'tickets' && <TicketsTab customers={customers} run={run} report={report} />}
+        {tab === 'knowledge' && <KnowledgeTab run={run} report={report} />}
       </main>
     </>
+  )
+}
+
+const KB_EXAMPLES = [
+  'kod ne radi',
+  'nisam dobio kod e-mailom',
+  'mogu li vratiti bon nakon 20 dana',
+  'koliki je dnevni limit kupnje',
+  'Steam kaže da je kod već iskorišten',
+  'radno vrijeme podrške',
+]
+
+/** Baza znanja (RAG): semantička pretraga odlomaka + stanje + ponovni ingest. */
+function KnowledgeTab({ run, report }: { run: Runner; report: Reporter }) {
+  const [status, setStatus] = useState<KbStatus | null>(null)
+  const [query, setQuery] = useState('')
+  const [hits, setHits] = useState<KbHit[] | null>(null)
+  const [searching, setSearching] = useState(false)
+
+  const loadStatus = useCallback(() => api.admin.kb.status().then(setStatus), [])
+
+  useEffect(() => {
+    loadStatus().catch(report)
+  }, [loadStatus, report])
+
+  const search = async (text: string) => {
+    const q = text.trim()
+    if (!q) return
+    setQuery(q)
+    setSearching(true)
+    try {
+      setHits(await api.admin.kb.search(q))
+    } catch (e) {
+      setHits(null)
+      report(e)
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    search(query)
+  }
+
+  return (
+    <section className="section">
+      <h2>
+        Baza znanja <small>semantička pretraga (Spring AI + pgvector)</small>
+      </h2>
+
+      {status && (
+        <div className="kb-status">
+          {status.available ? (
+            <span className="badge active">dostupna</span>
+          ) : (
+            <span className="badge blocked">nedostupna – nema OpenAI ključa</span>
+          )}
+          <span>
+            <b>{status.chunks}</b> odlomaka iz <b>{status.sources.length}</b> dokumenata
+          </span>
+          <span className="muted">
+            top-k {status.topK} · prag sličnosti {status.similarityThreshold}
+            {status.lastIngest && ` · ingest ${dateTime(status.lastIngest)}`}
+          </span>
+          <button
+            className="btn"
+            disabled={!status.available}
+            onClick={() =>
+              run('Baza znanja ponovno učitana', async () => {
+                await api.admin.kb.ingest()
+                await loadStatus()
+              })
+            }
+          >
+            Ponovni ingest
+          </button>
+        </div>
+      )}
+
+      <form className="kb-search" onSubmit={submit}>
+        <input
+          value={query}
+          placeholder="Pitanje kupca, npr. „kod ne radi“ ili „mogu li vratiti bon“"
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <button className="btn primary" type="submit" disabled={searching || !query.trim()}>
+          {searching ? 'Tražim…' : 'Pretraži'}
+        </button>
+      </form>
+      <div className="chips">
+        {KB_EXAMPLES.map((example) => (
+          <button key={example} type="button" onClick={() => search(example)}>
+            {example}
+          </button>
+        ))}
+      </div>
+
+      {hits && hits.length === 0 && <p className="muted">Nema odlomaka iznad praga sličnosti.</p>}
+      {hits?.map((hit, i) => (
+        <article key={`${hit.source}-${hit.section}-${i}`} className="hit">
+          <h4>
+            <span>
+              {hit.title} › {hit.section}
+            </span>
+            <span className="score" title="sličnost upitu (0–1)">
+              {(hit.score * 100).toFixed(0)} %
+            </span>
+          </h4>
+          <div className="muted">
+            {hit.source} · {hit.category}
+          </div>
+          <div className="content">{hit.content.substring(hit.content.indexOf('\n\n') + 2)}</div>
+        </article>
+      ))}
+
+      {status && status.sources.length > 0 && (
+        <details style={{ marginTop: 18 }}>
+          <summary className="muted">Dokumenti u bazi znanja</summary>
+          <div className="table-wrap" style={{ marginTop: 8 }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>Datoteka</th>
+                  <th>Naslov</th>
+                  <th className="num">Odlomaka</th>
+                </tr>
+              </thead>
+              <tbody>
+                {status.sources.map((s) => (
+                  <tr key={s.source}>
+                    <td className="mono">{s.source}</td>
+                    <td>{s.title}</td>
+                    <td className="num">{s.chunks}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      )}
+    </section>
   )
 }
 

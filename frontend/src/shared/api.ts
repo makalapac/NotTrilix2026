@@ -3,6 +3,9 @@ import type {
   Brand,
   CatalogItem,
   Customer,
+  KbHit,
+  KbIngestResult,
+  KbStatus,
   LoginResponse,
   PurchaseResponse,
   StockRow,
@@ -113,6 +116,12 @@ export const api = {
     tickets: () => request<Ticket[]>('/api/admin/tickets'),
     createTicket: (ticket: TicketRequest) => post<Ticket>('/api/admin/tickets', ticket),
     resolveTicket: (id: number, resolution: string) => post<Ticket>(`/api/admin/tickets/${id}/resolve`, { resolution }),
+    kb: {
+      search: (query: string, topK?: number) =>
+        request<KbHit[]>(`/api/admin/kb/search?q=${encodeURIComponent(query)}${topK ? `&topK=${topK}` : ''}`),
+      status: () => request<KbStatus>('/api/admin/kb/status'),
+      ingest: () => post<KbIngestResult>('/api/admin/kb/ingest?force=true'),
+    },
   },
 }
 

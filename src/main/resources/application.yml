@@ -1,6 +1,20 @@
 spring:
   application:
     name: nottrilix-2026
+  ai:
+    openai:
+      # Faza 2+: embeddinzi za bazu znanja. Kljuc iz okoline (skripta ga cita iz openai.key);
+      # bez kljuca app radi, a baza znanja javlja da nije dostupna.
+      api-key: ${OPENAI_API_KEY:not-set}
+      embedding:
+        options:
+          model: text-embedding-3-small
+    vectorstore:
+      pgvector:
+        initialize-schema: false  # tablicu vector_store drzi Flyway (V3), ne Spring AI
+        dimensions: 1536
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
   datasource:
     url: jdbc:postgresql://localhost:5433/nottrilix
     username: nottrilix
@@ -32,9 +46,15 @@ nottrilix:
     max-top-up-eur: 500       # najveca pojedinacna uplata na wallet
   provider:
     max-latency-ms: 400       # simulirana latencija fiktivnog pruzatelja pri provjeri bona (0 = bez cekanja)
+  # Baza znanja (RAG): classpath:kb/*.md -> odjeljci -> embeddinzi -> vector_store
+  kb:
+    ingest-on-startup: true   # idempotentno: nepromijenjena datoteka se preskace (hash u metapodacima)
+    top-k: 3                  # koliko odlomaka vraca pretraga
+    similarity-threshold: 0.35  # 0..1 (1 = identicno); ispod praga odlomak se ne vraca (text-embedding-3-small: relevantno ~0.4-0.7, sum ~0.3)
 
 logging:
   level:
     com.nottrilix: DEBUG
     org.hibernate.SQL: INFO   # DEBUG => ispis svakog SQL-a
     org.flywaydb: INFO
+    org.springframework.ai: INFO

@@ -18,15 +18,37 @@
 
   <properties>
     <java.version>25</java.version>
+    <spring-ai.version>2.0.0</spring-ai.version>
     <springdoc.version>3.0.3</springdoc.version>
     <node.version>v22.14.0</node.version>
     <frontend-maven-plugin.version>1.15.1</frontend-maven-plugin.version>
   </properties>
 
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.springframework.ai</groupId>
+        <artifactId>spring-ai-bom</artifactId>
+        <version>${spring-ai.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
   <dependencies>
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <!-- Spring AI: embeddinzi (OpenAI) + vector store (pgvector u istoj bazi) za bazu znanja (Faza 2) -->
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-starter-model-openai</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-starter-vector-store-pgvector</artifactId>
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>

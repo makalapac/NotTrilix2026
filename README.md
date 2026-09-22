@@ -13,6 +13,7 @@ Status faza i „gdje smo stali“: [PROGRESS.md](PROGRESS.md) · puni opis faze
 - **Kupci (shop, `/`):** prijava e-mailom i lozinkom, katalog (dostupno / rasprodano — kupac ne vidi stanje zalihe), kupnja bona s walleta (odmah dobiju kod), „Moj wallet“ (stanje + povijest), pregled svojih kupnji.
 - **Admin (`/admin/`):** prijava korisničkim imenom i lozinkom; pregled svih transakcija (filtri), kupci s walletima (uplata podrške, povijest), stanje zaliha, podrška — povrat novca na wallet, blokada bona, prijave kupaca.
 - **Provjera bona kod pružatelja:** fiktivni upit prema A1/HT/Steam/PlayStation/Xbox („je li bon iskorišten?“) — support za bilo koji bon, kupac za vlastite; odgovor sadrži status kod pružatelja, datum iskorištenja, referencu i simuliranu latenciju.
+- **Baza znanja (Faza 2, Spring AI):** 9 markdown dokumenata podrške (`src/main/resources/kb/`) → pri startu ingest u pgvector (OpenAI embeddinzi) → semantička pretraga za support (admin tab „Znanje“, `GET /api/admin/kb/search?q=…`). Detalji: [docs/PHASE2.md](docs/PHASE2.md).
 - **Jedan API** (`/api/**`, Swagger na `/swagger-ui.html`) za oba kanala; pristup bearer tokenom, uloge `CUSTOMER` / `ADMIN`.
 
 ```
@@ -24,11 +25,13 @@ Status faza i „gdje smo stali“: [PROGRESS.md](PROGRESS.md) · puni opis faze
 ## Pokretanje (jedan potez)
 
 ```powershell
-.\run-phase-1.ps1
+.\run-phase-1.ps1     # Faza 1 (radi i bez OpenAI ključa)
+.\run-phase-2.ps1     # Faza 2: isto + baza znanja (traži openai.key ili OPENAI_API_KEY)
 ```
 
-Skripta: provjeri/pokrene Docker Desktop → podigne PostgreSQL (`docker compose up --wait`) → nađe JDK 25 → `mvn package`
+Skripta: provjeri/pokrene Docker Desktop → podigne PostgreSQL (`docker compose up --wait`) → nađe JDK 25 → učita `openai.key` ako postoji → `mvn package`
 (uključivo build React frontenda; prvi put skida Node i npm pakete, par minuta) → pokrene aplikaciju u istom prozoru (logovi u konzoli).
+OpenAI ključ: datoteka `openai.key` u korijenu projekta (jedna linija, gitignored) — treba ga samo baza znanja; bez njega sve iz Faze 1 radi, a baza znanja javlja da nije dostupna.
 
 | Opcija | Što radi |
 |---|---|
@@ -93,6 +96,7 @@ Odgovor prijave je `{ "token": "...", "user": {realm, id, name, login} }`; dalje
 | `GET /api/admin/vouchers/{serial}/check` | ADMIN | provjera iskorištenosti bona kod pružatelja (fiktivni upit) |
 | `GET /api/admin/stock` | ADMIN | zaliha po proizvodu/statusu |
 | `GET /api/admin/tickets`, `POST /api/admin/tickets`, `POST /api/admin/tickets/{id}/resolve` | ADMIN | podrška |
+| `GET /api/admin/kb/search?q=&topK=`, `GET /api/admin/kb/status`, `POST /api/admin/kb/ingest?force=` | ADMIN | baza znanja: semantička pretraga, stanje, ponovni ingest (503 `KB_UNAVAILABLE` bez ključa) |
 
 ## Logovi
 
@@ -115,9 +119,11 @@ src/main/java/com/nottrilix
   repo/      Spring Data repozitoriji (FOR UPDATE za kupca/bon/transakciju)
   service/   CatalogService, ShopService, WalletService, SupportService, VoucherCheckService  <- poslovna pravila
   provider/  ProviderGateway (sučelje prema pružatelju) + SimulatedProviderGateway (fiktivni A1/HT/Steam/...)
+  kb/        baza znanja: KbMarkdownParser (md -> odlomci), KnowledgeBaseIngestor (Spring AI VectorStore, idempotentno), KnowledgeBaseService (pretraga)
   auth/      Realm, AuthUser, LoginToken, NotTrilixAuthenticationProvider (bcrypt), TokenService, BearerTokenFilter
   api/       kontroleri (Auth, Shop, Customers, Admin), dto/ (recordi), ApiExceptionHandler
   config/    SecurityConfig, RulesProperties, AppConfig (Clock, OpenAPI), WebConfig, RequestLoggingFilter
-src/main/resources/db/migration   V1__schema.sql, V2__seed.sql
+src/main/resources/db/migration   V1__schema.sql, V2__seed.sql, V3__vector_store.sql (pgvector tablica za bazu znanja)
+src/main/resources/kb/            9 markdown dokumenata baze znanja (pisani za RAG, vidi docs/PHASE2.md)
 frontend/   Vite + React + TypeScript: src/customer (shop), src/admin, src/shared (api + token, tipovi, LoginPage, stil)
 ```

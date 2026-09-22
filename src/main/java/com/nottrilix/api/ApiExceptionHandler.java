@@ -1,6 +1,7 @@
 package com.nottrilix.api;
 
 import com.nottrilix.api.dto.ErrorResponse;
+import com.nottrilix.kb.KnowledgeBaseUnavailableException;
 import com.nottrilix.service.BusinessRuleException;
 import com.nottrilix.service.NotFoundException;
 import org.slf4j.Logger;
@@ -35,6 +36,13 @@ public class ApiExceptionHandler {
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ErrorResponse authentication(AuthenticationException e) {
         return new ErrorResponse("INVALID_CREDENTIALS", e.getMessage());
+    }
+
+    @ExceptionHandler(KnowledgeBaseUnavailableException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    public ErrorResponse knowledgeBaseUnavailable(KnowledgeBaseUnavailableException e) {
+        log.warn("KB UNAVAILABLE - {}", e.getMessage());
+        return new ErrorResponse("KB_UNAVAILABLE", e.getMessage());
     }
 
     @ExceptionHandler(NotFoundException.class)
