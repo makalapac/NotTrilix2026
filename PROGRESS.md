@@ -10,7 +10,7 @@ Prethodni pokušaj (`../mcp-demo`) ostaje kao referenca (deck, outline, research
 
 | Faza | Grana | Što | Stanje | Detalji |
 |---|---|---|---|---|
-| 1 | `phase1` | Postojeći sustav (AS IS): Postgres + API + admin i customer React frontend, pravila u servisima, logovi, jedna skripta; prijava (kupac e-mail/lozinka, admin korisničko ime/lozinka, bearer token, uloge), kupcu skrivena zaliha; **wallet** (naplata kupnje s walleta uz potvrdu, nadoplata, povrat na wallet, knjiga promjena, admin uplata) | ✅ gotovo, e2e verificirano | [docs/PHASE1.md](docs/PHASE1.md) |
+| 1 | `phase1` | Postojeći sustav (AS IS): Postgres + API + admin i customer React frontend, pravila u servisima, logovi, jedna skripta; prijava (kupac e-mail/lozinka, admin korisničko ime/lozinka, bearer token, uloge), kupcu skrivena zaliha; **wallet** (naplata kupnje s walleta uz potvrdu, nadoplata, povrat na wallet, knjiga promjena, admin uplata); **provjera bona kod pružatelja** (fiktivni `ProviderGateway`) | ✅ gotovo, e2e verificirano | [docs/PHASE1.md](docs/PHASE1.md) |
 | 2 | `phase2` | Tool boundary: `@Tool` adapteri nad servisima + audit trag | ⏳ sljedeće | — |
 | 3 | `phase3` | Light RAG (politike → vector store u istoj bazi) | ⏳ | — |
 | 4 | `phase4` | Agent (Spring AI `ChatClient`, memorija, RAG, tool calling) | ⏳ | — |

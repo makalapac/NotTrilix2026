@@ -5,11 +5,13 @@ import com.nottrilix.api.dto.PurchaseRequest;
 import com.nottrilix.api.dto.PurchaseResponse;
 import com.nottrilix.api.dto.TopUpRequest;
 import com.nottrilix.api.dto.TransactionDto;
+import com.nottrilix.api.dto.VoucherCheckDto;
 import com.nottrilix.api.dto.WalletDto;
 import com.nottrilix.auth.AuthUser;
 import com.nottrilix.domain.Channel;
 import com.nottrilix.service.CatalogService;
 import com.nottrilix.service.ShopService;
+import com.nottrilix.service.VoucherCheckService;
 import com.nottrilix.service.WalletService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -17,6 +19,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -36,11 +39,14 @@ public class ShopController {
     private final CatalogService catalogService;
     private final ShopService shopService;
     private final WalletService walletService;
+    private final VoucherCheckService voucherCheckService;
 
-    public ShopController(CatalogService catalogService, ShopService shopService, WalletService walletService) {
+    public ShopController(CatalogService catalogService, ShopService shopService, WalletService walletService,
+                          VoucherCheckService voucherCheckService) {
         this.catalogService = catalogService;
         this.shopService = shopService;
         this.walletService = walletService;
+        this.voucherCheckService = voucherCheckService;
     }
 
     @GetMapping("/catalog")
@@ -60,6 +66,12 @@ public class ShopController {
     @Operation(summary = "Kupnje prijavljenog kupca")
     public List<TransactionDto> transactions(@AuthenticationPrincipal AuthUser user) {
         return shopService.customerTransactions(user.id());
+    }
+
+    @GetMapping("/vouchers/{serial}/check")
+    @Operation(summary = "Provjera iskorištenosti vlastitog bona kod pružatelja usluge (fiktivni upit)")
+    public VoucherCheckDto checkVoucher(@AuthenticationPrincipal AuthUser user, @PathVariable String serial) {
+        return voucherCheckService.checkForCustomer(user.id(), serial);
     }
 
     @GetMapping("/wallet")

@@ -11,6 +11,7 @@ import type {
   Transaction,
   TransactionStatus,
   Voucher,
+  VoucherCheck,
   Wallet,
 } from './types'
 
@@ -89,6 +90,7 @@ export const api = {
   myTransactions: () => request<Transaction[]>('/api/shop/transactions'),
   wallet: () => request<Wallet>('/api/shop/wallet'),
   topUpWallet: (amountEur: number) => post<Wallet>('/api/shop/wallet/topup', { amountEur }),
+  checkVoucher: (serial: string) => request<VoucherCheck>(`/api/shop/vouchers/${encodeURIComponent(serial)}/check`),
 
   customers: () => request<Customer[]>('/api/customers'),
 
@@ -103,6 +105,7 @@ export const api = {
     },
     refund: (id: number) => post<Transaction>(`/api/admin/transactions/${id}/refund`),
     blockVoucher: (serial: string) => post<Voucher>(`/api/admin/vouchers/${encodeURIComponent(serial)}/block`),
+    checkVoucher: (serial: string) => request<VoucherCheck>(`/api/admin/vouchers/${encodeURIComponent(serial)}/check`),
     stock: () => request<StockRow[]>('/api/admin/stock'),
     customerWallet: (customerId: number) => request<Wallet>(`/api/admin/customers/${customerId}/wallet`),
     topUpWallet: (customerId: number, amountEur: number, note: string) =>

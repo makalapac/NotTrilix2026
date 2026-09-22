@@ -35,6 +35,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Query("select t from Transaction t where t.id = :id")
     Optional<Transaction> findByIdForUpdate(@Param("id") long id);
 
+    /** Kupnja u kojoj je bon prodan (bon je u najvise jednoj transakciji). */
+    Optional<Transaction> findByVoucherSerial(String serial);
+
     /** Zbroj kupnji kupca u zadanom statusu od zadanog trenutka (dnevni limit). Prazno ako nema kupnji. */
     @Query("select sum(t.amountEur) from Transaction t "
             + "where t.customer.id = :customerId and t.status = :status and t.createdAt >= :since")

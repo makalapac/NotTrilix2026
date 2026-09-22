@@ -1,4 +1,12 @@
-import type { Brand, Channel, TicketStatus, TransactionStatus, VoucherStatus, WalletEntryType } from './types'
+import type {
+  Brand,
+  Channel,
+  ProviderVoucherStatus,
+  TicketStatus,
+  TransactionStatus,
+  VoucherStatus,
+  WalletEntryType,
+} from './types'
 
 const eurFormat = new Intl.NumberFormat('hr-HR', { style: 'currency', currency: 'EUR' })
 const dateTimeFormat = new Intl.DateTimeFormat('hr-HR', { dateStyle: 'short', timeStyle: 'short' })
@@ -12,6 +20,13 @@ export const WALLET_ENTRY: Record<WalletEntryType, string> = {
   TOPUP: 'Uplata',
   PURCHASE: 'Kupnja',
   REFUND: 'Povrat',
+}
+
+export const PROVIDER_STATUS: Record<ProviderVoucherStatus, string> = {
+  NOT_ACTIVATED: 'Nije aktiviran',
+  ACTIVE: 'Aktivan',
+  REDEEMED: 'Iskorišten',
+  BLOCKED: 'Blokiran',
 }
 
 export const dateTime = (iso: string | null | undefined) => (iso ? dateTimeFormat.format(new Date(iso)) : '—')

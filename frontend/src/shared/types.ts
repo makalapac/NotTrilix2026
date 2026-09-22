@@ -8,6 +8,21 @@ export type TicketStatus = 'OPEN' | 'RESOLVED'
 export type Channel = 'WEB' | 'POS'
 export type Realm = 'CUSTOMER' | 'ADMIN'
 export type WalletEntryType = 'TOPUP' | 'PURCHASE' | 'REFUND'
+export type ProviderVoucherStatus = 'NOT_ACTIVATED' | 'ACTIVE' | 'REDEEMED' | 'BLOCKED'
+
+/** Rezultat (fiktivne) provjere bona kod pružatelja usluge. */
+export interface VoucherCheck {
+  serial: string
+  brand: Brand
+  providerName: string
+  providerStatus: ProviderVoucherStatus
+  localStatus: VoucherStatus
+  redeemedAt: string | null
+  checkedAt: string
+  providerReference: string
+  latencyMs: number
+  message: string
+}
 
 export interface AuthUser {
   realm: Realm

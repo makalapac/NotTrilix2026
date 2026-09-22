@@ -12,6 +12,7 @@ Status faza i „gdje smo stali“: [PROGRESS.md](PROGRESS.md) · puni opis faze
 - **Wallet:** svaki kupac ima wallet; kupnja se **naplaćuje s walleta** (uz potvrdu u dijalogu), povrat ide natrag na wallet, kupac može nadoplatiti wallet (simulirano plaćanje karticom), sve promjene su u knjizi promjena.
 - **Kupci (shop, `/`):** prijava e-mailom i lozinkom, katalog (dostupno / rasprodano — kupac ne vidi stanje zalihe), kupnja bona s walleta (odmah dobiju kod), „Moj wallet“ (stanje + povijest), pregled svojih kupnji.
 - **Admin (`/admin/`):** prijava korisničkim imenom i lozinkom; pregled svih transakcija (filtri), kupci s walletima (uplata podrške, povijest), stanje zaliha, podrška — povrat novca na wallet, blokada bona, prijave kupaca.
+- **Provjera bona kod pružatelja:** fiktivni upit prema A1/HT/Steam/PlayStation/Xbox („je li bon iskorišten?“) — support za bilo koji bon, kupac za vlastite; odgovor sadrži status kod pružatelja, datum iskorištenja, referencu i simuliranu latenciju.
 - **Jedan API** (`/api/**`, Swagger na `/swagger-ui.html`) za oba kanala; pristup bearer tokenom, uloge `CUSTOMER` / `ADMIN`.
 
 ```
@@ -82,12 +83,14 @@ Odgovor prijave je `{ "token": "...", "user": {realm, id, name, login} }`; dalje
 | `POST /api/shop/purchase` `{productId}` | CUSTOMER | kupnja za prijavljenog kupca, naplata s walleta → `{transaction (s bonom), walletBalanceEur}` |
 | `GET /api/shop/transactions` | CUSTOMER | kupnje prijavljenog kupca |
 | `GET /api/shop/wallet`, `POST /api/shop/wallet/topup` `{amountEur}` | CUSTOMER | wallet (stanje + povijest) / nadoplata (simulirano) |
+| `GET /api/shop/vouchers/{serial}/check` | CUSTOMER | provjera vlastitog bona kod pružatelja (tuđi bon = 404) |
 | `GET /api/customers`, `GET /api/customers/{id}` | ADMIN | kupci (sa stanjem walleta) |
 | `GET /api/admin/customers/{id}/wallet`, `POST /api/admin/customers/{id}/wallet/topup` `{amountEur, note}` | ADMIN | wallet kupca / uplata podrške |
 | `GET /api/admin/transactions?status=&brand=&customerId=` | ADMIN | sve transakcije |
 | `GET /api/admin/transactions/{id}` | ADMIN | jedna transakcija |
 | `POST /api/admin/transactions/{id}/refund` | ADMIN | povrat novca na wallet kupca |
 | `POST /api/admin/vouchers/{serial}/block` | ADMIN | blokada bona |
+| `GET /api/admin/vouchers/{serial}/check` | ADMIN | provjera iskorištenosti bona kod pružatelja (fiktivni upit) |
 | `GET /api/admin/stock` | ADMIN | zaliha po proizvodu/statusu |
 | `GET /api/admin/tickets`, `POST /api/admin/tickets`, `POST /api/admin/tickets/{id}/resolve` | ADMIN | podrška |
 
@@ -95,7 +98,7 @@ Odgovor prijave je `{ "token": "...", "user": {realm, id, name, login} }`; dalje
 
 Logback (`logback-spring.xml`): sve na konzolu (u boji) i u `logs/nottrilix-2026.log`. Svaki HTTP zahtjev s korisnikom (`HTTP` logger: `POST /api/shop/purchase user=customer:ana.anic@example.com -> 201 (60 ms)`),
 svaka prijava/odjava i odbijeni pristup (`AUTH` logger: `LOGIN OK`, `LOGIN FAILED`, `AUTH 401/403`, `TOKEN issued/revoked`),
-svaka poslovna operacija (`PURCHASE OK …`, `PURCHASE DENIED reason=OUT_OF_STOCK …`, `WALLET DEBIT/CREDIT/TOPUP …`, `REFUND OK …`, `TICKET …`) i svaki odbijeni zahtjev.
+svaka poslovna operacija (`PURCHASE OK …`, `PURCHASE DENIED reason=OUT_OF_STOCK …`, `WALLET DEBIT/CREDIT/TOPUP …`, `REFUND OK …`, `TICKET …`, `VOUCHER CHECK …`), svaki „poziv“ pružatelju (`PROVIDER` logger) i svaki odbijeni zahtjev.
 SQL ispis: `logging.level.org.hibernate.SQL: DEBUG` u `application.yml`.
 
 ## Razvoj
@@ -110,7 +113,8 @@ SQL ispis: `logging.level.org.hibernate.SQL: DEBUG` u `application.yml`.
 src/main/java/com/nottrilix
   domain/    entiteti + enumi (Customer (+wallet), WalletEntry, AdminUser, Product, Voucher, Transaction, SupportTicket)
   repo/      Spring Data repozitoriji (FOR UPDATE za kupca/bon/transakciju)
-  service/   CatalogService, ShopService, WalletService, SupportService  <- poslovna pravila
+  service/   CatalogService, ShopService, WalletService, SupportService, VoucherCheckService  <- poslovna pravila
+  provider/  ProviderGateway (sučelje prema pružatelju) + SimulatedProviderGateway (fiktivni A1/HT/Steam/...)
   auth/      Realm, AuthUser, LoginToken, NotTrilixAuthenticationProvider (bcrypt), TokenService, BearerTokenFilter
   api/       kontroleri (Auth, Shop, Customers, Admin), dto/ (recordi), ApiExceptionHandler
   config/    SecurityConfig, RulesProperties, AppConfig (Clock, OpenAPI), WebConfig, RequestLoggingFilter

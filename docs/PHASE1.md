@@ -1,6 +1,6 @@
 # Faza 1 — postojeći sustav (AS IS)
 
-_Status: **GOTOVO i e2e verificirano 2026-09-22** (uklj. dopune: prijava kupaca/admina, kupcu skrivena zaliha, **wallet**) · repo `NotTrilix2026` · grana `phase1`._
+_Status: **GOTOVO i e2e verificirano 2026-09-22** (uklj. dopune: prijava kupaca/admina, kupcu skrivena zaliha, **wallet**, **provjera bona kod pružatelja**) · repo `NotTrilix2026` · grana `phase1`._
 
 Ovo je polazna točka predavanja *From REST API to Voice Agent: Building a Java Call Center Agent with Spring AI* (JavaCro 2026, 11.–14. 10., Rovinj).
 Faza 1 predstavlja **pojednostavljeni produkcijski sustav** kakav ima svaka firma: baza, REST API s prijavom, poslovna pravila u kodu i dva frontenda.
@@ -26,6 +26,7 @@ Sve sljedeće faze (tool boundary, RAG, agent, mrežni MCP, glas, telefonija) gr
 - **Wallet** — svaki kupac ima wallet (stanje + knjiga promjena). Kupnja se **naplaćuje s walleta** nakon što kupac u dijalogu potvrdi „Da, naplati s walleta“; povrat vraća iznos na wallet; kupac nadoplaćuje wallet simuliranim plaćanjem karticom; podrška može uplatiti (goodwill) s napomenom.
 - **Prodajni kanal (shop, `/`)** — kupac se prijavi (e-mail + lozinka), lista katalog (vidi samo *dostupno / rasprodano*, ne i koliko je na zalihi), kupi bon s walleta (odmah dobije serijski broj i aktivacijski kod), vidi „Moj wallet“ i svoje kupnje.
 - **Admin (`/admin/`)** — prijava korisničkim imenom i lozinkom; pregled svih transakcija (filtri), kupci s walletima (uplata, povijest), stanje zaliha, podrška: povrat novca na wallet, blokada bona, prijave kupaca (otvaranje i rješavanje).
+- **Provjera bona kod pružatelja usluge** — „je li bon iskorišten?“: fiktivni upit prema A1/HT/Steam/PlayStation/Xbox (`ProviderGateway`), odgovor = status kod pružatelja (nije aktiviran / aktivan / iskorišten s datumom / blokiran), referenca provjere, simulirana latencija i poruka za čovjeka. Support provjerava bilo koji bon, kupac samo vlastite.
 - **Jedan API (`/api/**`)** služi oba kanala; pristup bearer tokenom, uloge `CUSTOMER` / `ADMIN`; Swagger na `/swagger-ui.html`.
 
 Cijena bona = nominalna vrijednost (bez naknada).
@@ -51,6 +52,7 @@ Cijena bona = nominalna vrijednost (bez naknada).
 | Potvrda naplate je u **UI dijalogu** (cijena, stanje prije/poslije; ako nema dovoljno — gumb „Nadoplati wallet“), a server pravilo `INSUFFICIENT_FUNDS` provjerava neovisno | Kupac izričito potvrđuje skidanje s walleta; API ostaje `{productId}` jer je wallet jedini način plaćanja. |
 | Nadoplata = **simulirano plaćanje karticom** (odmah se knjiži), gornja granica po uplati 500 € (`nottrilix.rules.max-top-up-eur`) | Demo bez pravog PSP-a, ali s pravilom koje se može pokazati. |
 | **Zaključavanje redoslijedom: transakcija → kupac (`FOR UPDATE`)** u povratu; kupac → bon u kupnji | Dva paralelna povrata iste transakcije ne smiju proći oba (pronađeno slučajnim paralelnim testom — vidi §13). |
+| **Pružatelj usluge iza sučelja** (`ProviderGateway`), u Fazi 1 `SimulatedProviderGateway`: odgovor deterministički slijedi naš status bona (nema stvarnih događaja iskorištavanja), iskorišten bon dobije datum (prodaja + 1–72 h) i referencu (`STM-CHK-3F9A1C`), simulirana latencija 200–400 ms (`nottrilix.provider.max-latency-ms`) | Realan oblik integracije (i log `PROVIDER … [simulirano]`) bez pravog partnera; kasnije je zamjena = druga implementacija sučelja. Kupac i pružatelj ne mogu biti u proturječju, pa demo ostaje razumljiv. |
 | Kupnja se veže na **prijavljenog** kupca (`@AuthenticationPrincipal`), ne na `customerId` iz zahtjeva | Nitko ne može kupovati/gledati u tuđe ime. |
 | **Poslovna pravila u servisnom sloju** (`ShopService`, `SupportService`), parametri u `application.yml` (`nottrilix.rules.*` → record `RulesProperties`) | Poanta predavanja: pravila žive u Javi, kasnije ih ni agent ne može zaobići. |
 | **Logback** (`logback-spring.xml`): konzola u boji + `logs/nottrilix-2026.log` | Zahtjev: sve što se događa vidljivo u konzoli. |
@@ -76,16 +78,18 @@ src/main/java/com/nottrilix
   NotTrilixApplication      @SpringBootApplication + @ConfigurationPropertiesScan
   domain/                   Customer (+password_hash, +wallet_balance_eur), WalletEntry, AdminUser, Product, Voucher, Transaction, SupportTicket + enumi
   repo/                     Spring Data JPA (fetch-join upiti, FOR UPDATE za kupca/bon/transakciju, agregati, findByEmail/Username)
-  service/                  CatalogService, ShopService, WalletService, SupportService, BusinessRuleException, NotFoundException
+  service/                  CatalogService, ShopService, WalletService, SupportService, VoucherCheckService, BusinessRuleException, NotFoundException
+  provider/                 ProviderGateway (sucelje), SimulatedProviderGateway, ProviderVoucherStatus, ProviderCheckResult
   auth/                     Realm, AuthUser (principal), LoginToken, NotTrilixAuthenticationProvider (bcrypt),
                             TokenService (tokeni u memoriji), BearerTokenFilter
   api/                      AuthController, ShopController, CustomerController, AdminController, ApiExceptionHandler
   api/dto/                  recordi (LoginResponse, AuthUserDto, CatalogItem, PurchaseResponse, WalletDto, WalletEntryDto, TopUpRequest,
-                            AdminTopUpRequest, TransactionDto, VoucherDto, TicketDto, StockRow, ...) + DtoMapper
+                            AdminTopUpRequest, VoucherCheckDto, TransactionDto, VoucherDto, TicketDto, StockRow, ...) + DtoMapper
   config/                   SecurityConfig, RulesProperties (record), AppConfig (Clock, OpenAPI+bearer), WebConfig (/admin forward), RequestLoggingFilter
 src/main/resources
   application.yml · logback-spring.xml · banner.txt · db/migration/V1__schema.sql, V2__seed.sql
-src/test/java/com/nottrilix   service/ShopServiceTest (pravila), service/WalletServiceTest (wallet), auth/NotTrilixAuthenticationProviderTest (prijava)
+src/test/java/com/nottrilix   service/ShopServiceTest (pravila), service/WalletServiceTest (wallet), service/VoucherCheckServiceTest,
+                              provider/SimulatedProviderGatewayTest, auth/NotTrilixAuthenticationProviderTest (prijava)
 frontend/                   Vite + React + TS: index.html (shop), admin/index.html, src/customer, src/admin,
                             src/shared (api + token, types, format, LoginPage, styles)
 docker-compose.yml · run-phase-1.ps1 · mvnw(.cmd) · README.md · PROGRESS.md · docs/
@@ -118,6 +122,7 @@ Enumi (u bazi kao `VARCHAR`, `@Enumerated(STRING)`):
 - `TicketStatus`: `OPEN`, `RESOLVED`
 - `Channel`: `WEB`, `POS`
 - `WalletEntryType`: `TOPUP`, `PURCHASE`, `REFUND`
+- `ProviderVoucherStatus` (pružatelj): `NOT_ACTIVATED`, `ACTIVE`, `REDEEMED`, `BLOCKED` — preslikava se iz `VoucherStatus` (`AVAILABLE → NOT_ACTIVATED`, `SOLD → ACTIVE`, …)
 - `Realm` (auth): `CUSTOMER`, `ADMIN`
 
 Životni ciklus bona:
@@ -185,6 +190,7 @@ Svako odbijanje logira servis na razini `WARN`: `PURCHASE DENIED reason=DAILY_LI
 | `GET /api/shop/catalog` | CUSTOMER | aktivni proizvodi, `available` (redoslijed seeda) | `CatalogItem[]` |
 | `POST /api/shop/purchase` | CUSTOMER | kupnja `{productId}` za prijavljenog kupca (kanal `WEB`), naplata s walleta | `201 PurchaseResponse` = `{transaction (s bonom), walletBalanceEur}` |
 | `GET /api/shop/transactions` | CUSTOMER | kupnje prijavljenog kupca, najnovije prve | `TransactionDto[]` |
+| `GET /api/shop/vouchers/{serial}/check` | CUSTOMER | provjera vlastitog bona kod pružatelja (tuđi ili nepostojeći bon = 404) | `VoucherCheckDto` |
 | `GET /api/shop/wallet` | CUSTOMER | wallet prijavljenog kupca: stanje + povijest (najnovije prve) | `WalletDto` |
 | `POST /api/shop/wallet/topup` | CUSTOMER | nadoplata `{amountEur}` (simulirano plaćanje karticom) | `WalletDto` |
 | `GET /api/customers`, `GET /api/customers/{id}` | ADMIN | kupci (bez lozinki, sa stanjem walleta) | `CustomerDto[]` / `CustomerDto` |
@@ -194,6 +200,7 @@ Svako odbijanje logira servis na razini `WARN`: `PURCHASE DENIED reason=DAILY_LI
 | `GET /api/admin/transactions/{id}` | ADMIN | jedna transakcija | `TransactionDto` |
 | `POST /api/admin/transactions/{id}/refund` | ADMIN | povrat novca na wallet kupca | `TransactionDto` |
 | `POST /api/admin/vouchers/{serial}/block` | ADMIN | blokada bona | `VoucherDto` |
+| `GET /api/admin/vouchers/{serial}/check` | ADMIN | provjera iskorištenosti bona kod pružatelja (fiktivni upit) | `VoucherCheckDto` |
 | `GET /api/admin/stock` | ADMIN | zaliha po proizvodu i statusu (brojke) | `StockRow[]` |
 | `GET /api/admin/tickets` | ADMIN | prijave, najnovije prve | `TicketDto[]` |
 | `POST /api/admin/tickets` | ADMIN | nova prijava `{customerId, transactionId?, subject, description?}` | `201 TicketDto` |
@@ -219,6 +226,14 @@ Primjeri odbijanja:
 ```json
 {"error":"DAILY_LIMIT_EXCEEDED","message":"Dnevni limit od 150 € je premašen: danas već kupljeno 125 €, pokušaj kupnje 50 €"}
 {"error":"INSUFFICIENT_FUNDS","message":"Nedovoljno sredstava na walletu: stanje 25 €, cijena 50 € - nadoplatite wallet za najmanje 25 €"}
+```
+
+Primjer provjere bona kod pružatelja (`GET /api/admin/vouchers/STM-25-001/check`):
+
+```json
+{"serial":"STM-25-001","brand":"STEAM","providerName":"Steam","providerStatus":"REDEEMED","localStatus":"REDEEMED",
+ "redeemedAt":"2026-09-13T04:40:40.799Z","checkedAt":"2026-09-22T19:02:11.120Z","providerReference":"STM-CHK-6C2E1A",
+ "latencyMs":287,"message":"Bon STM-25-001 je iskorišten kod pružatelja Steam (13.9.2026. 06:40)."}
 ```
 
 ID-jevi u API-ju su `Long` (mogu biti `null` u unit testovima bez baze). Datumi ISO-8601 (UTC), iznosi brojevi.
@@ -271,11 +286,11 @@ Zajednički kod `frontend/src/shared`: `api.ts` (fetch wrapper, bearer token u `
 - **Nadoplata** (dijalog): brzi iznosi 10/20/50/100 € ili vlastiti (1–500 €), „simulirano plaćanje karticom“.
 - Uspjeh kupnje = zeleni banner sa serijskim brojem, kodom i novim stanjem walleta; greška = crveni banner s porukom iz API-ja; 401 = natrag na prijavu.
 - „Moj wallet“: stanje + knjiga promjena (datum, vrsta, iznos ±, stanje nakon, napomena / broj kupnje).
-- „Moje kupnje“: #, datum, proizvod, iznos, kanal, serijski, kod (maskiran, gumb „prikaži/sakrij“), status (bona ili „Vraćen novac“).
+- „Moje kupnje“: #, datum, proizvod, iznos, kanal, serijski, kod (maskiran, gumb „prikaži/sakrij“), status (bona ili „Vraćen novac“), gumb **Provjeri** → inline odgovor pružatelja (status, poruka, referenca, ms).
 
 **Admin (`src/admin/App.tsx`)**
 - Ekran prijave (korisničko ime + lozinka); zaglavlje s imenom i **Odjava**.
-- Tab **Transakcije**: filtri (status, brend, kupac), tablica sa serijskim + kodom, statusima, akcije **Povrat** (samo `COMPLETED`; iznos ide na wallet) i **Blokiraj bon** (samo `SOLD`/`AVAILABLE`).
+- Tab **Transakcije**: filtri (status, brend, kupac), tablica sa serijskim + kodom, statusima, akcije **Povrat** (samo `COMPLETED`; iznos ide na wallet), **Blokiraj bon** (samo `SOLD`/`AVAILABLE`) i **Provjeri kod pružatelja** (inline odgovor ispod statusa bona).
 - Tab **Kupci**: ime, e-mail, telefon, **stanje walleta**; akcije **Uplata** (iznos + obavezna napomena, npr. goodwill) i **Povijest walleta** (knjiga promjena ispod retka).
 - Tab **Zalihe**: po proizvodu na zalihi / prodano / iskorišteno / blokirano + ukupno.
 - Tab **Podrška**: forma za novu prijavu (kupac, transakcija #, naslov, opis) + tablica prijava s inline rješavanjem.
@@ -305,6 +320,7 @@ Zajednički kod `frontend/src/shared`: `api.ts` (fetch wrapper, bearer token u `
 | `WalletService` | `WALLET DEBIT customer=1 -25 € (PURCHASE tx=7) -> 90 €`, `WALLET CREDIT customer=1 +25 € (REFUND tx=7) -> 115 €`, `WALLET TOPUP OK customer=2 (Marko Marić) +20 € -> 45 € note='Uplata karticom (simulirano)'`, `PURCHASE DENIED reason=INSUFFICIENT_FUNDS - …` (WARN), `TOPUP DENIED reason=TOPUP_LIMIT_EXCEEDED - …` (WARN) |
 | `SupportService` | `REFUND OK tx=7 customer=Ana Anić amount=25 € voucher=STM-25-002 SOLD -> BLOCKED`, `BLOCK OK voucher=HT-5-001 SOLD -> BLOCKED`, `TICKET OK id=3 ...`, `TICKET RESOLVED id=3 resolution='...'` |
 | `CatalogService` | `CATALOG 13 proizvoda, 13 dostupno`, `STOCK 13 proizvoda` |
+| `VoucherCheckService` / `PROVIDER` | `VOUCHER CHECK request serial=STM-25-001 provider=STEAM local=REDEEMED` → `PROVIDER Steam check serial=STM-25-001 -> REDEEMED redeemedAt=… ref=STM-CHK-6C2E1A (287 ms) [simulirano]` → `VOUCHER CHECK serial=… local=REDEEMED provider=REDEEMED …` |
 | `ApiExceptionHandler` | `NOT FOUND - Transakcija 999 ne postoji`, `VALIDATION - subject je obavezan`, `HTTP 404 - No static resource api/nothing.` |
 | Flyway / Tomcat / Boot | migracije, port, `Started NotTrilixApplication in 3.7 seconds` |
 
@@ -334,6 +350,7 @@ Portovi: app **8080**, Postgres **5433** (`nottrilix`/`nottrilix`/`nottrilix`). 
 - `mvn package` na JDK 25: 64 klase, frontend build (Vite), **9/9 testova** (`ShopServiceTest`: prodaja prvog slobodnog bona uz naplatu s walleta, `OUT_OF_STOCK`, `DAILY_LIMIT_EXCEEDED` prije walleta i zalihe; `WalletServiceTest`: `INSUFFICIENT_FUNDS`, skidanje + povrat s knjiženjem, `TOPUP_LIMIT_EXCEEDED`; `NotTrilixAuthenticationProviderTest`: kupac/admin OK, kriva lozinka i nepoznat korisnik ista greška). TypeScript `tsc --noEmit` čist.
 - Wallet (curl): seed stanja 115/25/50 i knjiženja; Marko (25 €) Steam 50 € → 409 `INSUFFICIENT_FUNDS` s porukom „nadoplatite za najmanje 25 €“; HT 10 € → 201, `walletBalanceEur` 15; nadoplata 20 → 45 s `TOPUP` knjiženjem; 501 → 409 `TOPUP_LIMIT_EXCEEDED`; −5 → 400; admin povrat → `REFUND` knjiženje i stanje +iznos; admin uplata s napomenom → OK, bez napomene → 400; kupac na admin wallet → 403.
 - **Paralelni dvostruki povrat iste transakcije** (dva istovremena `POST …/refund`): jedan 200, drugi 409 `ALREADY_REFUNDED`, točno jedan `REFUND` redak, stanje točno (prije popravka zaključavanja oba su prolazila — vidi §13).
+- Provjera bona kod pružatelja (curl, 16/16 testova uklj. `SimulatedProviderGatewayTest` i `VoucherCheckServiceTest`): admin `STM-25-001` → `REDEEMED` s datumom i porukom „iskorišten … (13.9.2026. 13:42)“, `A1-10-001` → `ACTIVE`, `XBX-15-001` → `BLOCKED`, `A1-5-002` → `NOT_ACTIVATED`, `NOPE-1` → 404; kupac vlastiti bon → 200, tuđi bon → 404 „nije pronađen među vašim kupnjama“, bez tokena 401, kupac na admin endpointu 403; latencija 230–340 ms; logovi `VOUCHER CHECK` + `PROVIDER … [simulirano]`; UI gumbi u shopu („Provjeri“) i adminu („Provjeri kod pružatelja“) s inline odgovorom.
 - Skripta prošla sve korake (Docker OK → Postgres healthy → JDK 25 → jar → start); app se digne za **3–4 s**; Flyway primijenio V1+V2; restart na postojećoj bazi → „Schema up to date“.
 - Prijava i pristup (curl): bez tokena 401 na shop/admin/me; kriva lozinka, nepoznat korisnik i kupčevi podaci na admin loginu → 401 `INVALID_CREDENTIALS`; validacija 400; login kupca i admina → token (43 znaka) + korisnik; kupac → 403 na `/api/admin/**` i `/api/customers`; admin → 403 na `/api/shop/**`; odjava → token više ne vrijedi; izmišljen token 401; statika i Swagger javni; `/v3/api-docs` sadrži bearer shemu; nema Bootove „generated security password“ poruke.
 - API (curl): katalog (13, samo `available`, bez količina), kupnja za prijavljenog kupca (201 + kod), kupnje kupca, **dnevni limit** (25+50+50 OK, +50 → 409), **rasprodano** (8× A1 5 € OK, 9. → 409), povrat: rok istekao / iskorišten / već vraćen / OK (bon → BLOCKED) / 404, blokada: OK / već blokiran / iskorišten / 404, zaliha, prijave: mismatch 409 / kreiranje 201 / rješavanje 200 / ponovno 409 / validacija 400, nečitljiv JSON 400, nepoznata ruta 404 (JSON), `/`, `/admin`, `/admin/` 200, Swagger 302.

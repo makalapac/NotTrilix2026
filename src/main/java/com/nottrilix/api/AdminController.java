@@ -6,6 +6,7 @@ import com.nottrilix.api.dto.StockRow;
 import com.nottrilix.api.dto.TicketDto;
 import com.nottrilix.api.dto.TicketRequest;
 import com.nottrilix.api.dto.TransactionDto;
+import com.nottrilix.api.dto.VoucherCheckDto;
 import com.nottrilix.api.dto.VoucherDto;
 import com.nottrilix.api.dto.WalletDto;
 import com.nottrilix.domain.Brand;
@@ -13,6 +14,7 @@ import com.nottrilix.domain.TransactionStatus;
 import com.nottrilix.service.CatalogService;
 import com.nottrilix.service.SupportService;
 import com.nottrilix.service.SupportService.TransactionFilter;
+import com.nottrilix.service.VoucherCheckService;
 import com.nottrilix.service.WalletService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -37,11 +39,14 @@ public class AdminController {
     private final SupportService supportService;
     private final CatalogService catalogService;
     private final WalletService walletService;
+    private final VoucherCheckService voucherCheckService;
 
-    public AdminController(SupportService supportService, CatalogService catalogService, WalletService walletService) {
+    public AdminController(SupportService supportService, CatalogService catalogService, WalletService walletService,
+                           VoucherCheckService voucherCheckService) {
         this.supportService = supportService;
         this.catalogService = catalogService;
         this.walletService = walletService;
+        this.voucherCheckService = voucherCheckService;
     }
 
     @GetMapping("/transactions")
@@ -68,6 +73,12 @@ public class AdminController {
     @Operation(summary = "Blokada bona po serijskom broju")
     public VoucherDto blockVoucher(@PathVariable String serial) {
         return supportService.blockVoucher(serial);
+    }
+
+    @GetMapping("/vouchers/{serial}/check")
+    @Operation(summary = "Provjera iskorištenosti bona kod pružatelja usluge (fiktivni upit prema A1/HT/Steam/...)")
+    public VoucherCheckDto checkVoucher(@PathVariable String serial) {
+        return voucherCheckService.checkForSupport(serial);
     }
 
     @GetMapping("/stock")

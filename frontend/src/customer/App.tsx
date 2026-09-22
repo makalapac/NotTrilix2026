@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, getToken, isUnauthorized, setToken } from '../shared/api'
 import { LoginPage } from '../shared/LoginPage'
-import type { AuthUser, Brand, CatalogItem, Category, PurchaseResponse, Transaction, Wallet } from '../shared/types'
+import { VoucherCheckResult } from '../shared/VoucherCheckResult'
+import type { AuthUser, Brand, CatalogItem, Category, PurchaseResponse, Transaction, VoucherCheck, Wallet } from '../shared/types'
 import {
   CHANNEL,
   TX_STATUS,
@@ -101,6 +102,7 @@ function Shop({ user, onLogout, onSessionExpired }: { user: AuthUser; onLogout: 
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [revealed, setRevealed] = useState<Record<number, boolean>>({})
+  const [checks, setChecks] = useState<Record<string, VoucherCheck | 'loading'>>({})
 
   const fail = useCallback(
     (e: unknown) => {
@@ -153,6 +155,20 @@ function Shop({ user, onLogout, onSessionExpired }: { user: AuthUser; onLogout: 
       fail(e)
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function checkVoucher(serial: string) {
+    setChecks((c) => ({ ...c, [serial]: 'loading' }))
+    try {
+      const result = await api.checkVoucher(serial)
+      setChecks((c) => ({ ...c, [serial]: result }))
+    } catch (e) {
+      setChecks((c) => {
+        const { [serial]: _removed, ...rest } = c
+        return rest
+      })
+      fail(e)
     }
   }
 
@@ -304,6 +320,7 @@ function Shop({ user, onLogout, onSessionExpired }: { user: AuthUser; onLogout: 
                     <th>Serijski broj</th>
                     <th>Aktivacijski kod</th>
                     <th>Status</th>
+                    <th>Pružatelj</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -327,6 +344,17 @@ function Shop({ user, onLogout, onSessionExpired }: { user: AuthUser; onLogout: 
                         ) : (
                           <span className={`badge ${t.voucher.status.toLowerCase()}`}>{VOUCHER_STATUS[t.voucher.status]}</span>
                         )}
+                      </td>
+                      <td>
+                        <button
+                          className="btn"
+                          disabled={checks[t.voucher.serial] === 'loading'}
+                          onClick={() => checkVoucher(t.voucher.serial)}
+                          title="Provjeri je li bon iskorišten kod pružatelja usluge"
+                        >
+                          Provjeri
+                        </button>
+                        {checks[t.voucher.serial] && <VoucherCheckResult check={checks[t.voucher.serial]} />}
                       </td>
                     </tr>
                   ))}

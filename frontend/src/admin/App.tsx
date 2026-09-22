@@ -1,7 +1,18 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, getToken, isUnauthorized, setToken } from '../shared/api'
 import { LoginPage } from '../shared/LoginPage'
-import type { AuthUser, Brand, Customer, StockRow, Ticket, Transaction, TransactionStatus, Wallet } from '../shared/types'
+import { VoucherCheckResult } from '../shared/VoucherCheckResult'
+import type {
+  AuthUser,
+  Brand,
+  Customer,
+  StockRow,
+  Ticket,
+  Transaction,
+  TransactionStatus,
+  VoucherCheck,
+  Wallet,
+} from '../shared/types'
 import {
   BRAND,
   CHANNEL,
@@ -161,6 +172,21 @@ function TransactionsTab({ customers, run, report }: { customers: Customer[]; ru
   const [status, setStatus] = useState<TransactionStatus | ''>('')
   const [brand, setBrand] = useState<Brand | ''>('')
   const [customerId, setCustomerId] = useState<number | ''>('')
+  const [checks, setChecks] = useState<Record<string, VoucherCheck | 'loading'>>({})
+
+  const checkVoucher = async (serial: string) => {
+    setChecks((c) => ({ ...c, [serial]: 'loading' }))
+    try {
+      const result = await api.admin.checkVoucher(serial)
+      setChecks((c) => ({ ...c, [serial]: result }))
+    } catch (e) {
+      setChecks((c) => {
+        const { [serial]: _removed, ...rest } = c
+        return rest
+      })
+      report(e)
+    }
+  }
 
   const load = useCallback(
     () =>
@@ -244,6 +270,7 @@ function TransactionsTab({ customers, run, report }: { customers: Customer[]; ru
                 </td>
                 <td>
                   <span className={`badge ${t.voucher.status.toLowerCase()}`}>{VOUCHER_STATUS[t.voucher.status]}</span>
+                  {checks[t.voucher.serial] && <VoucherCheckResult check={checks[t.voucher.serial]} />}
                 </td>
                 <td>
                   <span className={`badge ${t.status.toLowerCase()}`}>{TX_STATUS[t.status]}</span>
@@ -277,6 +304,14 @@ function TransactionsTab({ customers, run, report }: { customers: Customer[]; ru
                       }
                     >
                       Blokiraj bon
+                    </button>
+                    <button
+                      className="btn"
+                      disabled={checks[t.voucher.serial] === 'loading'}
+                      onClick={() => checkVoucher(t.voucher.serial)}
+                      title="Provjeri iskorištenost bona kod pružatelja usluge"
+                    >
+                      Provjeri kod pružatelja
                     </button>
                   </div>
                 </td>
