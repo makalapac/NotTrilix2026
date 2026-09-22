@@ -7,6 +7,7 @@ export type TransactionStatus = 'COMPLETED' | 'REFUNDED'
 export type TicketStatus = 'OPEN' | 'RESOLVED'
 export type Channel = 'WEB' | 'POS'
 export type Realm = 'CUSTOMER' | 'ADMIN'
+export type WalletEntryType = 'TOPUP' | 'PURCHASE' | 'REFUND'
 
 export interface AuthUser {
   realm: Realm
@@ -36,6 +37,7 @@ export interface Customer {
   name: string
   email: string
   phone: string | null
+  walletBalanceEur: number
 }
 
 export interface Voucher {
@@ -58,6 +60,27 @@ export interface Transaction {
   amountEur: number
   voucher: Voucher
   refundedAt: string | null
+}
+
+export interface PurchaseResponse {
+  transaction: Transaction
+  walletBalanceEur: number
+}
+
+export interface WalletEntry {
+  id: number
+  createdAt: string
+  type: WalletEntryType
+  /** + uplata / povrat, − kupnja */
+  amountEur: number
+  balanceAfterEur: number
+  transactionId: number | null
+  note: string | null
+}
+
+export interface Wallet {
+  balanceEur: number
+  entries: WalletEntry[]
 }
 
 export interface Ticket {

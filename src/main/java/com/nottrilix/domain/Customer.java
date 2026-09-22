@@ -7,6 +7,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "customers")
 public class Customer {
@@ -29,6 +31,10 @@ public class Customer {
     @Column(name = "password_hash", nullable = false, length = 100)
     private String passwordHash;
 
+    /** Stanje walleta; svaka promjena ima redak u wallet_entries. Mijenja se samo kroz credit/debit. */
+    @Column(name = "wallet_balance_eur", nullable = false, precision = 10, scale = 2)
+    private BigDecimal walletBalanceEur = BigDecimal.ZERO;
+
     protected Customer() {
     }
 
@@ -37,6 +43,14 @@ public class Customer {
         this.email = email;
         this.phone = phone;
         this.passwordHash = passwordHash;
+    }
+
+    public void credit(BigDecimal amount) {
+        walletBalanceEur = walletBalanceEur.add(amount);
+    }
+
+    public void debit(BigDecimal amount) {
+        walletBalanceEur = walletBalanceEur.subtract(amount);
     }
 
     public Long getId() {
@@ -57,5 +71,9 @@ public class Customer {
 
     public String getPasswordHash() {
         return passwordHash;
+    }
+
+    public BigDecimal getWalletBalanceEur() {
+        return walletBalanceEur;
     }
 }

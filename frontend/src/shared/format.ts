@@ -1,9 +1,18 @@
-import type { Brand, Channel, TicketStatus, TransactionStatus, VoucherStatus } from './types'
+import type { Brand, Channel, TicketStatus, TransactionStatus, VoucherStatus, WalletEntryType } from './types'
 
 const eurFormat = new Intl.NumberFormat('hr-HR', { style: 'currency', currency: 'EUR' })
 const dateTimeFormat = new Intl.DateTimeFormat('hr-HR', { dateStyle: 'short', timeStyle: 'short' })
 
 export const eur = (value: number) => eurFormat.format(value)
+
+/** +25,00 € / −25,00 € */
+export const signedEur = (value: number) => (value < 0 ? `−${eurFormat.format(-value)}` : `+${eurFormat.format(value)}`)
+
+export const WALLET_ENTRY: Record<WalletEntryType, string> = {
+  TOPUP: 'Uplata',
+  PURCHASE: 'Kupnja',
+  REFUND: 'Povrat',
+}
 
 export const dateTime = (iso: string | null | undefined) => (iso ? dateTimeFormat.format(new Date(iso)) : '—')
 

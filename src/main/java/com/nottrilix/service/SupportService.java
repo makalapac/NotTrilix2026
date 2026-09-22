@@ -37,16 +37,18 @@ public class SupportService {
     private final TransactionRepository transactionRepo;
     private final VoucherRepository voucherRepo;
     private final SupportTicketRepository ticketRepo;
+    private final WalletService walletService;
     private final RulesProperties rules;
     private final Clock clock;
 
     public SupportService(CustomerRepository customerRepo, TransactionRepository transactionRepo,
                           VoucherRepository voucherRepo, SupportTicketRepository ticketRepo,
-                          RulesProperties rules, Clock clock) {
+                          WalletService walletService, RulesProperties rules, Clock clock) {
         this.customerRepo = customerRepo;
         this.transactionRepo = transactionRepo;
         this.voucherRepo = voucherRepo;
         this.ticketRepo = ticketRepo;
+        this.walletService = walletService;
         this.rules = rules;
         this.clock = clock;
     }
@@ -76,12 +78,18 @@ public class SupportService {
         return DtoMapper.toDto(t);
     }
 
-    /** Povrat novca: samo unutar roka i samo ako bon nije iskoristen. Bon se blokira (kod je vec kod kupca). */
+    /**
+     * Povrat novca na wallet kupca: samo unutar roka i samo ako bon nije iskoristen.
+     * Bon se blokira (kod je vec kod kupca).
+     */
     @Transactional
     public TransactionDto refund(long id) {
         log.info("REFUND request tx={}", id);
-        Transaction t = transactionRepo.findByIdWithDetails(id)
+        // redoslijed zakljucavanja: prvo transakcija (svjeze stanje, drugi povrat ceka), zatim kupac (wallet)
+        Transaction t = transactionRepo.findByIdForUpdate(id)
                 .orElseThrow(() -> new NotFoundException("Transakcija " + id + " ne postoji"));
+        Customer customer = customerRepo.findByIdForUpdate(t.getCustomer().getId())
+                .orElseThrow(() -> new NotFoundException("Kupac " + t.getCustomer().getId() + " ne postoji"));
         if (t.getStatus() == TransactionStatus.REFUNDED) {
             throw deny("REFUND", "ALREADY_REFUNDED", "Transakcija " + id + " je već vraćena");
         }
@@ -101,9 +109,10 @@ public class SupportService {
             voucher.block();
         }
         t.refund(now);
-        log.info("REFUND OK tx={} customer={} amount={} € voucher={} {} -> {}",
-                id, t.getCustomer().getName(), t.getAmountEur().stripTrailingZeros().toPlainString(),
-                voucher.getSerial(), before, voucher.getStatus());
+        java.math.BigDecimal walletBalance = walletService.creditForRefund(customer, t, now);
+        log.info("REFUND OK tx={} customer={} amount={} € -> wallet {} € voucher={} {} -> {}",
+                id, customer.getName(), t.getAmountEur().stripTrailingZeros().toPlainString(),
+                walletBalance.stripTrailingZeros().toPlainString(), voucher.getSerial(), before, voucher.getStatus());
         return DtoMapper.toDto(t);
     }
 

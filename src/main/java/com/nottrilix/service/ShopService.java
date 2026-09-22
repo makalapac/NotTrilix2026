@@ -2,6 +2,7 @@ package com.nottrilix.service;
 
 import com.nottrilix.api.dto.CustomerDto;
 import com.nottrilix.api.dto.DtoMapper;
+import com.nottrilix.api.dto.PurchaseResponse;
 import com.nottrilix.api.dto.TransactionDto;
 import com.nottrilix.config.RulesProperties;
 import com.nottrilix.domain.Channel;
@@ -26,7 +27,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
-/** Prodajni kanal: kupci, kupnja bona, pregled vlastitih kupnji. Ovdje zive pravila prodaje. */
+/** Prodajni kanal: kupci, kupnja bona (naplata s walleta), pregled vlastitih kupnji. Ovdje zive pravila prodaje. */
 @Service
 public class ShopService {
 
@@ -36,15 +37,18 @@ public class ShopService {
     private final ProductRepository productRepo;
     private final VoucherRepository voucherRepo;
     private final TransactionRepository transactionRepo;
+    private final WalletService walletService;
     private final RulesProperties rules;
     private final Clock clock;
 
     public ShopService(CustomerRepository customerRepo, ProductRepository productRepo, VoucherRepository voucherRepo,
-                       TransactionRepository transactionRepo, RulesProperties rules, Clock clock) {
+                       TransactionRepository transactionRepo, WalletService walletService,
+                       RulesProperties rules, Clock clock) {
         this.customerRepo = customerRepo;
         this.productRepo = productRepo;
         this.voucherRepo = voucherRepo;
         this.transactionRepo = transactionRepo;
+        this.walletService = walletService;
         this.rules = rules;
         this.clock = clock;
     }
@@ -64,14 +68,14 @@ public class ShopService {
     }
 
     /**
-     * Kupnja bona. Pravila: proizvod aktivan, dnevni limit po kupcu, bon mora postojati na zalihi.
-     * Bon se zakljucava u bazi pa dva istovremena kupca ne mogu dobiti isti kod.
+     * Kupnja bona, naplata s walleta. Pravila: proizvod aktivan, dnevni limit po kupcu, dovoljno sredstava,
+     * bon na zalihi. Kupac je zakljucan (wallet + limit bez utrke), bon je zakljucan (isti kod ne ide dvojici).
      */
     @Transactional
-    public TransactionDto purchase(long customerId, long productId, Channel channel) {
+    public PurchaseResponse purchase(long customerId, long productId, Channel channel) {
         log.info("PURCHASE request customer={} product={} channel={}", customerId, productId, channel);
 
-        Customer customer = customerRepo.findById(customerId)
+        Customer customer = customerRepo.findByIdForUpdate(customerId)
                 .orElseThrow(() -> new NotFoundException("Kupac " + customerId + " ne postoji"));
         Product product = productRepo.findById(productId)
                 .orElseThrow(() -> new NotFoundException("Proizvod " + productId + " ne postoji"));
@@ -90,17 +94,19 @@ public class ShopService {
                     "Dnevni limit od %s € je premašen: danas već kupljeno %s €, pokušaj kupnje %s €"
                             .formatted(fmt(rules.dailyLimitEur()), fmt(spentToday), fmt(price)));
         }
+        walletService.requireFunds(customer, price);
 
         Voucher voucher = voucherRepo.findFirstByProductAndStatusOrderByIdAsc(product, VoucherStatus.AVAILABLE)
                 .orElseThrow(() -> deny("PURCHASE", "OUT_OF_STOCK",
                         "Proizvod " + product.displayName() + " je trenutno rasprodan"));
         voucher.markSold(now);
         Transaction tx = transactionRepo.save(new Transaction(customer, product, voucher, channel, now));
+        BigDecimal walletBalance = walletService.debitForPurchase(customer, tx);
 
-        log.info("PURCHASE OK tx={} customer={} ({}) product={} amount={} € voucher={} channel={} spentToday={} €",
+        log.info("PURCHASE OK tx={} customer={} ({}) product={} amount={} € voucher={} channel={} spentToday={} € wallet={} €",
                 tx.getId(), customerId, customer.getName(), product.displayName(), fmt(price),
-                voucher.getSerial(), channel, fmt(spentToday.add(price)));
-        return DtoMapper.toDto(tx);
+                voucher.getSerial(), channel, fmt(spentToday.add(price)), fmt(walletBalance));
+        return new PurchaseResponse(DtoMapper.toDto(tx), walletBalance);
     }
 
     @Transactional(readOnly = true)

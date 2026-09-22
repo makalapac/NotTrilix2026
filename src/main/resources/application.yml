@@ -29,6 +29,7 @@ nottrilix:
   rules:
     daily-limit-eur: 150      # max iznos kupnji po kupcu po danu
     refund-window-days: 14    # povrat moguc samo unutar N dana od kupnje
+    max-top-up-eur: 500       # najveca pojedinacna uplata na wallet
 
 logging:
   level:

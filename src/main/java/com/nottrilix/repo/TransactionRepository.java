@@ -2,7 +2,9 @@ package com.nottrilix.repo;
 
 import com.nottrilix.domain.Transaction;
 import com.nottrilix.domain.TransactionStatus;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -24,6 +26,14 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     @Query("select t from Transaction t join fetch t.customer join fetch t.product join fetch t.voucher "
             + "where t.id = :id")
     Optional<Transaction> findByIdWithDetails(@Param("id") long id);
+
+    /**
+     * Transakcija zakljucana u bazi (FOR UPDATE) - mora biti PRVO citanje u povratu, da dva istovremena
+     * povrata iste transakcije ne prodju oba (drugi ceka i vidi status REFUNDED).
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select t from Transaction t where t.id = :id")
+    Optional<Transaction> findByIdForUpdate(@Param("id") long id);
 
     /** Zbroj kupnji kupca u zadanom statusu od zadanog trenutka (dnevni limit). Prazno ako nema kupnji. */
     @Query("select sum(t.amountEur) from Transaction t "

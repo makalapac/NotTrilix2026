@@ -1,27 +1,29 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, getToken, isUnauthorized, setToken } from '../shared/api'
 import { LoginPage } from '../shared/LoginPage'
-import type { AuthUser, Brand, Customer, StockRow, Ticket, Transaction, TransactionStatus } from '../shared/types'
+import type { AuthUser, Brand, Customer, StockRow, Ticket, Transaction, TransactionStatus, Wallet } from '../shared/types'
 import {
   BRAND,
   CHANNEL,
   TICKET_STATUS,
   TX_STATUS,
   VOUCHER_STATUS,
+  WALLET_ENTRY,
   dateTime,
   errorMessage,
   eur,
   formatCode,
+  signedEur,
 } from '../shared/format'
 
-type Tab = 'transactions' | 'stock' | 'tickets'
+type Tab = 'transactions' | 'customers' | 'stock' | 'tickets'
 type Notice = { kind: 'ok' | 'err'; text: string } | null
 /** Izvrši akciju; uspjeh/greška ide u banner na vrhu (401 = natrag na prijavu). */
 type Runner = (successText: string, action: () => Promise<unknown>) => Promise<void>
 /** Prijavi grešku iz učitavanja (bez poruke o uspjehu). */
 type Reporter = (e: unknown) => void
 
-const TAB_LABEL: Record<Tab, string> = { transactions: 'Transakcije', stock: 'Zalihe', tickets: 'Podrška' }
+const TAB_LABEL: Record<Tab, string> = { transactions: 'Transakcije', customers: 'Kupci', stock: 'Zalihe', tickets: 'Podrška' }
 const BRANDS: Brand[] = ['A1', 'HT', 'STEAM', 'SONY', 'XBOX']
 
 /** Prijava (korisničko ime + lozinka) pa admin konzola. */
@@ -109,9 +111,11 @@ function AdminConsole({
     }
   }
 
+  const loadCustomers = useCallback(() => api.customers().then(setCustomers), [])
+
   useEffect(() => {
-    api.customers().then(setCustomers).catch(report)
-  }, [report])
+    loadCustomers().catch(report)
+  }, [loadCustomers, report])
 
   return (
     <>
@@ -144,6 +148,7 @@ function AdminConsole({
       <main className="container">
         {notice && <div className={`banner ${notice.kind}`}>{notice.text}</div>}
         {tab === 'transactions' && <TransactionsTab customers={customers} run={run} report={report} />}
+        {tab === 'customers' && <CustomersTab customers={customers} reloadCustomers={loadCustomers} run={run} report={report} />}
         {tab === 'stock' && <StockTab run={run} report={report} />}
         {tab === 'tickets' && <TicketsTab customers={customers} run={run} report={report} />}
       </main>
@@ -250,10 +255,13 @@ function TransactionsTab({ customers, run, report }: { customers: Customer[]; ru
                       className="btn danger"
                       disabled={!canRefund(t)}
                       onClick={() =>
-                        run(`Povrat za transakciju #${t.id} obavljen, bon ${t.voucher.serial} blokiran`, async () => {
-                          await api.admin.refund(t.id)
-                          await load()
-                        })
+                        run(
+                          `Povrat ${eur(t.amountEur)} za transakciju #${t.id} vraćen na wallet kupca, bon ${t.voucher.serial} blokiran`,
+                          async () => {
+                            await api.admin.refund(t.id)
+                            await load()
+                          },
+                        )
                       }
                     >
                       Povrat
@@ -278,6 +286,178 @@ function TransactionsTab({ customers, run, report }: { customers: Customer[]; ru
         </table>
       </div>
     </section>
+  )
+}
+
+function CustomersTab({
+  customers,
+  reloadCustomers,
+  run,
+  report,
+}: {
+  customers: Customer[]
+  reloadCustomers: () => Promise<void>
+  run: Runner
+  report: Reporter
+}) {
+  const [topping, setTopping] = useState<{ id: number; amount: string; note: string } | null>(null)
+  const [history, setHistory] = useState<{ id: number; wallet: Wallet } | null>(null)
+
+  const showHistory = (id: number) =>
+    api.admin
+      .customerWallet(id)
+      .then((wallet) => setHistory({ id, wallet }))
+      .catch(report)
+
+  return (
+    <section className="section">
+      <h2>
+        Kupci <small>walleti i podaci za kontakt</small>
+      </h2>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Ime</th>
+              <th>E-mail</th>
+              <th>Telefon</th>
+              <th className="num">Wallet</th>
+              <th>Akcije</th>
+            </tr>
+          </thead>
+          <tbody>
+            {customers.map((c) => (
+              <CustomerRows
+                key={c.id}
+                customer={c}
+                topping={topping?.id === c.id ? topping : null}
+                history={history?.id === c.id ? history.wallet : null}
+                onStartTopUp={() => setTopping({ id: c.id, amount: '20', note: '' })}
+                onChangeTopUp={(patch) => setTopping((t) => (t && t.id === c.id ? { ...t, ...patch } : t))}
+                onCancelTopUp={() => setTopping(null)}
+                onSubmitTopUp={() => {
+                  if (!topping) return
+                  const amount = Number(topping.amount)
+                  run(`Uplata ${eur(amount)} na wallet kupca ${c.name}`, async () => {
+                    await api.admin.topUpWallet(c.id, amount, topping.note.trim())
+                    setTopping(null)
+                    await reloadCustomers()
+                    if (history?.id === c.id) await showHistory(c.id)
+                  })
+                }}
+                onToggleHistory={() => (history?.id === c.id ? setHistory(null) : showHistory(c.id))}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )
+}
+
+function CustomerRows({
+  customer,
+  topping,
+  history,
+  onStartTopUp,
+  onChangeTopUp,
+  onCancelTopUp,
+  onSubmitTopUp,
+  onToggleHistory,
+}: {
+  customer: Customer
+  topping: { amount: string; note: string } | null
+  history: Wallet | null
+  onStartTopUp: () => void
+  onChangeTopUp: (patch: { amount?: string; note?: string }) => void
+  onCancelTopUp: () => void
+  onSubmitTopUp: () => void
+  onToggleHistory: () => void
+}) {
+  const amountOk = topping != null && Number(topping.amount) > 0
+  return (
+    <>
+      <tr>
+        <td>{customer.id}</td>
+        <td>{customer.name}</td>
+        <td>{customer.email}</td>
+        <td>{customer.phone ?? '—'}</td>
+        <td className="num">
+          <b>{eur(customer.walletBalanceEur)}</b>
+        </td>
+        <td>
+          {topping ? (
+            <div className="resolve">
+              <input
+                type="number"
+                min={1}
+                step={1}
+                autoFocus
+                placeholder="Iznos (€)"
+                value={topping.amount}
+                onChange={(e) => onChangeTopUp({ amount: e.target.value })}
+              />
+              <input placeholder="Napomena (npr. goodwill)" value={topping.note} onChange={(e) => onChangeTopUp({ note: e.target.value })} />
+              <div className="actions">
+                <button className="btn primary" disabled={!amountOk || !topping.note.trim()} onClick={onSubmitTopUp}>
+                  Uplati
+                </button>
+                <button className="btn" onClick={onCancelTopUp}>
+                  Odustani
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="actions">
+              <button className="btn" onClick={onStartTopUp}>
+                Uplata
+              </button>
+              <button className="btn" onClick={onToggleHistory}>
+                {history ? 'Sakrij povijest' : 'Povijest walleta'}
+              </button>
+            </div>
+          )}
+        </td>
+      </tr>
+      {history && (
+        <tr className="subtable">
+          <td colSpan={6}>
+            {history.entries.length === 0 ? (
+              <span className="muted">Nema promjena na walletu.</span>
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>Datum</th>
+                    <th>Vrsta</th>
+                    <th className="num">Iznos</th>
+                    <th className="num">Stanje nakon</th>
+                    <th>Napomena</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.entries.map((e) => (
+                    <tr key={e.id}>
+                      <td>{dateTime(e.createdAt)}</td>
+                      <td>
+                        <span className={`badge ${e.type.toLowerCase()}`}>{WALLET_ENTRY[e.type]}</span>
+                      </td>
+                      <td className={`num ${e.amountEur < 0 ? 'neg' : 'pos'}`}>{signedEur(e.amountEur)}</td>
+                      <td className="num">{eur(e.balanceAfterEur)}</td>
+                      <td className="muted">
+                        {e.note}
+                        {e.transactionId != null && ` (transakcija #${e.transactionId})`}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </td>
+        </tr>
+      )}
+    </>
   )
 }
 

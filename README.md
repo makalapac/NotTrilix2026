@@ -9,8 +9,9 @@ Status faza i „gdje smo stali“: [PROGRESS.md](PROGRESS.md) · puni opis faze
 
 - **Proizvodi:** Telekom bonovi (A1, HT) i Gaming bonovi (Steam, PlayStation, Xbox), denominacije u EUR.
 - **Zaliha:** unaprijed generirani bonovi (serijski broj + aktivacijski kod), 8 po proizvodu.
-- **Kupci (shop, `/`):** prijava e-mailom i lozinkom, katalog (dostupno / rasprodano — kupac ne vidi stanje zalihe), kupnja bona (odmah dobiju kod), pregled svojih kupnji.
-- **Admin (`/admin/`):** prijava korisničkim imenom i lozinkom; pregled svih transakcija (filtri), stanje zaliha, podrška — povrat novca, blokada bona, prijave kupaca.
+- **Wallet:** svaki kupac ima wallet; kupnja se **naplaćuje s walleta** (uz potvrdu u dijalogu), povrat ide natrag na wallet, kupac može nadoplatiti wallet (simulirano plaćanje karticom), sve promjene su u knjizi promjena.
+- **Kupci (shop, `/`):** prijava e-mailom i lozinkom, katalog (dostupno / rasprodano — kupac ne vidi stanje zalihe), kupnja bona s walleta (odmah dobiju kod), „Moj wallet“ (stanje + povijest), pregled svojih kupnji.
+- **Admin (`/admin/`):** prijava korisničkim imenom i lozinkom; pregled svih transakcija (filtri), kupci s walletima (uplata podrške, povijest), stanje zaliha, podrška — povrat novca na wallet, blokada bona, prijave kupaca.
 - **Jedan API** (`/api/**`, Swagger na `/swagger-ui.html`) za oba kanala; pristup bearer tokenom, uloge `CUSTOMER` / `ADMIN`.
 
 ```
@@ -40,7 +41,7 @@ Preduvjeti: Docker Desktop, JDK 25 (`C:\Program Files\Java\jdk-25*`), Maven 3.9+
 
 ## Demo podaci (Flyway `V2__seed.sql`)
 
-- **Kupci (e-mail / lozinka):** `ana.anic@example.com` / `ana123` · `marko.maric@example.com` / `marko123` · `ivana.ivic@example.com` / `ivana123`.
+- **Kupci (e-mail / lozinka · wallet):** `ana.anic@example.com` / `ana123` · 115 € — `marko.maric@example.com` / `marko123` · 25 € — `ivana.ivic@example.com` / `ivana123` · 50 € (Marko ne može kupiti Steam 50 € bez nadoplate).
 - **Admin (korisničko ime / lozinka):** `admin` / `admin123`.
 - **Proizvodi:** A1 5/10/20 € · HT 5/10/25 € · Steam 10/25/50 € · PlayStation 20/50 € · Xbox 15/30 €.
 - **Bonovi:** serijski `PREFIX-DENOMINACIJA-NNN` (npr. `STM-25-003`), 12-znamenkasti kod.
@@ -51,8 +52,10 @@ Preduvjeti: Docker Desktop, JDK 25 (`C:\Program Files\Java\jdk-25*`), Maven 3.9+
 | Pravilo | Greška (HTTP 409) |
 |---|---|
 | Dnevni limit kupnje po kupcu: **150 €** | `DAILY_LIMIT_EXCEEDED` |
+| Na walletu mora biti dovoljno sredstava za cijenu bona | `INSUFFICIENT_FUNDS` |
 | Bon mora postojati na zalihi (zaključavanje reda u bazi) | `OUT_OF_STOCK` |
-| Povrat samo unutar **14 dana** i samo ako bon nije iskorišten; bon se blokira | `REFUND_WINDOW_EXPIRED`, `VOUCHER_ALREADY_REDEEMED`, `ALREADY_REFUNDED` |
+| Uplata na wallet: najviše **500 €** po uplati | `TOPUP_LIMIT_EXCEEDED` |
+| Povrat samo unutar **14 dana** i samo ako bon nije iskorišten; iznos ide na wallet, bon se blokira | `REFUND_WINDOW_EXPIRED`, `VOUCHER_ALREADY_REDEEMED`, `ALREADY_REFUNDED` |
 | Blokada bona: ne za iskorišten / već blokiran | `VOUCHER_ALREADY_REDEEMED`, `ALREADY_BLOCKED` |
 | Prijava se može vezati samo na transakciju istog kupca | `TRANSACTION_CUSTOMER_MISMATCH` |
 
@@ -76,12 +79,14 @@ Odgovor prijave je `{ "token": "...", "user": {realm, id, name, login} }`; dalje
 | `POST /api/auth/customer/login`, `POST /api/auth/admin/login` | — | prijava → token |
 | `GET /api/auth/me`, `POST /api/auth/logout` | bilo koja | tko sam / odjava |
 | `GET /api/shop/catalog` | CUSTOMER | katalog (dostupno / rasprodano) |
-| `POST /api/shop/purchase` `{productId}` | CUSTOMER | kupnja za prijavljenog kupca → transakcija s bonom (serijski + kod) |
+| `POST /api/shop/purchase` `{productId}` | CUSTOMER | kupnja za prijavljenog kupca, naplata s walleta → `{transaction (s bonom), walletBalanceEur}` |
 | `GET /api/shop/transactions` | CUSTOMER | kupnje prijavljenog kupca |
-| `GET /api/customers`, `GET /api/customers/{id}` | ADMIN | kupci |
+| `GET /api/shop/wallet`, `POST /api/shop/wallet/topup` `{amountEur}` | CUSTOMER | wallet (stanje + povijest) / nadoplata (simulirano) |
+| `GET /api/customers`, `GET /api/customers/{id}` | ADMIN | kupci (sa stanjem walleta) |
+| `GET /api/admin/customers/{id}/wallet`, `POST /api/admin/customers/{id}/wallet/topup` `{amountEur, note}` | ADMIN | wallet kupca / uplata podrške |
 | `GET /api/admin/transactions?status=&brand=&customerId=` | ADMIN | sve transakcije |
 | `GET /api/admin/transactions/{id}` | ADMIN | jedna transakcija |
-| `POST /api/admin/transactions/{id}/refund` | ADMIN | povrat novca |
+| `POST /api/admin/transactions/{id}/refund` | ADMIN | povrat novca na wallet kupca |
 | `POST /api/admin/vouchers/{serial}/block` | ADMIN | blokada bona |
 | `GET /api/admin/stock` | ADMIN | zaliha po proizvodu/statusu |
 | `GET /api/admin/tickets`, `POST /api/admin/tickets`, `POST /api/admin/tickets/{id}/resolve` | ADMIN | podrška |
@@ -90,7 +95,7 @@ Odgovor prijave je `{ "token": "...", "user": {realm, id, name, login} }`; dalje
 
 Logback (`logback-spring.xml`): sve na konzolu (u boji) i u `logs/nottrilix-2026.log`. Svaki HTTP zahtjev s korisnikom (`HTTP` logger: `POST /api/shop/purchase user=customer:ana.anic@example.com -> 201 (60 ms)`),
 svaka prijava/odjava i odbijeni pristup (`AUTH` logger: `LOGIN OK`, `LOGIN FAILED`, `AUTH 401/403`, `TOKEN issued/revoked`),
-svaka poslovna operacija (`PURCHASE OK …`, `PURCHASE DENIED reason=OUT_OF_STOCK …`, `REFUND OK …`, `TICKET …`) i svaki odbijeni zahtjev.
+svaka poslovna operacija (`PURCHASE OK …`, `PURCHASE DENIED reason=OUT_OF_STOCK …`, `WALLET DEBIT/CREDIT/TOPUP …`, `REFUND OK …`, `TICKET …`) i svaki odbijeni zahtjev.
 SQL ispis: `logging.level.org.hibernate.SQL: DEBUG` u `application.yml`.
 
 ## Razvoj
@@ -103,9 +108,9 @@ SQL ispis: `logging.level.org.hibernate.SQL: DEBUG` u `application.yml`.
 
 ```
 src/main/java/com/nottrilix
-  domain/    entiteti + enumi (Customer, AdminUser, Product, Voucher, Transaction, SupportTicket)
-  repo/      Spring Data repozitoriji
-  service/   CatalogService, ShopService, SupportService  <- poslovna pravila
+  domain/    entiteti + enumi (Customer (+wallet), WalletEntry, AdminUser, Product, Voucher, Transaction, SupportTicket)
+  repo/      Spring Data repozitoriji (FOR UPDATE za kupca/bon/transakciju)
+  service/   CatalogService, ShopService, WalletService, SupportService  <- poslovna pravila
   auth/      Realm, AuthUser, LoginToken, NotTrilixAuthenticationProvider (bcrypt), TokenService, BearerTokenFilter
   api/       kontroleri (Auth, Shop, Customers, Admin), dto/ (recordi), ApiExceptionHandler
   config/    SecurityConfig, RulesProperties, AppConfig (Clock, OpenAPI), WebConfig, RequestLoggingFilter

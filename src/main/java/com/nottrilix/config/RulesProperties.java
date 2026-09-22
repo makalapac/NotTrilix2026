@@ -6,5 +6,5 @@ import java.math.BigDecimal;
 
 /** Poslovna pravila iz application.yml (nottrilix.rules.*). */
 @ConfigurationProperties(prefix = "nottrilix.rules")
-public record RulesProperties(BigDecimal dailyLimitEur, int refundWindowDays) {
+public record RulesProperties(BigDecimal dailyLimitEur, int refundWindowDays, BigDecimal maxTopUpEur) {
 }

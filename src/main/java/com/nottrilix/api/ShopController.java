@@ -2,11 +2,15 @@ package com.nottrilix.api;
 
 import com.nottrilix.api.dto.CatalogItem;
 import com.nottrilix.api.dto.PurchaseRequest;
+import com.nottrilix.api.dto.PurchaseResponse;
+import com.nottrilix.api.dto.TopUpRequest;
 import com.nottrilix.api.dto.TransactionDto;
+import com.nottrilix.api.dto.WalletDto;
 import com.nottrilix.auth.AuthUser;
 import com.nottrilix.domain.Channel;
 import com.nottrilix.service.CatalogService;
 import com.nottrilix.service.ShopService;
+import com.nottrilix.service.WalletService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -27,12 +31,16 @@ import java.util.List;
 @Tag(name = "Shop", description = "Prodajni kanal - web aplikacija za kupce (uloga CUSTOMER)")
 public class ShopController {
 
+    private static final String CUSTOMER_TOPUP_NOTE = "Uplata karticom (simulirano)";
+
     private final CatalogService catalogService;
     private final ShopService shopService;
+    private final WalletService walletService;
 
-    public ShopController(CatalogService catalogService, ShopService shopService) {
+    public ShopController(CatalogService catalogService, ShopService shopService, WalletService walletService) {
         this.catalogService = catalogService;
         this.shopService = shopService;
+        this.walletService = walletService;
     }
 
     @GetMapping("/catalog")
@@ -43,8 +51,8 @@ public class ShopController {
 
     @PostMapping("/purchase")
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Kupnja bona za prijavljenog kupca - vraća serijski broj i aktivacijski kod")
-    public TransactionDto purchase(@AuthenticationPrincipal AuthUser user, @Valid @RequestBody PurchaseRequest request) {
+    @Operation(summary = "Kupnja bona za prijavljenog kupca, naplata s walleta - vraća bon (serijski + kod) i novo stanje walleta")
+    public PurchaseResponse purchase(@AuthenticationPrincipal AuthUser user, @Valid @RequestBody PurchaseRequest request) {
         return shopService.purchase(user.id(), request.productId(), Channel.WEB);
     }
 
@@ -52,5 +60,17 @@ public class ShopController {
     @Operation(summary = "Kupnje prijavljenog kupca")
     public List<TransactionDto> transactions(@AuthenticationPrincipal AuthUser user) {
         return shopService.customerTransactions(user.id());
+    }
+
+    @GetMapping("/wallet")
+    @Operation(summary = "Wallet prijavljenog kupca: stanje i povijest promjena")
+    public WalletDto wallet(@AuthenticationPrincipal AuthUser user) {
+        return walletService.wallet(user.id());
+    }
+
+    @PostMapping("/wallet/topup")
+    @Operation(summary = "Uplata na wallet (simulirano plaćanje karticom)")
+    public WalletDto topUp(@AuthenticationPrincipal AuthUser user, @Valid @RequestBody TopUpRequest request) {
+        return walletService.topUp(user.id(), request.amountEur(), CUSTOMER_TOPUP_NOTE);
     }
 }

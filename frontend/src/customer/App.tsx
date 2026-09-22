@@ -1,13 +1,27 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, getToken, isUnauthorized, setToken } from '../shared/api'
 import { LoginPage } from '../shared/LoginPage'
-import type { AuthUser, Brand, CatalogItem, Category, Transaction } from '../shared/types'
-import { CHANNEL, TX_STATUS, VOUCHER_STATUS, dateTime, errorMessage, eur, formatCode, maskCode } from '../shared/format'
+import type { AuthUser, Brand, CatalogItem, Category, PurchaseResponse, Transaction, Wallet } from '../shared/types'
+import {
+  CHANNEL,
+  TX_STATUS,
+  VOUCHER_STATUS,
+  WALLET_ENTRY,
+  dateTime,
+  errorMessage,
+  eur,
+  formatCode,
+  maskCode,
+  signedEur,
+} from '../shared/format'
 
 const CATEGORIES: { key: Category; title: string; blurb: string }[] = [
   { key: 'TELEKOM', title: 'Telekom bonovi', blurb: 'nadoplata mobilnog računa' },
   { key: 'GAMING', title: 'Gaming bonovi', blurb: 'kredit za igre i sadržaj' },
 ]
+
+const TOP_UP_PRESETS = [10, 20, 50, 100]
+const TOP_UP_MAX = 500
 
 function groupByBrand(items: CatalogItem[]): [Brand, CatalogItem[]][] {
   const groups = new Map<Brand, CatalogItem[]>()
@@ -79,7 +93,11 @@ export default function App() {
 function Shop({ user, onLogout, onSessionExpired }: { user: AuthUser; onLogout: () => void; onSessionExpired: () => void }) {
   const [catalog, setCatalog] = useState<CatalogItem[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [lastPurchase, setLastPurchase] = useState<Transaction | null>(null)
+  const [wallet, setWallet] = useState<Wallet | null>(null)
+  const [pending, setPending] = useState<CatalogItem | null>(null) // bon koji čeka potvrdu naplate
+  const [topUpOpen, setTopUpOpen] = useState(false)
+  const [lastPurchase, setLastPurchase] = useState<PurchaseResponse | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [revealed, setRevealed] = useState<Record<number, boolean>>({})
@@ -94,26 +112,51 @@ function Shop({ user, onLogout, onSessionExpired }: { user: AuthUser; onLogout: 
 
   const loadCatalog = useCallback(() => api.catalog().then(setCatalog), [])
   const loadTransactions = useCallback(() => api.myTransactions().then(setTransactions), [])
+  const loadWallet = useCallback(() => api.wallet().then(setWallet), [])
 
   useEffect(() => {
     loadCatalog().catch(fail)
     loadTransactions().catch(fail)
-  }, [loadCatalog, loadTransactions, fail])
+    loadWallet().catch(fail)
+  }, [loadCatalog, loadTransactions, loadWallet, fail])
 
-  async function buy(item: CatalogItem) {
-    if (busy) return
+  async function confirmPurchase() {
+    if (!pending || busy) return
     setBusy(true)
     setError(null)
+    setNotice(null)
     try {
-      const tx = await api.purchase(item.productId)
-      setLastPurchase(tx)
-      await Promise.all([loadCatalog(), loadTransactions()])
+      const res = await api.purchase(pending.productId)
+      setLastPurchase(res)
+      setPending(null)
+      await Promise.all([loadCatalog(), loadTransactions(), loadWallet()])
     } catch (e) {
+      setPending(null)
       fail(e)
     } finally {
       setBusy(false)
     }
   }
+
+  async function topUp(amount: number) {
+    if (busy) return
+    setBusy(true)
+    setError(null)
+    setLastPurchase(null)
+    try {
+      const updated = await api.topUpWallet(amount)
+      setWallet(updated)
+      setTopUpOpen(false)
+      setNotice(`Uplata ${eur(amount)} uspješna. Novo stanje walleta: ${eur(updated.balanceEur)}.`)
+    } catch (e) {
+      setTopUpOpen(false)
+      fail(e)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const balance = wallet?.balanceEur ?? 0
 
   return (
     <>
@@ -123,26 +166,51 @@ function Shop({ user, onLogout, onSessionExpired }: { user: AuthUser; onLogout: 
         </div>
         <div className="userbox">
           <span className="who">{user.name}</span>
+          <span className="wallet-pill" title="Stanje walleta">
+            Wallet: {wallet ? eur(wallet.balanceEur) : '…'}
+          </span>
+          <button className="btn ghost" onClick={() => setTopUpOpen(true)}>
+            Nadoplati
+          </button>
           <button className="btn ghost" onClick={onLogout}>
             Odjava
           </button>
         </div>
       </header>
 
+      {pending && wallet && (
+        <ConfirmPurchaseModal
+          item={pending}
+          balance={balance}
+          busy={busy}
+          onConfirm={confirmPurchase}
+          onCancel={() => setPending(null)}
+          onTopUp={() => {
+            setPending(null)
+            setTopUpOpen(true)
+          }}
+        />
+      )}
+      {topUpOpen && (
+        <TopUpModal balance={balance} busy={busy} onTopUp={topUp} onCancel={() => setTopUpOpen(false)} />
+      )}
+
       <main className="container">
         {error && <div className="banner err">{error}</div>}
+        {notice && <div className="banner ok">{notice}</div>}
 
         {lastPurchase && (
           <div className="banner ok">
-            <strong>Kupnja uspješna!</strong> {lastPurchase.productName} za {eur(lastPurchase.amountEur)}.
+            <strong>Kupnja uspješna!</strong> {lastPurchase.transaction.productName} za{' '}
+            {eur(lastPurchase.transaction.amountEur)} naplaćeno s walleta — novo stanje {eur(lastPurchase.walletBalanceEur)}.
             <div className="code-box">
               <div>
                 <span className="muted">Serijski broj</span>
-                <b className="mono">{lastPurchase.voucher.serial}</b>
+                <b className="mono">{lastPurchase.transaction.voucher.serial}</b>
               </div>
               <div>
                 <span className="muted">Aktivacijski kod</span>
-                <b className="mono">{formatCode(lastPurchase.voucher.code)}</b>
+                <b className="mono">{formatCode(lastPurchase.transaction.voucher.code)}</b>
               </div>
             </div>
           </div>
@@ -163,8 +231,8 @@ function Shop({ user, onLogout, onSessionExpired }: { user: AuthUser; onLogout: 
                       <button
                         key={item.productId}
                         className="denom"
-                        disabled={busy || !item.available}
-                        onClick={() => buy(item)}
+                        disabled={busy || !item.available || !wallet}
+                        onClick={() => setPending(item)}
                         title={item.available ? `Kupi ${item.name} ${eur(item.denominationEur)}` : 'Rasprodano'}
                       >
                         <span className="amount">{eur(item.denominationEur)}</span>
@@ -180,6 +248,45 @@ function Shop({ user, onLogout, onSessionExpired }: { user: AuthUser; onLogout: 
 
         <section className="section">
           <h2>
+            Moj wallet <small>stanje {wallet ? eur(wallet.balanceEur) : '…'}</small>
+          </h2>
+          {!wallet || wallet.entries.length === 0 ? (
+            <p className="muted">Još nema promjena na walletu.</p>
+          ) : (
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Datum</th>
+                    <th>Vrsta</th>
+                    <th className="num">Iznos</th>
+                    <th className="num">Stanje nakon</th>
+                    <th>Napomena</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {wallet.entries.map((e) => (
+                    <tr key={e.id}>
+                      <td>{dateTime(e.createdAt)}</td>
+                      <td>
+                        <span className={`badge ${e.type.toLowerCase()}`}>{WALLET_ENTRY[e.type]}</span>
+                      </td>
+                      <td className={`num ${e.amountEur < 0 ? 'neg' : 'pos'}`}>{signedEur(e.amountEur)}</td>
+                      <td className="num">{eur(e.balanceAfterEur)}</td>
+                      <td className="muted">
+                        {e.note}
+                        {e.transactionId != null && ` (kupnja #${e.transactionId})`}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <section className="section">
+          <h2>
             Moje kupnje <small>{user.login}</small>
           </h2>
           {transactions.length === 0 ? (
@@ -189,6 +296,7 @@ function Shop({ user, onLogout, onSessionExpired }: { user: AuthUser; onLogout: 
               <table>
                 <thead>
                   <tr>
+                    <th>#</th>
                     <th>Datum</th>
                     <th>Proizvod</th>
                     <th className="num">Iznos</th>
@@ -201,6 +309,7 @@ function Shop({ user, onLogout, onSessionExpired }: { user: AuthUser; onLogout: 
                 <tbody>
                   {transactions.map((t) => (
                     <tr key={t.id}>
+                      <td>{t.id}</td>
                       <td>{dateTime(t.createdAt)}</td>
                       <td>{t.productName}</td>
                       <td className="num">{eur(t.amountEur)}</td>
@@ -228,5 +337,110 @@ function Shop({ user, onLogout, onSessionExpired }: { user: AuthUser; onLogout: 
         </section>
       </main>
     </>
+  )
+}
+
+/** Pitanje prije kupnje: naplatiti iznos s walleta? Ako nema dovoljno, nudi nadoplatu (server pravilo svejedno provjerava). */
+function ConfirmPurchaseModal({
+  item,
+  balance,
+  busy,
+  onConfirm,
+  onCancel,
+  onTopUp,
+}: {
+  item: CatalogItem
+  balance: number
+  busy: boolean
+  onConfirm: () => void
+  onCancel: () => void
+  onTopUp: () => void
+}) {
+  const price = item.denominationEur
+  const after = balance - price
+  const enough = after >= 0
+
+  return (
+    <div className="modal-backdrop" onClick={onCancel}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <h3>Naplata s walleta</h3>
+        <p>
+          Kupujete <b>{item.name} {eur(price)}</b>. Želite li naplatiti taj iznos s vašeg walleta?
+        </p>
+        <div className="row">
+          <span>Stanje walleta</span>
+          <b>{eur(balance)}</b>
+        </div>
+        <div className="row">
+          <span>Cijena bona</span>
+          <b>− {eur(price)}</b>
+        </div>
+        <div className="row total">
+          <span>Stanje nakon kupnje</span>
+          <b className={enough ? '' : 'neg'}>{eur(after)}</b>
+        </div>
+        {!enough && <div className="banner err">Nedovoljno sredstava — nadoplatite wallet za najmanje {eur(price - balance)}.</div>}
+        <div className="actions">
+          <button className="btn" onClick={onCancel} disabled={busy}>
+            Odustani
+          </button>
+          {enough ? (
+            <button className="btn primary" onClick={onConfirm} disabled={busy}>
+              {busy ? 'Naplata…' : 'Da, naplati s walleta'}
+            </button>
+          ) : (
+            <button className="btn primary" onClick={onTopUp}>
+              Nadoplati wallet
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Nadoplata walleta - u demu simulirano plaćanje karticom (iznos se odmah knjiži). */
+function TopUpModal({
+  balance,
+  busy,
+  onTopUp,
+  onCancel,
+}: {
+  balance: number
+  busy: boolean
+  onTopUp: (amount: number) => void
+  onCancel: () => void
+}) {
+  const [amount, setAmount] = useState(20)
+  const valid = Number.isFinite(amount) && amount >= 1 && amount <= TOP_UP_MAX
+
+  return (
+    <div className="modal-backdrop" onClick={onCancel}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <h3>Nadoplata walleta</h3>
+        <p className="muted">
+          Simulirano plaćanje karticom — iznos se odmah dodaje na wallet. Trenutno stanje: {eur(balance)}.
+        </p>
+        <div className="amounts">
+          {TOP_UP_PRESETS.map((preset) => (
+            <button key={preset} className={`btn ${amount === preset ? 'primary' : ''}`} onClick={() => setAmount(preset)}>
+              {eur(preset)}
+            </button>
+          ))}
+        </div>
+        <label className="field">
+          Drugi iznos (1 – {TOP_UP_MAX} €)
+          <input type="number" min={1} max={TOP_UP_MAX} step={1} value={amount} onChange={(e) => setAmount(Number(e.target.value))} />
+        </label>
+        <div className="actions">
+          <button className="btn" onClick={onCancel} disabled={busy}>
+            Odustani
+          </button>
+          <button className="btn primary" disabled={busy || !valid} onClick={() => onTopUp(amount)}>
+            {busy ? 'Uplata…' : `Uplati ${valid ? eur(amount) : ''}`}
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }

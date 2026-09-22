@@ -1,16 +1,19 @@
 package com.nottrilix.api;
 
+import com.nottrilix.api.dto.AdminTopUpRequest;
 import com.nottrilix.api.dto.ResolveRequest;
 import com.nottrilix.api.dto.StockRow;
 import com.nottrilix.api.dto.TicketDto;
 import com.nottrilix.api.dto.TicketRequest;
 import com.nottrilix.api.dto.TransactionDto;
 import com.nottrilix.api.dto.VoucherDto;
+import com.nottrilix.api.dto.WalletDto;
 import com.nottrilix.domain.Brand;
 import com.nottrilix.domain.TransactionStatus;
 import com.nottrilix.service.CatalogService;
 import com.nottrilix.service.SupportService;
 import com.nottrilix.service.SupportService.TransactionFilter;
+import com.nottrilix.service.WalletService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -28,15 +31,17 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin")
-@Tag(name = "Admin", description = "Pregled transakcija i zaliha, podrska (povrat, blokada bona, prijave)")
+@Tag(name = "Admin", description = "Pregled transakcija i zaliha, podrska (povrat, blokada bona, prijave, wallet kupca)")
 public class AdminController {
 
     private final SupportService supportService;
     private final CatalogService catalogService;
+    private final WalletService walletService;
 
-    public AdminController(SupportService supportService, CatalogService catalogService) {
+    public AdminController(SupportService supportService, CatalogService catalogService, WalletService walletService) {
         this.supportService = supportService;
         this.catalogService = catalogService;
+        this.walletService = walletService;
     }
 
     @GetMapping("/transactions")
@@ -54,7 +59,7 @@ public class AdminController {
     }
 
     @PostMapping("/transactions/{id}/refund")
-    @Operation(summary = "Povrat novca (unutar roka, bon nije iskoristen) - bon se blokira")
+    @Operation(summary = "Povrat novca na wallet kupca (unutar roka, bon nije iskoristen) - bon se blokira")
     public TransactionDto refund(@PathVariable long id) {
         return supportService.refund(id);
     }
@@ -69,6 +74,18 @@ public class AdminController {
     @Operation(summary = "Zaliha po proizvodu i statusu bonova")
     public List<StockRow> stock() {
         return catalogService.stock();
+    }
+
+    @GetMapping("/customers/{id}/wallet")
+    @Operation(summary = "Wallet kupca: stanje i povijest promjena")
+    public WalletDto customerWallet(@PathVariable long id) {
+        return walletService.wallet(id);
+    }
+
+    @PostMapping("/customers/{id}/wallet/topup")
+    @Operation(summary = "Uplata podrske na wallet kupca (s napomenom)")
+    public WalletDto topUpCustomerWallet(@PathVariable long id, @Valid @RequestBody AdminTopUpRequest request) {
+        return walletService.topUp(id, request.amountEur(), request.note());
     }
 
     @GetMapping("/tickets")
