@@ -11,12 +11,13 @@ Prethodni pokušaj (`../mcp-demo`) ostaje kao referenca (deck, outline, research
 | Faza | Grana | Što | Stanje | Detalji |
 |---|---|---|---|---|
 | 1 | `phase1` | Postojeći sustav (AS IS): Postgres + API + admin i customer React frontend, pravila u servisima, logovi, jedna skripta; prijava (kupac e-mail/lozinka, admin korisničko ime/lozinka, bearer token, uloge), kupcu skrivena zaliha; **wallet** (naplata kupnje s walleta uz potvrdu, nadoplata, povrat na wallet, knjiga promjena, admin uplata); **provjera bona kod pružatelja** (fiktivni `ProviderGateway`) | ✅ gotovo, e2e verificirano | [docs/PHASE1.md](docs/PHASE1.md) |
-| 2 | `phase2` | Tool boundary: `@Tool` adapteri nad servisima + audit trag | ⏳ sljedeće | — |
-| 3 | `phase3` | Light RAG (politike → vector store u istoj bazi) | ⏳ | — |
-| 4 | `phase4` | Agent (Spring AI `ChatClient`, memorija, RAG, tool calling) | ⏳ | — |
-| 5 | `phase5` | Mrežni MCP (SSE server + agent klijent) | ⏳ | — |
-| 6 | `phase6` | Glas (STT/TTS, ElevenLabs) | ⏳ | — |
-| 7 | `phase7` | Telefonija (Infobip, poziv s mobitela) | ⏳ | — |
+| 2 | `phase2` | Znanje: baza znanja za RAG (9 md dokumenata pisanih za chunking) + ingest i semantička pretraga kroz **Spring AI** (OpenAI embeddinzi, PGVector u istoj bazi) | 🔄 u tijeku — dokumenti gotovi, slijedi ingest + pretraga | [docs/PHASE2.md](docs/PHASE2.md) |
+| 3 | `phase3` | Agent (Spring AI `ChatClient`): memorija po razgovoru, RAG advisor, `@Tool` adapteri nad servisima + audit trag | ⏳ | — |
+| 4 | `phase4` | Mrežni MCP (SSE server + agent klijent) | ⏳ | — |
+| 5 | `phase5` | Glas (STT/TTS, ElevenLabs) | ⏳ | — |
+| 6 | `phase6` | Telefonija (Infobip, poziv s mobitela) | ⏳ | — |
+
+Za sve AI dijelove okosnica je **Spring AI** (ChatClient, EmbeddingModel, VectorStore, advisori, tool calling, MCP).
 
 ## Kako pokrenuti ono što postoji
 
@@ -33,7 +34,7 @@ Demo prijave: kupci `ana.anic@example.com` / `ana123` (wallet 115 €), marko.ma
 - Faza 1 je zatvorena (uklj. prijavu, skrivanje zalihe i wallet); radni direktorij čist, grana `phase1`. **Nema remotea** (push na GitHub = TODO).
 - Baza u Dockeru sadrži i podatke od testiranja → prije vježbe `.\run-phase-1.ps1 -Reset`.
 - Stari stack (`mcp-demo`) može istovremeno raditi: on drži 5432 i 8081–8083, novi drži 5433 i 8080.
-- Sljedeći korak: grana `phase2` iz `phase1` → tool boundary + audit (plan u [docs/PHASE1.md §14](docs/PHASE1.md)).
+- **Faza 2 u tijeku** na grani `phase2`: baza znanja napisana (`src/main/resources/kb/`), sljedeći korak = ingest u PGVector + pretraga (plan u [docs/PHASE2.md](docs/PHASE2.md)). Treba `openai.key` (gitignored) za embeddinge.
 
 ## Stack i konvencije
 
