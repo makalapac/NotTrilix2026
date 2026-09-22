@@ -1,7 +1,9 @@
 import type {
+  AuthUser,
   Brand,
   CatalogItem,
   Customer,
+  LoginResponse,
   StockRow,
   Ticket,
   TicketRequest,
@@ -10,7 +12,7 @@ import type {
   Voucher,
 } from './types'
 
-/** Greška iz API-ja: HTTP status + strojni kod (npr. OUT_OF_STOCK) + poruka za korisnika. */
+/** Greška iz API-ja: HTTP status + strojni kod (npr. OUT_OF_STOCK, UNAUTHORIZED) + poruka za korisnika. */
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -22,9 +24,35 @@ export class ApiError extends Error {
   }
 }
 
+// Bearer token u localStorage; svaka aplikacija (shop / admin) ima svoj ključ pa prijave ne smetaju jedna drugoj.
+let storageKey = 'nottrilix.token'
+
+export function configureAuth(key: string) {
+  storageKey = key
+}
+
+export function getToken(): string | null {
+  try {
+    return localStorage.getItem(storageKey)
+  } catch {
+    return null
+  }
+}
+
+export function setToken(token: string | null) {
+  try {
+    if (token) localStorage.setItem(storageKey, token)
+    else localStorage.removeItem(storageKey)
+  } catch {
+    /* localStorage nedostupan - token živi samo do reloada */
+  }
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' }
   if (init.body) headers['Content-Type'] = 'application/json'
+  const token = getToken()
+  if (token) headers.Authorization = `Bearer ${token}`
   const res = await fetch(path, { ...init, headers })
   const text = await res.text()
   const body = text ? JSON.parse(text) : null
@@ -45,11 +73,20 @@ export interface TransactionFilter {
 }
 
 export const api = {
-  customers: () => request<Customer[]>('/api/customers'),
+  auth: {
+    customerLogin: (email: string, password: string) =>
+      post<LoginResponse>('/api/auth/customer/login', { email, password }),
+    adminLogin: (username: string, password: string) =>
+      post<LoginResponse>('/api/auth/admin/login', { username, password }),
+    me: () => request<AuthUser>('/api/auth/me'),
+    logout: () => post<void>('/api/auth/logout'),
+  },
+
   catalog: () => request<CatalogItem[]>('/api/shop/catalog'),
-  purchase: (customerId: number, productId: number) =>
-    post<Transaction>('/api/shop/purchase', { customerId, productId }),
-  myTransactions: (customerId: number) => request<Transaction[]>(`/api/shop/customers/${customerId}/transactions`),
+  purchase: (productId: number) => post<Transaction>('/api/shop/purchase', { productId }),
+  myTransactions: () => request<Transaction[]>('/api/shop/transactions'),
+
+  customers: () => request<Customer[]>('/api/customers'),
 
   admin: {
     transactions: (filter: TransactionFilter = {}) => {
@@ -68,3 +105,6 @@ export const api = {
     resolveTicket: (id: number, resolution: string) => post<Ticket>(`/api/admin/tickets/${id}/resolve`, { resolution }),
   },
 }
+
+/** 401 = token istekao / ne vrijedi (npr. restart servera) -> aplikacija vraća korisnika na prijavu. */
+export const isUnauthorized = (e: unknown) => e instanceof ApiError && e.status === 401

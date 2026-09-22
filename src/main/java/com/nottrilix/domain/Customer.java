@@ -18,19 +18,25 @@ public class Customer {
     @Column(nullable = false, length = 100)
     private String name;
 
+    /** Ujedno korisnicko ime za prijavu u shop. */
     @Column(nullable = false, unique = true, length = 150)
     private String email;
 
     @Column(length = 30)
     private String phone;
 
+    /** bcrypt; nikad ne izlazi iz servisnog sloja. */
+    @Column(name = "password_hash", nullable = false, length = 100)
+    private String passwordHash;
+
     protected Customer() {
     }
 
-    public Customer(String name, String email, String phone) {
+    public Customer(String name, String email, String phone, String passwordHash) {
         this.name = name;
         this.email = email;
         this.phone = phone;
+        this.passwordHash = passwordHash;
     }
 
     public Long getId() {
@@ -47,5 +53,9 @@ public class Customer {
 
     public String getPhone() {
         return phone;
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
     }
 }

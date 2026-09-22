@@ -1,17 +1,24 @@
 package com.nottrilix.config;
 
+import com.nottrilix.auth.AuthUser;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-/** Jedan redak po API zahtjevu: metoda, putanja, HTTP status i trajanje. */
+/**
+ * Jedan redak po API zahtjevu: metoda, putanja, tko (po tokenu), HTTP status i trajanje.
+ * Izvrsava se unutar Spring Security lanca (nakon njega u redoslijedu), pa je korisnik vec poznat;
+ * zahtjeve koje Security odbije (401/403) logira SecurityConfig.
+ */
 @Component
 public class RequestLoggingFilter extends OncePerRequestFilter {
 
@@ -31,8 +38,16 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
         } finally {
             long ms = (System.nanoTime() - start) / 1_000_000;
             String query = request.getQueryString();
-            log.info("{} {}{} -> {} ({} ms)", request.getMethod(), request.getRequestURI(),
-                    query == null ? "" : "?" + query, response.getStatus(), ms);
+            log.info("{} {}{} user={} -> {} ({} ms)", request.getMethod(), request.getRequestURI(),
+                    query == null ? "" : "?" + query, currentUser(), response.getStatus(), ms);
         }
+    }
+
+    private static String currentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof AuthUser user) {
+            return user.realm().name().toLowerCase() + ":" + user.login();
+        }
+        return "anonymous";
     }
 }

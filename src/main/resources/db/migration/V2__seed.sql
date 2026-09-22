@@ -1,9 +1,13 @@
 -- NotTrilix 2026 - demo podaci
 
-INSERT INTO customers (name, email, phone) VALUES
-  ('Ana Anić',    'ana.anic@example.com',    '+385 91 111 2222'),
-  ('Marko Marić', 'marko.maric@example.com', '+385 98 333 4444'),
-  ('Ivana Ivić',  'ivana.ivic@example.com',  '+385 95 555 6666');
+-- Lozinke su bcrypt (pgcrypto). Demo racuni: ana123 / marko123 / ivana123; admin: admin / admin123
+INSERT INTO customers (name, email, phone, password_hash) VALUES
+  ('Ana Anić',    'ana.anic@example.com',    '+385 91 111 2222', crypt('ana123',   gen_salt('bf', 10))),
+  ('Marko Marić', 'marko.maric@example.com', '+385 98 333 4444', crypt('marko123', gen_salt('bf', 10))),
+  ('Ivana Ivić',  'ivana.ivic@example.com',  '+385 95 555 6666', crypt('ivana123', gen_salt('bf', 10)));
+
+INSERT INTO admin_users (username, password_hash, name) VALUES
+  ('admin', crypt('admin123', gen_salt('bf', 10)), 'NotTrilix podrška');
 
 INSERT INTO products (category, brand, name, serial_prefix, denomination_eur) VALUES
   ('TELEKOM', 'A1',    'A1 bon',            'A1',  5),

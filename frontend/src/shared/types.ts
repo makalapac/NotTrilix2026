@@ -6,6 +6,20 @@ export type VoucherStatus = 'AVAILABLE' | 'SOLD' | 'REDEEMED' | 'BLOCKED'
 export type TransactionStatus = 'COMPLETED' | 'REFUNDED'
 export type TicketStatus = 'OPEN' | 'RESOLVED'
 export type Channel = 'WEB' | 'POS'
+export type Realm = 'CUSTOMER' | 'ADMIN'
+
+export interface AuthUser {
+  realm: Realm
+  id: number
+  name: string
+  /** e-mail kupca ili korisničko ime admina */
+  login: string
+}
+
+export interface LoginResponse {
+  token: string
+  user: AuthUser
+}
 
 export interface CatalogItem {
   productId: number
@@ -14,7 +28,7 @@ export interface CatalogItem {
   brandName: string
   name: string
   denominationEur: number
-  inStock: number
+  available: boolean
 }
 
 export interface Customer {

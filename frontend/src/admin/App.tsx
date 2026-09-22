@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import { api } from '../shared/api'
-import type { Brand, Customer, StockRow, Ticket, Transaction, TransactionStatus } from '../shared/types'
+import { api, getToken, isUnauthorized, setToken } from '../shared/api'
+import { LoginPage } from '../shared/LoginPage'
+import type { AuthUser, Brand, Customer, StockRow, Ticket, Transaction, TransactionStatus } from '../shared/types'
 import {
   BRAND,
   CHANNEL,
@@ -15,32 +16,102 @@ import {
 
 type Tab = 'transactions' | 'stock' | 'tickets'
 type Notice = { kind: 'ok' | 'err'; text: string } | null
-/** Izvrši akciju; uspjeh/greška ide u banner na vrhu. */
+/** Izvrši akciju; uspjeh/greška ide u banner na vrhu (401 = natrag na prijavu). */
 type Runner = (successText: string, action: () => Promise<unknown>) => Promise<void>
+/** Prijavi grešku iz učitavanja (bez poruke o uspjehu). */
+type Reporter = (e: unknown) => void
 
 const TAB_LABEL: Record<Tab, string> = { transactions: 'Transakcije', stock: 'Zalihe', tickets: 'Podrška' }
 const BRANDS: Brand[] = ['A1', 'HT', 'STEAM', 'SONY', 'XBOX']
 
+/** Prijava (korisničko ime + lozinka) pa admin konzola. */
 export default function App() {
+  const [user, setUser] = useState<AuthUser | null>(null)
+  const [checking, setChecking] = useState(() => getToken() != null)
+
+  useEffect(() => {
+    if (!getToken()) return
+    api.auth
+      .me()
+      .then(setUser)
+      .catch(() => setToken(null))
+      .finally(() => setChecking(false))
+  }, [])
+
+  const signOut = useCallback(() => {
+    setToken(null)
+    setUser(null)
+  }, [])
+
+  if (checking) return null
+
+  if (!user) {
+    return (
+      <LoginPage
+        title="NotTrilix admin"
+        subtitle="Prijava za podršku i administraciju."
+        identityLabel="Korisničko ime"
+        identityType="text"
+        identityPlaceholder="admin"
+        hint={<>Demo račun: admin / admin123</>}
+        onLogin={async (username, password) => {
+          const res = await api.auth.adminLogin(username, password)
+          setToken(res.token)
+          setUser(res.user)
+        }}
+      />
+    )
+  }
+
+  return (
+    <AdminConsole
+      user={user}
+      onLogout={async () => {
+        try {
+          await api.auth.logout()
+        } catch {
+          /* token ionako odbacujemo */
+        }
+        signOut()
+      }}
+      onSessionExpired={signOut}
+    />
+  )
+}
+
+function AdminConsole({
+  user,
+  onLogout,
+  onSessionExpired,
+}: {
+  user: AuthUser
+  onLogout: () => void
+  onSessionExpired: () => void
+}) {
   const [tab, setTab] = useState<Tab>('transactions')
   const [notice, setNotice] = useState<Notice>(null)
   const [customers, setCustomers] = useState<Customer[]>([])
 
-  useEffect(() => {
-    api
-      .customers()
-      .then(setCustomers)
-      .catch((e) => setNotice({ kind: 'err', text: errorMessage(e) }))
-  }, [])
+  const report: Reporter = useCallback(
+    (e) => {
+      if (isUnauthorized(e)) onSessionExpired()
+      else setNotice({ kind: 'err', text: errorMessage(e) })
+    },
+    [onSessionExpired],
+  )
 
   const run: Runner = async (successText, action) => {
     try {
       await action()
       setNotice({ kind: 'ok', text: successText })
     } catch (e) {
-      setNotice({ kind: 'err', text: errorMessage(e) })
+      report(e)
     }
   }
+
+  useEffect(() => {
+    api.customers().then(setCustomers).catch(report)
+  }, [report])
 
   return (
     <>
@@ -62,19 +133,25 @@ export default function App() {
             </button>
           ))}
         </nav>
+        <div className="userbox">
+          <span className="who">{user.name}</span>
+          <button className="btn ghost" onClick={onLogout}>
+            Odjava
+          </button>
+        </div>
       </header>
 
       <main className="container">
         {notice && <div className={`banner ${notice.kind}`}>{notice.text}</div>}
-        {tab === 'transactions' && <TransactionsTab customers={customers} run={run} />}
-        {tab === 'stock' && <StockTab run={run} />}
-        {tab === 'tickets' && <TicketsTab customers={customers} run={run} />}
+        {tab === 'transactions' && <TransactionsTab customers={customers} run={run} report={report} />}
+        {tab === 'stock' && <StockTab run={run} report={report} />}
+        {tab === 'tickets' && <TicketsTab customers={customers} run={run} report={report} />}
       </main>
     </>
   )
 }
 
-function TransactionsTab({ customers, run }: { customers: Customer[]; run: Runner }) {
+function TransactionsTab({ customers, run, report }: { customers: Customer[]; run: Runner; report: Reporter }) {
   const [rows, setRows] = useState<Transaction[]>([])
   const [status, setStatus] = useState<TransactionStatus | ''>('')
   const [brand, setBrand] = useState<Brand | ''>('')
@@ -93,8 +170,8 @@ function TransactionsTab({ customers, run }: { customers: Customer[]; run: Runne
   )
 
   useEffect(() => {
-    load().catch((e) => console.error(e))
-  }, [load])
+    load().catch(report)
+  }, [load, report])
 
   const canRefund = (t: Transaction) => t.status === 'COMPLETED'
   const canBlock = (t: Transaction) => t.voucher.status === 'SOLD' || t.voucher.status === 'AVAILABLE'
@@ -204,13 +281,13 @@ function TransactionsTab({ customers, run }: { customers: Customer[]; run: Runne
   )
 }
 
-function StockTab({ run }: { run: Runner }) {
+function StockTab({ run, report }: { run: Runner; report: Reporter }) {
   const [rows, setRows] = useState<StockRow[]>([])
   const load = useCallback(() => api.admin.stock().then(setRows), [])
 
   useEffect(() => {
-    load().catch((e) => console.error(e))
-  }, [load])
+    load().catch(report)
+  }, [load, report])
 
   const total = (key: 'available' | 'sold' | 'redeemed' | 'blocked') => rows.reduce((sum, r) => sum + r[key], 0)
 
@@ -268,7 +345,7 @@ function StockTab({ run }: { run: Runner }) {
 
 const EMPTY_FORM = { customerId: '', transactionId: '', subject: '', description: '' }
 
-function TicketsTab({ customers, run }: { customers: Customer[]; run: Runner }) {
+function TicketsTab({ customers, run, report }: { customers: Customer[]; run: Runner; report: Reporter }) {
   const [rows, setRows] = useState<Ticket[]>([])
   const [form, setForm] = useState(EMPTY_FORM)
   const [resolving, setResolving] = useState<{ id: number; text: string } | null>(null)
@@ -276,8 +353,8 @@ function TicketsTab({ customers, run }: { customers: Customer[]; run: Runner }) 
   const load = useCallback(() => api.admin.tickets().then(setRows), [])
 
   useEffect(() => {
-    load().catch((e) => console.error(e))
-  }, [load])
+    load().catch(report)
+  }, [load, report])
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault()

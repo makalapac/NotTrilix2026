@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { api } from '../shared/api'
-import type { Brand, CatalogItem, Category, Customer, Transaction } from '../shared/types'
+import { useCallback, useEffect, useState } from 'react'
+import { api, getToken, isUnauthorized, setToken } from '../shared/api'
+import { LoginPage } from '../shared/LoginPage'
+import type { AuthUser, Brand, CatalogItem, Category, Transaction } from '../shared/types'
 import { CHANNEL, TX_STATUS, VOUCHER_STATUS, dateTime, errorMessage, eur, formatCode, maskCode } from '../shared/format'
 
 const CATEGORIES: { key: Category; title: string; blurb: string }[] = [
@@ -8,17 +9,74 @@ const CATEGORIES: { key: Category; title: string; blurb: string }[] = [
   { key: 'GAMING', title: 'Gaming bonovi', blurb: 'kredit za igre i sadržaj' },
 ]
 
-const STORAGE_KEY = 'nottrilix.customerId'
-
 function groupByBrand(items: CatalogItem[]): [Brand, CatalogItem[]][] {
   const groups = new Map<Brand, CatalogItem[]>()
   for (const item of items) groups.set(item.brand, [...(groups.get(item.brand) ?? []), item])
   return [...groups.entries()]
 }
 
+/** Prijava (e-mail + lozinka) pa shop; token se pamti u localStorage i provjerava na startu. */
 export default function App() {
-  const [customers, setCustomers] = useState<Customer[]>([])
-  const [customerId, setCustomerId] = useState<number | null>(null)
+  const [user, setUser] = useState<AuthUser | null>(null)
+  const [checking, setChecking] = useState(() => getToken() != null)
+
+  useEffect(() => {
+    if (!getToken()) return
+    api.auth
+      .me()
+      .then(setUser)
+      .catch(() => setToken(null))
+      .finally(() => setChecking(false))
+  }, [])
+
+  const signOut = useCallback(() => {
+    setToken(null)
+    setUser(null)
+  }, [])
+
+  if (checking) return null
+
+  if (!user) {
+    return (
+      <LoginPage
+        title="NotTrilix shop"
+        subtitle="Prijavite se za kupnju bonova."
+        identityLabel="E-mail"
+        identityType="email"
+        identityPlaceholder="ime.prezime@example.com"
+        hint={
+          <>
+            Demo računi (lozinka = ime + 123):
+            <br />
+            ana.anic@example.com / ana123 · marko.maric@example.com / marko123 · ivana.ivic@example.com / ivana123
+          </>
+        }
+        onLogin={async (email, password) => {
+          const res = await api.auth.customerLogin(email, password)
+          setToken(res.token)
+          setUser(res.user)
+        }}
+      />
+    )
+  }
+
+  return (
+    <Shop
+      user={user}
+      onLogout={async () => {
+        try {
+          await api.auth.logout()
+        } catch {
+          /* token ionako odbacujemo */
+        }
+        signOut()
+      }}
+      onSessionExpired={signOut}
+    />
+  )
+}
+
+function Shop({ user, onLogout, onSessionExpired }: { user: AuthUser; onLogout: () => void; onSessionExpired: () => void }) {
   const [catalog, setCatalog] = useState<CatalogItem[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [lastPurchase, setLastPurchase] = useState<Transaction | null>(null)
@@ -26,51 +84,32 @@ export default function App() {
   const [busy, setBusy] = useState(false)
   const [revealed, setRevealed] = useState<Record<number, boolean>>({})
 
-  const customer = useMemo(() => customers.find((c) => c.id === customerId) ?? null, [customers, customerId])
+  const fail = useCallback(
+    (e: unknown) => {
+      if (isUnauthorized(e)) onSessionExpired()
+      else setError(errorMessage(e))
+    },
+    [onSessionExpired],
+  )
 
   const loadCatalog = useCallback(() => api.catalog().then(setCatalog), [])
-  const loadTransactions = useCallback((id: number) => api.myTransactions(id).then(setTransactions), [])
+  const loadTransactions = useCallback(() => api.myTransactions().then(setTransactions), [])
 
   useEffect(() => {
-    let remembered: number | null = null
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      remembered = stored ? Number(stored) : null
-    } catch {
-      /* localStorage nedostupan - ignoriraj */
-    }
-    api
-      .customers()
-      .then((list) => {
-        setCustomers(list)
-        setCustomerId(list.some((c) => c.id === remembered) ? remembered : (list[0]?.id ?? null))
-      })
-      .catch((e) => setError(errorMessage(e)))
-    loadCatalog().catch((e) => setError(errorMessage(e)))
-  }, [loadCatalog])
-
-  useEffect(() => {
-    if (customerId == null) return
-    try {
-      localStorage.setItem(STORAGE_KEY, String(customerId))
-    } catch {
-      /* ignoriraj */
-    }
-    setLastPurchase(null)
-    setError(null)
-    loadTransactions(customerId).catch((e) => setError(errorMessage(e)))
-  }, [customerId, loadTransactions])
+    loadCatalog().catch(fail)
+    loadTransactions().catch(fail)
+  }, [loadCatalog, loadTransactions, fail])
 
   async function buy(item: CatalogItem) {
-    if (customerId == null || busy) return
+    if (busy) return
     setBusy(true)
     setError(null)
     try {
-      const tx = await api.purchase(customerId, item.productId)
+      const tx = await api.purchase(item.productId)
       setLastPurchase(tx)
-      await Promise.all([loadCatalog(), loadTransactions(customerId)])
+      await Promise.all([loadCatalog(), loadTransactions()])
     } catch (e) {
-      setError(errorMessage(e))
+      fail(e)
     } finally {
       setBusy(false)
     }
@@ -82,16 +121,12 @@ export default function App() {
         <div className="brand">
           NotTrilix <span>shop</span>
         </div>
-        <label className="picker">
-          Kupac
-          <select value={customerId ?? ''} onChange={(e) => setCustomerId(Number(e.target.value))}>
-            {customers.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="userbox">
+          <span className="who">{user.name}</span>
+          <button className="btn ghost" onClick={onLogout}>
+            Odjava
+          </button>
+        </div>
       </header>
 
       <main className="container">
@@ -128,12 +163,12 @@ export default function App() {
                       <button
                         key={item.productId}
                         className="denom"
-                        disabled={busy || item.inStock === 0 || customerId == null}
+                        disabled={busy || !item.available}
                         onClick={() => buy(item)}
-                        title={item.inStock === 0 ? 'Rasprodano' : `Kupi ${item.name} ${eur(item.denominationEur)}`}
+                        title={item.available ? `Kupi ${item.name} ${eur(item.denominationEur)}` : 'Rasprodano'}
                       >
                         <span className="amount">{eur(item.denominationEur)}</span>
-                        <span className="stock">{item.inStock === 0 ? 'rasprodano' : `još ${item.inStock}`}</span>
+                        {!item.available && <span className="stock">rasprodano</span>}
                       </button>
                     ))}
                   </div>
@@ -145,12 +180,7 @@ export default function App() {
 
         <section className="section">
           <h2>
-            Moje kupnje
-            {customer && (
-              <small>
-                {customer.name} · {customer.email}
-              </small>
-            )}
+            Moje kupnje <small>{user.login}</small>
           </h2>
           {transactions.length === 0 ? (
             <p className="muted">Još nema kupnji.</p>

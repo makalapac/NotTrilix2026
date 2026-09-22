@@ -29,17 +29,16 @@ public class CatalogService {
         this.voucherRepo = voucherRepo;
     }
 
-    /** Katalog za prodajni kanal: aktivni proizvodi i koliko je bonova na zalihi. */
+    /** Katalog za prodajni kanal: aktivni proizvodi i je li bon dostupan (kolicina zalihe ostaje interna). */
     @Transactional(readOnly = true)
     public List<CatalogItem> catalog() {
         Map<Long, Map<VoucherStatus, Long>> stock = stockCounts();
         List<CatalogItem> items = productRepo.findAllByOrderByIdAsc().stream()
                 .filter(Product::isActive)
                 .map(p -> new CatalogItem(p.getId(), p.getCategory(), p.getBrand(), p.getBrand().displayName(),
-                        p.getName(), p.getDenominationEur(), count(stock, p.getId(), VoucherStatus.AVAILABLE)))
+                        p.getName(), p.getDenominationEur(), count(stock, p.getId(), VoucherStatus.AVAILABLE) > 0))
                 .toList();
-        log.info("CATALOG {} proizvoda, {} bonova na zalihi",
-                items.size(), items.stream().mapToLong(CatalogItem::inStock).sum());
+        log.info("CATALOG {} proizvoda, {} dostupno", items.size(), items.stream().filter(CatalogItem::available).count());
         return items;
     }
 

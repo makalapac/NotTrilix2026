@@ -48,7 +48,7 @@ class ShopServiceTest {
     private TransactionRepository transactionRepo;
 
     private final Clock clock = Clock.fixed(Instant.parse("2026-10-12T10:00:00Z"), ZoneId.of("Europe/Zagreb"));
-    private final Customer ana = new Customer("Ana Anić", "ana.anic@example.com", null);
+    private final Customer ana = new Customer("Ana Anić", "ana.anic@example.com", null, "$2a$10$hash");
     private final Product steam25 = new Product(Category.GAMING, Brand.STEAM, "Steam Wallet", "STM",
             new BigDecimal("25.00"));
 

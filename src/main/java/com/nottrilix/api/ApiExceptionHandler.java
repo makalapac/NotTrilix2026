@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -27,6 +28,13 @@ public class ApiExceptionHandler {
     @ResponseStatus(HttpStatus.CONFLICT)
     public ErrorResponse businessRule(BusinessRuleException e) {
         return new ErrorResponse(e.code(), e.getMessage());
+    }
+
+    /** Neuspjela prijava (login endpointi); pokusaj je vec logiran u AuthenticationProvideru. */
+    @ExceptionHandler(AuthenticationException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ErrorResponse authentication(AuthenticationException e) {
+        return new ErrorResponse("INVALID_CREDENTIALS", e.getMessage());
     }
 
     @ExceptionHandler(NotFoundException.class)
