@@ -3,6 +3,8 @@
 Pojednostavljeni „produkcijski“ sustav za prodaju bonova: **jedna Spring Boot aplikacija** (API + dva React frontenda) i **PostgreSQL** baza.
 Ovo je polazna točka za predavanje *From REST API to Voice Agent* (JavaCro 2026) — sve kasnije faze grade oko ovog sustava.
 
+Status faza i „gdje smo stali“: [PROGRESS.md](PROGRESS.md) · puni opis faze 1 (odluke, domena, pravila, API, seed, verifikacija, zamke): [docs/PHASE1.md](docs/PHASE1.md).
+
 ## Što sustav radi
 
 - **Proizvodi:** Telekom bonovi (A1, HT) i Gaming bonovi (Steam, PlayStation, Xbox), denominacije u EUR.
