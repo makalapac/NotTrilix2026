@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: nottrilix-2026
+  datasource:
+    url: jdbc:postgresql://localhost:5433/nottrilix
+    username: nottrilix
+    password: nottrilix
+  jpa:
+    hibernate:
+      ddl-auto: validate      # shemu drzi Flyway (db/migration), JPA je samo provjerava
+    open-in-view: false
+  flyway:
+    enabled: true
+  output:
+    ansi:
+      enabled: always         # boje u konzoli (Windows Terminal / PowerShell); 'never' ako smeta
+
+server:
+  port: 8080
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
+    tags-sorter: alpha
+
+# Poslovna pravila (koristi ih servisni sloj)
+nottrilix:
+  rules:
+    daily-limit-eur: 150      # max iznos kupnji po kupcu po danu
+    refund-window-days: 14    # povrat moguc samo unutar N dana od kupnje
+
+logging:
+  level:
+    com.nottrilix: DEBUG
+    org.hibernate.SQL: INFO   # DEBUG => ispis svakog SQL-a
+    org.flywaydb: INFO

@@ -1,0 +1,16 @@
+# build
+target/
+logs/
+# frontend (generirano u Maven buildu)
+node/
+frontend/node_modules/
+frontend/dist/
+src/main/resources/static/
+# IDE / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+# tajne
+*.key
+.env

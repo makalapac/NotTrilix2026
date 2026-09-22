@@ -1,0 +1,5 @@
+
+  NotTrilix 2026  ::  prodaja bonova  ::  Faza 1 (AS IS)
+  Spring Boot ${spring-boot.version}  ::  Java ${java.version}
+  Shop http://localhost:8080/   Admin http://localhost:8080/admin/   API http://localhost:8080/swagger-ui.html
+

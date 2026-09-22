@@ -1,0 +1,22 @@
+# NotTrilix 2026 - baza. Port 5433 na hostu da se ne sudara s drugim lokalnim Postgresima.
+# Slika s pgvectorom = obicni Postgres 17 (ekstenzija se ne koristi u Fazi 1; kasnije faze je ne moraju mijenjati).
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: nottrilix2026-postgres
+    environment:
+      POSTGRES_DB: nottrilix
+      POSTGRES_USER: nottrilix
+      POSTGRES_PASSWORD: nottrilix
+    ports:
+      - "5433:5432"
+    volumes:
+      - nottrilix2026-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nottrilix -d nottrilix"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  nottrilix2026-pgdata:
