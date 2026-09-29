@@ -37,7 +37,7 @@ Demo prijave: kupci `ana.anic@example.com` / `ana123` (wallet 115 €), marko.ma
 
 - **Faza 3 zatvorena** na grani `phase3` (2026-09-29): agent odgovara iz baze znanja i djeluje kroz alate; kupnja, povrat i blokada idu u dva koraka uz potvrdu kupca; sve je u auditu. Pouke iz probe (što prompt sam ne može) su u [docs/PHASE3.md](docs/PHASE3.md), poglavlja 4 i 11 — materijal za predavanje.
 - Sljedeće: grana `phase4` → mrežni MCP. Glavno pitanje: kako kontekst kupca, potvrda radnji i audit prelaze mrežnu granicu.
-- **Nema remotea** (push na GitHub = TODO).
+- Remote `origin` = `github.com/makalapac/NotTrilix2026`; grane `phase1` i `phase2` su na GitHubu, **`phase3` je zasad samo lokalno** (`git push -u origin phase3`).
 - Baza u Dockeru sadrži i podatke od testiranja → prije vježbe `.\run-phase-3.ps1 -Reset` (svježi seed + ponovni ingest baze znanja, ~10 s).
 - `openai.key` je u korijenu projekta (gitignored).
 - Build dok aplikacija radi ne prolazi (Windows drži `target\nottrilix-2026.jar`): prvo ugasiti aplikaciju.
