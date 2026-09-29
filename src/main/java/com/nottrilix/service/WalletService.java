@@ -53,6 +53,13 @@ public class WalletService {
         return new WalletDto(customer.getWalletBalanceEur(), entries);
     }
 
+    @Transactional(readOnly = true)
+    public BigDecimal balance(long customerId) {
+        return customerRepo.findById(customerId)
+                .orElseThrow(() -> new NotFoundException("Kupac " + customerId + " ne postoji"))
+                .getWalletBalanceEur();
+    }
+
     /** Uplata na wallet (kupac: simulirano placanje karticom; podrska: uplata s napomenom). */
     @Transactional
     public WalletDto topUp(long customerId, BigDecimal amount, String note) {

@@ -9,6 +9,10 @@ spring:
       embedding:
         options:
           model: text-embedding-3-small
+      chat:
+        options:
+          model: gpt-4o           # Faza 3: model agenta (tool calling + hrvatski)
+          temperature: 0.2
     vectorstore:
       pgvector:
         initialize-schema: false  # tablicu vector_store drzi Flyway (V3), ne Spring AI
@@ -51,6 +55,11 @@ nottrilix:
     ingest-on-startup: true   # idempotentno: nepromijenjena datoteka se preskace (hash u metapodacima)
     top-k: 3                  # koliko odlomaka vraca pretraga
     similarity-threshold: 0.35  # 0..1 (1 = identicno); ispod praga odlomak se ne vraca (text-embedding-3-small: relevantno ~0.4-0.7, sum ~0.3)
+  # Agent podrske (Faza 3): Spring AI ChatClient = system prompt + memorija + RAG + alati
+  agent:
+    name: Nola
+    max-history-messages: 20      # koliko zadnjih poruka razgovora model vidi
+    confirmation-ttl-minutes: 10  # koliko dugo vrijedi prijedlog kupnje/povrata/blokade koji ceka potvrdu
 
 logging:
   level:

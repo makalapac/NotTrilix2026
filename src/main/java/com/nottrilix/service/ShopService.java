@@ -1,7 +1,9 @@
 package com.nottrilix.service;
 
 import com.nottrilix.api.dto.CustomerDto;
+import com.nottrilix.api.dto.DailyLimitStatus;
 import com.nottrilix.api.dto.DtoMapper;
+import com.nottrilix.api.dto.PurchasePreview;
 import com.nottrilix.api.dto.PurchaseResponse;
 import com.nottrilix.api.dto.TransactionDto;
 import com.nottrilix.config.RulesProperties;
@@ -53,6 +55,10 @@ public class ShopService {
         this.clock = clock;
     }
 
+    /** Proizvod i cijena nakon sto su prosla pravila koja ne ovise o zalihi. */
+    private record RuleCheck(Product product, BigDecimal price, BigDecimal spentToday) {
+    }
+
     @Transactional(readOnly = true)
     public List<CustomerDto> customers() {
         List<CustomerDto> list = customerRepo.findAllByOrderByNameAsc().stream().map(DtoMapper::toDto).toList();
@@ -77,36 +83,48 @@ public class ShopService {
 
         Customer customer = customerRepo.findByIdForUpdate(customerId)
                 .orElseThrow(() -> new NotFoundException("Kupac " + customerId + " ne postoji"));
-        Product product = productRepo.findById(productId)
-                .orElseThrow(() -> new NotFoundException("Proizvod " + productId + " ne postoji"));
-        if (!product.isActive()) {
-            throw deny("PURCHASE", "PRODUCT_INACTIVE", "Proizvod " + product.displayName() + " nije u prodaji");
-        }
+        RuleCheck check = checkRules(customer, customerId, productId);
+        Product product = check.product();
+        BigDecimal price = check.price();
 
         Instant now = Instant.now(clock);
-        Instant startOfToday = LocalDate.now(clock).atStartOfDay(clock.getZone()).toInstant();
-        BigDecimal spentToday = transactionRepo
-                .sumAmountSince(customerId, TransactionStatus.COMPLETED, startOfToday)
-                .orElse(BigDecimal.ZERO);
-        BigDecimal price = product.getDenominationEur();
-        if (spentToday.add(price).compareTo(rules.dailyLimitEur()) > 0) {
-            throw deny("PURCHASE", "DAILY_LIMIT_EXCEEDED",
-                    "Dnevni limit od %s € je premašen: danas već kupljeno %s €, pokušaj kupnje %s €"
-                            .formatted(fmt(rules.dailyLimitEur()), fmt(spentToday), fmt(price)));
-        }
-        walletService.requireFunds(customer, price);
-
         Voucher voucher = voucherRepo.findFirstByProductAndStatusOrderByIdAsc(product, VoucherStatus.AVAILABLE)
-                .orElseThrow(() -> deny("PURCHASE", "OUT_OF_STOCK",
-                        "Proizvod " + product.displayName() + " je trenutno rasprodan"));
+                .orElseThrow(() -> outOfStock(product));
         voucher.markSold(now);
         Transaction tx = transactionRepo.save(new Transaction(customer, product, voucher, channel, now));
         BigDecimal walletBalance = walletService.debitForPurchase(customer, tx);
 
         log.info("PURCHASE OK tx={} customer={} ({}) product={} amount={} € voucher={} channel={} spentToday={} € wallet={} €",
                 tx.getId(), customerId, customer.getName(), product.displayName(), fmt(price),
-                voucher.getSerial(), channel, fmt(spentToday.add(price)), fmt(walletBalance));
+                voucher.getSerial(), channel, fmt(check.spentToday().add(price)), fmt(walletBalance));
         return new PurchaseResponse(DtoMapper.toDto(tx), walletBalance);
+    }
+
+    /**
+     * Ista pravila kao kupnja, ali bez izvrsenja: sluzi da se kupcu prije potvrde kaze sto ce se dogoditi
+     * (ili zasto kupnja nije moguca). Nista se ne zakljucava i ne mijenja.
+     */
+    @Transactional(readOnly = true)
+    public PurchasePreview previewPurchase(long customerId, long productId) {
+        Customer customer = customerRepo.findById(customerId)
+                .orElseThrow(() -> new NotFoundException("Kupac " + customerId + " ne postoji"));
+        RuleCheck check = checkRules(customer, customerId, productId);
+        if (!voucherRepo.existsByProductAndStatus(check.product(), VoucherStatus.AVAILABLE)) {
+            throw outOfStock(check.product());
+        }
+        BigDecimal balance = customer.getWalletBalanceEur();
+        log.info("PURCHASE PREVIEW customer={} product={} amount={} € wallet={} € -> {} €", customerId,
+                check.product().displayName(), fmt(check.price()), fmt(balance), fmt(balance.subtract(check.price())));
+        return new PurchasePreview(check.product().getId(), check.product().displayName(), check.price(),
+                balance, balance.subtract(check.price()));
+    }
+
+    /** Koliko je kupac danas vec kupio i koliko jos smije do dnevnog limita. */
+    @Transactional(readOnly = true)
+    public DailyLimitStatus dailyLimitStatus(long customerId) {
+        BigDecimal spentToday = spentToday(customerId);
+        BigDecimal remaining = rules.dailyLimitEur().subtract(spentToday).max(BigDecimal.ZERO);
+        return new DailyLimitStatus(rules.dailyLimitEur(), spentToday, remaining);
     }
 
     @Transactional(readOnly = true)
@@ -118,6 +136,34 @@ public class ShopService {
                 .map(DtoMapper::toDto).toList();
         log.info("TRANSACTIONS customer={} -> {} kupnji", customerId, list.size());
         return list;
+    }
+
+    /** Pravila koja ne ovise o zalihi: proizvod aktivan, dnevni limit, dovoljno sredstava na walletu. */
+    private RuleCheck checkRules(Customer customer, long customerId, long productId) {
+        Product product = productRepo.findById(productId)
+                .orElseThrow(() -> new NotFoundException("Proizvod " + productId + " ne postoji"));
+        if (!product.isActive()) {
+            throw deny("PURCHASE", "PRODUCT_INACTIVE", "Proizvod " + product.displayName() + " nije u prodaji");
+        }
+        BigDecimal spentToday = spentToday(customerId);
+        BigDecimal price = product.getDenominationEur();
+        if (spentToday.add(price).compareTo(rules.dailyLimitEur()) > 0) {
+            throw deny("PURCHASE", "DAILY_LIMIT_EXCEEDED",
+                    "Dnevni limit od %s € je premašen: danas već kupljeno %s €, pokušaj kupnje %s €"
+                            .formatted(fmt(rules.dailyLimitEur()), fmt(spentToday), fmt(price)));
+        }
+        walletService.requireFunds(customer, price);
+        return new RuleCheck(product, price, spentToday);
+    }
+
+    private BigDecimal spentToday(long customerId) {
+        Instant startOfToday = LocalDate.now(clock).atStartOfDay(clock.getZone()).toInstant();
+        return transactionRepo.sumAmountSince(customerId, TransactionStatus.COMPLETED, startOfToday)
+                .orElse(BigDecimal.ZERO);
+    }
+
+    private BusinessRuleException outOfStock(Product product) {
+        return deny("PURCHASE", "OUT_OF_STOCK", "Proizvod " + product.displayName() + " je trenutno rasprodan");
     }
 
     private BusinessRuleException deny(String operation, String code, String message) {

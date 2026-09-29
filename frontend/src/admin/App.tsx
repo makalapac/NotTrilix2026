@@ -4,6 +4,7 @@ import { api, getToken, isUnauthorized, setToken } from '../shared/api'
 import { LoginPage } from '../shared/LoginPage'
 import { VoucherCheckResult } from '../shared/VoucherCheckResult'
 import type {
+  AuditEvent,
   AuthUser,
   Brand,
   Customer,
@@ -17,9 +18,11 @@ import type {
   Wallet,
 } from '../shared/types'
 import {
+  AGENT_OUTCOME,
   BRAND,
   CHANNEL,
   TICKET_STATUS,
+  TOOL_LABEL,
   TX_STATUS,
   VOUCHER_STATUS,
   WALLET_ENTRY,
@@ -30,7 +33,7 @@ import {
   signedEur,
 } from '../shared/format'
 
-type Tab = 'transactions' | 'customers' | 'stock' | 'tickets' | 'knowledge'
+type Tab = 'transactions' | 'customers' | 'stock' | 'tickets' | 'knowledge' | 'audit'
 type Notice = { kind: 'ok' | 'err'; text: string } | null
 /** Izvrši akciju; uspjeh/greška ide u banner na vrhu (401 = natrag na prijavu). */
 type Runner = (successText: string, action: () => Promise<unknown>) => Promise<void>
@@ -43,6 +46,7 @@ const TAB_LABEL: Record<Tab, string> = {
   stock: 'Zalihe',
   tickets: 'Podrška',
   knowledge: 'Znanje',
+  audit: 'Audit',
 }
 const BRANDS: Brand[] = ['A1', 'HT', 'STEAM', 'SONY', 'XBOX']
 
@@ -172,8 +176,106 @@ function AdminConsole({
         {tab === 'stock' && <StockTab run={run} report={report} />}
         {tab === 'tickets' && <TicketsTab customers={customers} run={run} report={report} />}
         {tab === 'knowledge' && <KnowledgeTab run={run} report={report} />}
+        {tab === 'audit' && <AuditTab run={run} report={report} />}
       </main>
     </>
+  )
+}
+
+const EVENT_TYPE: Record<AuditEvent['eventType'], string> = {
+  TOOL_CALL: 'alat',
+  KB_RETRIEVAL: 'baza znanja',
+  CHAT_TURN: 'razgovor',
+}
+
+/** Audit trag agenta: što je agent radio, za koga, s kojim ishodom. Klik na razgovor filtrira. */
+function AuditTab({ run, report }: { run: Runner; report: Reporter }) {
+  const [rows, setRows] = useState<AuditEvent[]>([])
+  const [conversationId, setConversationId] = useState('')
+
+  const load = useCallback(
+    () => api.admin.audit({ conversationId: conversationId || undefined, limit: 200 }).then(setRows),
+    [conversationId],
+  )
+
+  useEffect(() => {
+    load().catch(report)
+  }, [load, report])
+
+  return (
+    <section className="section">
+      <h2>
+        Audit agenta <small>{rows.length} događaja, najnoviji prvi</small>
+      </h2>
+      <div className="filters">
+        <input
+          placeholder="ID razgovora"
+          value={conversationId}
+          onChange={(e) => setConversationId(e.target.value.trim())}
+        />
+        {conversationId && (
+          <button className="btn" onClick={() => setConversationId('')}>
+            Svi razgovori
+          </button>
+        )}
+        <button className="btn" onClick={() => run('Osvježeno', load)}>
+          Osvježi
+        </button>
+      </div>
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Vrijeme</th>
+              <th>Razgovor</th>
+              <th>Kupac</th>
+              <th>Kanal</th>
+              <th>Vrsta</th>
+              <th>Operacija</th>
+              <th>Ulaz</th>
+              <th>Ishod</th>
+              <th>Detalj</th>
+              <th className="num">ms</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((e) => (
+              <tr key={e.id}>
+                <td>{e.id}</td>
+                <td>{dateTime(e.createdAt)}</td>
+                <td className="mono">
+                  {e.conversationId ? (
+                    <button className="link" onClick={() => setConversationId(e.conversationId ?? '')}>
+                      {e.conversationId}
+                    </button>
+                  ) : (
+                    '—'
+                  )}
+                </td>
+                <td>{e.customerName ?? '—'}</td>
+                <td>{e.channel}</td>
+                <td>{EVENT_TYPE[e.eventType]}</td>
+                <td>{TOOL_LABEL[e.operation] ?? e.operation}</td>
+                <td className="mono audit-text">{e.input}</td>
+                <td>
+                  <span className={`badge outcome-${e.outcome.toLowerCase()}`}>{AGENT_OUTCOME[e.outcome] ?? e.outcome}</span>
+                </td>
+                <td className="audit-text">
+                  {e.detail}
+                  {e.promptTokens != null && (
+                    <div className="muted">
+                      tokeni: {e.promptTokens} + {e.completionTokens}
+                    </div>
+                  )}
+                </td>
+                <td className="num">{e.durationMs ?? ''}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   )
 }
 

@@ -1,6 +1,7 @@
 package com.nottrilix.service;
 
 import com.nottrilix.api.dto.DtoMapper;
+import com.nottrilix.api.dto.RefundPreview;
 import com.nottrilix.api.dto.TicketDto;
 import com.nottrilix.api.dto.TransactionDto;
 import com.nottrilix.api.dto.VoucherDto;
@@ -22,12 +23,17 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
-/** Admin/support: pregled transakcija, povrat, blokada bona, prijave. Ovdje zive pravila podrske. */
+/**
+ * Admin/support: pregled transakcija, povrat, blokada bona, prijave. Ovdje zive pravila podrske.
+ * Metode "...ForCustomer" su iste radnje kad ih trazi sam kupac (kroz agenta): vrijede ista pravila,
+ * a podatak koji nije kupcev ponasa se kao da ne postoji.
+ */
 @Service
 public class SupportService {
 
@@ -84,52 +90,119 @@ public class SupportService {
      */
     @Transactional
     public TransactionDto refund(long id) {
-        log.info("REFUND request tx={}", id);
+        return doRefund(id, null);
+    }
+
+    /** Povrat koji trazi sam kupac: kupnja mora biti njegova. */
+    @Transactional
+    public TransactionDto refundForCustomer(long customerId, long id) {
+        return doRefund(id, customerId);
+    }
+
+    /** Ista pravila kao povrat, bez izvrsenja: sto ce se dogoditi ili zasto povrat nije moguc. */
+    @Transactional(readOnly = true)
+    public RefundPreview previewRefundForCustomer(long customerId, long id) {
+        Transaction t = transactionRepo.findByIdWithDetails(id)
+                .filter(tx -> tx.getCustomer().getId().equals(customerId))
+                .orElseThrow(() -> notOwnPurchase(id));
+        checkRefundRules(t, Instant.now(clock));
+        BigDecimal balance = t.getCustomer().getWalletBalanceEur();
+        log.info("REFUND PREVIEW tx={} customer={} amount={} € wallet={} € -> {} €", id, customerId,
+                fmt(t.getAmountEur()), fmt(balance), fmt(balance.add(t.getAmountEur())));
+        return new RefundPreview(t.getId(), t.getProduct().displayName(), t.getAmountEur(),
+                t.getVoucher().getSerial(), balance, balance.add(t.getAmountEur()));
+    }
+
+    private TransactionDto doRefund(long id, Long ownerCustomerId) {
+        log.info("REFUND request tx={}{}", id, ownerCustomerId == null ? "" : " customer=" + ownerCustomerId);
         // redoslijed zakljucavanja: prvo transakcija (svjeze stanje, drugi povrat ceka), zatim kupac (wallet)
         Transaction t = transactionRepo.findByIdForUpdate(id)
-                .orElseThrow(() -> new NotFoundException("Transakcija " + id + " ne postoji"));
+                .orElseThrow(() -> ownerCustomerId == null
+                        ? new NotFoundException("Transakcija " + id + " ne postoji")
+                        : notOwnPurchase(id));
+        if (ownerCustomerId != null && !t.getCustomer().getId().equals(ownerCustomerId)) {
+            throw notOwnPurchase(id);
+        }
         Customer customer = customerRepo.findByIdForUpdate(t.getCustomer().getId())
                 .orElseThrow(() -> new NotFoundException("Kupac " + t.getCustomer().getId() + " ne postoji"));
-        if (t.getStatus() == TransactionStatus.REFUNDED) {
-            throw deny("REFUND", "ALREADY_REFUNDED", "Transakcija " + id + " je već vraćena");
-        }
         Instant now = Instant.now(clock);
-        Instant deadline = t.getCreatedAt().plus(rules.refundWindowDays(), ChronoUnit.DAYS);
-        if (now.isAfter(deadline)) {
-            throw deny("REFUND", "REFUND_WINDOW_EXPIRED",
-                    "Rok za povrat (%d dana) je istekao za transakciju %d".formatted(rules.refundWindowDays(), id));
-        }
+        checkRefundRules(t, now);
+
         Voucher voucher = t.getVoucher();
-        if (voucher.getStatus() == VoucherStatus.REDEEMED) {
-            throw deny("REFUND", "VOUCHER_ALREADY_REDEEMED",
-                    "Bon " + voucher.getSerial() + " je već iskorišten - povrat nije moguć");
-        }
         VoucherStatus before = voucher.getStatus();
         if (before == VoucherStatus.SOLD) {
             voucher.block();
         }
         t.refund(now);
-        java.math.BigDecimal walletBalance = walletService.creditForRefund(customer, t, now);
+        BigDecimal walletBalance = walletService.creditForRefund(customer, t, now);
         log.info("REFUND OK tx={} customer={} amount={} € -> wallet {} € voucher={} {} -> {}",
-                id, customer.getName(), t.getAmountEur().stripTrailingZeros().toPlainString(),
-                walletBalance.stripTrailingZeros().toPlainString(), voucher.getSerial(), before, voucher.getStatus());
+                id, customer.getName(), fmt(t.getAmountEur()), fmt(walletBalance),
+                voucher.getSerial(), before, voucher.getStatus());
         return DtoMapper.toDto(t);
+    }
+
+    private void checkRefundRules(Transaction t, Instant now) {
+        if (t.getStatus() == TransactionStatus.REFUNDED) {
+            throw deny("REFUND", "ALREADY_REFUNDED", "Transakcija " + t.getId() + " je već vraćena");
+        }
+        Instant deadline = t.getCreatedAt().plus(rules.refundWindowDays(), ChronoUnit.DAYS);
+        if (now.isAfter(deadline)) {
+            throw deny("REFUND", "REFUND_WINDOW_EXPIRED",
+                    "Rok za povrat (%d dana) je istekao za transakciju %d".formatted(rules.refundWindowDays(), t.getId()));
+        }
+        if (t.getVoucher().getStatus() == VoucherStatus.REDEEMED) {
+            throw deny("REFUND", "VOUCHER_ALREADY_REDEEMED",
+                    "Bon " + t.getVoucher().getSerial() + " je već iskorišten - povrat nije moguć");
+        }
     }
 
     /** Blokada bona (reklamacija, sumnja na zlouporabu). Iskoristen ili vec blokiran bon se ne dira. */
     @Transactional
     public VoucherDto blockVoucher(String serial) {
-        log.info("BLOCK request voucher={}", serial);
         Voucher voucher = voucherRepo.findBySerial(serial)
                 .orElseThrow(() -> new NotFoundException("Bon " + serial + " ne postoji"));
+        return doBlock(voucher);
+    }
+
+    /** Blokada koju trazi sam kupac: bon mora biti iz njegove kupnje. */
+    @Transactional
+    public VoucherDto blockVoucherForCustomer(long customerId, String serial) {
+        return doBlock(ownVoucher(customerId, serial));
+    }
+
+    /** Ista pravila kao blokada, bez izvrsenja. */
+    @Transactional(readOnly = true)
+    public VoucherDto previewBlockForCustomer(long customerId, String serial) {
+        Voucher voucher = ownVoucher(customerId, serial);
+        checkBlockRules(voucher);
+        return DtoMapper.toDto(voucher);
+    }
+
+    private VoucherDto doBlock(Voucher voucher) {
+        log.info("BLOCK request voucher={}", voucher.getSerial());
         VoucherStatus before = voucher.getStatus();
-        switch (before) {
+        checkBlockRules(voucher);
+        voucher.block();
+        log.info("BLOCK OK voucher={} {} -> {}", voucher.getSerial(), before, voucher.getStatus());
+        return DtoMapper.toDto(voucher);
+    }
+
+    private void checkBlockRules(Voucher voucher) {
+        String serial = voucher.getSerial();
+        switch (voucher.getStatus()) {
             case REDEEMED -> throw deny("BLOCK", "VOUCHER_ALREADY_REDEEMED", "Bon " + serial + " je već iskorišten");
             case BLOCKED -> throw deny("BLOCK", "ALREADY_BLOCKED", "Bon " + serial + " je već blokiran");
-            case AVAILABLE, SOLD -> voucher.block();
+            case AVAILABLE, SOLD -> {
+                // smije se blokirati
+            }
         }
-        log.info("BLOCK OK voucher={} {} -> {}", serial, before, voucher.getStatus());
-        return DtoMapper.toDto(voucher);
+    }
+
+    private Voucher ownVoucher(long customerId, String serial) {
+        return transactionRepo.findByVoucherSerial(serial)
+                .filter(t -> t.getCustomer().getId().equals(customerId))
+                .map(Transaction::getVoucher)
+                .orElseThrow(() -> new NotFoundException("Bon " + serial + " nije pronađen među vašim kupnjama"));
     }
 
     @Transactional(readOnly = true)
@@ -137,6 +210,14 @@ public class SupportService {
         List<TicketDto> list = ticketRepo.findAllWithDetails().stream().map(DtoMapper::toDto).toList();
         log.info("TICKETS -> {} prijava ({} otvorenih)",
                 list.size(), list.stream().filter(t -> t.status() == TicketStatus.OPEN).count());
+        return list;
+    }
+
+    @Transactional(readOnly = true)
+    public List<TicketDto> ticketsForCustomer(long customerId) {
+        List<TicketDto> list = ticketRepo.findByCustomerIdWithDetails(customerId).stream()
+                .map(DtoMapper::toDto).toList();
+        log.info("TICKETS customer={} -> {} prijava", customerId, list.size());
         return list;
     }
 
@@ -175,8 +256,16 @@ public class SupportService {
         return DtoMapper.toDto(ticket);
     }
 
+    private static NotFoundException notOwnPurchase(long id) {
+        return new NotFoundException("Kupnja " + id + " nije pronađena među vašim kupnjama");
+    }
+
     private BusinessRuleException deny(String operation, String code, String message) {
         log.warn("{} DENIED reason={} - {}", operation, code, message);
         return new BusinessRuleException(code, message);
+    }
+
+    private static String fmt(BigDecimal value) {
+        return value.stripTrailingZeros().toPlainString();
     }
 }

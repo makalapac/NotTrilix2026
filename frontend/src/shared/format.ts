@@ -56,6 +56,31 @@ export const TICKET_STATUS: Record<TicketStatus, string> = {
 export const CHANNEL: Record<Channel, string> = {
   WEB: 'Web',
   POS: 'Kiosk',
+  AGENT: 'Agent',
+}
+
+/** Nazivi alata agenta za prikaz (chat i audit). */
+export const TOOL_LABEL: Record<string, string> = {
+  getCatalog: 'Katalog',
+  getMyPurchases: 'Moje kupnje',
+  getMyWallet: 'Wallet i dnevni limit',
+  getMyTickets: 'Moje prijave',
+  checkVoucherAtProvider: 'Provjera bona kod pružatelja',
+  purchaseVoucher: 'Kupnja bona',
+  refundPurchase: 'Povrat novca',
+  blockVoucher: 'Blokada bona',
+  confirmPendingAction: 'Izvršenje potvrđene radnje',
+  cancelPendingAction: 'Odustajanje od radnje',
+  openSupportTicket: 'Otvaranje prijave',
+  retrieve: 'Dohvat iz baze znanja',
+  turn: 'Turn razgovora',
+}
+
+export const AGENT_OUTCOME: Record<string, string> = {
+  OK: 'izvršeno',
+  DENIED: 'odbijeno',
+  CONFIRMATION_REQUIRED: 'čeka potvrdu',
+  ERROR: 'greška',
 }
 
 export const BRAND: Record<Brand, string> = {

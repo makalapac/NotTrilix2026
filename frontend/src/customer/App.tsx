@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, getToken, isUnauthorized, setToken } from '../shared/api'
 import { LoginPage } from '../shared/LoginPage'
 import { VoucherCheckResult } from '../shared/VoucherCheckResult'
+import { ChatWidget } from './ChatWidget'
 import type { AuthUser, Brand, CatalogItem, Category, PurchaseResponse, Transaction, VoucherCheck, Wallet } from '../shared/types'
 import {
   CHANNEL,
@@ -174,8 +175,15 @@ function Shop({ user, onLogout, onSessionExpired }: { user: AuthUser; onLogout: 
 
   const balance = wallet?.balanceEur ?? 0
 
+  /** Agent je možda kupio, vratio ili blokirao: osvježi sve što kupac vidi. */
+  const reloadAfterAgent = useCallback(() => {
+    setChecks({})
+    Promise.all([loadCatalog(), loadTransactions(), loadWallet()]).catch(fail)
+  }, [loadCatalog, loadTransactions, loadWallet, fail])
+
   return (
     <>
+      <ChatWidget user={user} onStateChanged={reloadAfterAgent} onSessionExpired={onSessionExpired} />
       <header className="topbar">
         <div className="brand">
           NotTrilix <span>shop</span>

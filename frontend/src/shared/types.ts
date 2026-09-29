@@ -5,7 +5,53 @@ export type Brand = 'A1' | 'HT' | 'STEAM' | 'SONY' | 'XBOX'
 export type VoucherStatus = 'AVAILABLE' | 'SOLD' | 'REDEEMED' | 'BLOCKED'
 export type TransactionStatus = 'COMPLETED' | 'REFUNDED'
 export type TicketStatus = 'OPEN' | 'RESOLVED'
-export type Channel = 'WEB' | 'POS'
+export type Channel = 'WEB' | 'POS' | 'AGENT'
+export type AgentOutcome = 'OK' | 'DENIED' | 'CONFIRMATION_REQUIRED' | 'ERROR'
+
+/** Jedan poziv alata koji je agent napravio u turnu. */
+export interface AgentToolCall {
+  tool: string
+  input: string
+  outcome: AgentOutcome
+  durationMs: number
+}
+
+/** Odlomak baze znanja koji je agent dobio uz pitanje (RAG). */
+export interface AgentSource {
+  source: string
+  title: string
+  section: string
+  score: number
+}
+
+export interface AgentChatResponse {
+  conversationId: string
+  reply: string
+  toolCalls: AgentToolCall[]
+  sources: AgentSource[]
+  durationMs: number
+  promptTokens: number | null
+  completionTokens: number | null
+  /** Sažetak radnje koja čeka potvrdu kupca; null ako ništa ne čeka. */
+  pendingAction: string | null
+}
+
+export interface AuditEvent {
+  id: number
+  createdAt: string
+  conversationId: string | null
+  customerId: number | null
+  customerName: string | null
+  channel: string
+  eventType: 'TOOL_CALL' | 'KB_RETRIEVAL' | 'CHAT_TURN'
+  operation: string
+  input: string | null
+  outcome: AgentOutcome
+  detail: string | null
+  durationMs: number | null
+  promptTokens: number | null
+  completionTokens: number | null
+}
 export type Realm = 'CUSTOMER' | 'ADMIN'
 export type WalletEntryType = 'TOPUP' | 'PURCHASE' | 'REFUND'
 export type ProviderVoucherStatus = 'NOT_ACTIVATED' | 'ACTIVE' | 'REDEEMED' | 'BLOCKED'

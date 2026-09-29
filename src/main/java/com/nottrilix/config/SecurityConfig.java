@@ -56,7 +56,7 @@ public class SecurityConfig {
                 .addFilterBefore(new BearerTokenFilter(tokenService), UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/customer/login", "/api/auth/admin/login").permitAll()
-                        .requestMatchers("/api/shop/**").hasRole("CUSTOMER")
+                        .requestMatchers("/api/shop/**", "/api/agent/**").hasRole("CUSTOMER")
                         .requestMatchers("/api/admin/**", "/api/customers/**").hasRole("ADMIN")
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll())

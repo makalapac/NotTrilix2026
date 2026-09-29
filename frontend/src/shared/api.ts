@@ -1,4 +1,6 @@
 import type {
+  AgentChatResponse,
+  AuditEvent,
   AuthUser,
   Brand,
   CatalogItem,
@@ -94,6 +96,8 @@ export const api = {
   wallet: () => request<Wallet>('/api/shop/wallet'),
   topUpWallet: (amountEur: number) => post<Wallet>('/api/shop/wallet/topup', { amountEur }),
   checkVoucher: (serial: string) => request<VoucherCheck>(`/api/shop/vouchers/${encodeURIComponent(serial)}/check`),
+  agentChat: (conversationId: string | null, message: string) =>
+    post<AgentChatResponse>('/api/agent/chat', { conversationId, message }),
 
   customers: () => request<Customer[]>('/api/customers'),
 
@@ -116,6 +120,14 @@ export const api = {
     tickets: () => request<Ticket[]>('/api/admin/tickets'),
     createTicket: (ticket: TicketRequest) => post<Ticket>('/api/admin/tickets', ticket),
     resolveTicket: (id: number, resolution: string) => post<Ticket>(`/api/admin/tickets/${id}/resolve`, { resolution }),
+    audit: (filter: { conversationId?: string; customerId?: number; limit?: number } = {}) => {
+      const q = new URLSearchParams()
+      if (filter.conversationId) q.set('conversationId', filter.conversationId)
+      if (filter.customerId) q.set('customerId', String(filter.customerId))
+      if (filter.limit) q.set('limit', String(filter.limit))
+      const qs = q.toString()
+      return request<AuditEvent[]>(`/api/admin/audit${qs ? `?${qs}` : ''}`)
+    },
     kb: {
       search: (query: string, topK?: number) =>
         request<KbHit[]>(`/api/admin/kb/search?q=${encodeURIComponent(query)}${topK ? `&topK=${topK}` : ''}`),

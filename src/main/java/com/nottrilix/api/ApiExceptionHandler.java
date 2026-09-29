@@ -1,5 +1,6 @@
 package com.nottrilix.api;
 
+import com.nottrilix.agent.AgentUnavailableException;
 import com.nottrilix.api.dto.ErrorResponse;
 import com.nottrilix.kb.KnowledgeBaseUnavailableException;
 import com.nottrilix.service.BusinessRuleException;
@@ -36,6 +37,13 @@ public class ApiExceptionHandler {
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ErrorResponse authentication(AuthenticationException e) {
         return new ErrorResponse("INVALID_CREDENTIALS", e.getMessage());
+    }
+
+    @ExceptionHandler(AgentUnavailableException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    public ErrorResponse agentUnavailable(AgentUnavailableException e) {
+        log.warn("AGENT UNAVAILABLE - {}", e.getMessage());
+        return new ErrorResponse("AGENT_UNAVAILABLE", e.getMessage());
     }
 
     @ExceptionHandler(KnowledgeBaseUnavailableException.class)

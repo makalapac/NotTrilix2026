@@ -19,6 +19,9 @@ public interface VoucherRepository extends JpaRepository<Voucher, Long> {
 
     Optional<Voucher> findBySerial(String serial);
 
+    /** Ima li proizvod barem jedan bon u zadanom statusu (npr. je li dostupan za kupnju). */
+    boolean existsByProductAndStatus(Product product, VoucherStatus status);
+
     /** Broj bonova po proizvodu i statusu (zaliha). */
     @Query("select v.product.id as productId, v.status as status, count(v) as count "
             + "from Voucher v group by v.product.id, v.status")
