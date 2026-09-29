@@ -39,7 +39,7 @@ Demo prijave: kupci `ana.anic@example.com` / `ana123` (wallet 115 €), marko.ma
 - **Faza 4 zatvorena** na grani `phase4` (2026-09-30): agent je izvan sustava, a identitet kupca, potvrda radnji i audit prešli su na stranu sustava. Pouke za predavanje su u [docs/PHASE4.md](docs/PHASE4.md) (tablica na vrhu + poglavlja 4 i 10): granica koja živi u klijentu nije granica; identitet putuje kao vjerodajnica, ne kao podatak; audit na strani sustava otkrio je ponovljeni RAG dohvat u petlji alata.
 - Sljedeće: grana `phase5` → glas (STT → agent → TTS). Agentov ulaz ostaje „tekst unutra, tekst van“; istraživanje glasa je u `../mcp-demo/VOICE_RESEARCH.md`.
 - Otvoreno pitanje za Fazu 6 (telefon): pozivatelj nema token kupca — treba ga prepoznati drukčije i agentu dati vjerodajnicu u njegovo ime.
-- Remote `origin` = `github.com/makalapac/NotTrilix2026`; grane `phase1` i `phase2` su na GitHubu, **`phase3` i `phase4` su zasad samo lokalno** (`git push -u origin phase3 phase4`).
+- Remote `origin` = `github.com/makalapac/NotTrilix2026`; grane `phase1`, `phase2` i `phase3` su na GitHubu, **`phase4` je zasad samo lokalno** (`git push -u origin phase4`).
 - Baza u Dockeru sadrži i podatke od testiranja → prije vježbe `.\run-phase-4.ps1 -Reset` (svježi seed + ponovni ingest baze znanja, ~10 s).
 - `openai.key` je u korijenu projekta (gitignored).
 - Build dok aplikacije rade ne prolazi (Windows drži jar u `target\`): prvo ugasiti (Ctrl+C u prozoru skripte gasi oba procesa).
