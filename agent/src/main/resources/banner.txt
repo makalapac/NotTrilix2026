@@ -1,0 +1,5 @@
+
+  NotTrilix 2026  ::  agent podrske "Nola"  ::  Spring AI ChatClient + MCP klijent
+  Spring Boot ${spring-boot.version}  ::  Java ${java.version}
+  Agent http://localhost:8090/chat   <->   sustav (MCP server) http://localhost:8080/mcp
+

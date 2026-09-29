@@ -1,0 +1,43 @@
+spring:
+  application:
+    name: nottrilix-agent
+  ai:
+    openai:
+      # Kljuc iz okoline (skripta ga cita iz openai.key). Bez kljuca agent se pokrene, ali na poruke vraca 503.
+      api-key: ${OPENAI_API_KEY:not-set}
+      chat:
+        options:
+          model: gpt-4o           # model agenta (tool calling + hrvatski)
+          temperature: 0.2
+    model:
+      embedding: none             # agent ne racuna embeddinge: bazu znanja pretrazuje sustav (MCP alat)
+    # Agent je MCP klijent sustava: alati i znanje stizu preko mreze (HTTP, bez sesije)
+    mcp:
+      client:
+        name: nottrilix-agent
+        version: 0.4.0
+        type: SYNC
+        request-timeout: 30s
+        streamable-http:
+          connections:
+            nottrilix:
+              url: ${NOTTRILIX_SYSTEM_URL:http://localhost:8080}
+              endpoint: /mcp
+  output:
+    ansi:
+      enabled: always
+
+server:
+  port: 8090
+
+nottrilix:
+  agent:
+    name: Nola
+    max-history-messages: 20      # koliko zadnjih poruka razgovora model vidi
+    # Kljuc kojim se agent predstavlja sustavu pri spajanju. Demo vrijednost; ista mora biti u sustavu.
+    agent-key: ${NOTTRILIX_AGENT_KEY:nottrilix-demo-agent-key}
+
+logging:
+  level:
+    com.nottrilix: DEBUG
+    org.springframework.ai: INFO

@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Sve sto se dogadja ide u konzolu (i u logs/nottrilix-2026.log). %clr = Spring Boot ANSI boje. -->
+<!-- Sve sto se dogadja ide u konzolu (i u logs/nottrilix-2026.log). %clr = Spring Boot ANSI boje.
+     Od Faze 4 istu konzolu dijele sustav i agent: oznaka [sustav] / [agent ] na pocetku retka pokazuje tko govori. -->
 <configuration>
   <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 
   <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
     <encoder>
       <charset>UTF-8</charset>
-      <pattern>%clr(%d{HH:mm:ss.SSS}){faint} %clr(%5p) %clr(%-14.14thread){magenta} %clr(%-28.28logger{28}){cyan} %clr(:){faint} %m%n%wEx</pattern>
+      <pattern>%clr(%d{HH:mm:ss.SSS}){faint} %clr([sustav]){green} %clr(%5p) %clr(%-14.14thread){magenta} %clr(%-24.24logger{24}){cyan} %clr(:){faint} %m%n%wEx</pattern>
     </encoder>
   </appender>
 

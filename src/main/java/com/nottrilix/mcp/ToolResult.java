@@ -1,7 +1,7 @@
-package com.nottrilix.agent;
+package com.nottrilix.mcp;
 
 /**
- * Jedinstven oblik rezultata svakog alata (model ga dobiva kao JSON).
+ * Jedinstven oblik rezultata svakog alata (MCP klijent ga dobiva kao JSON tekst).
  * ok=true: radnja je izvrsena / podaci su u data. ok=false: NIJE izvrseno; status je kod razloga
  * (npr. INSUFFICIENT_FUNDS, NOT_FOUND) ili CONFIRMATION_REQUIRED.
  */

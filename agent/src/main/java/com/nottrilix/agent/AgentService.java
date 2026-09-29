@@ -1,22 +1,15 @@
 package com.nottrilix.agent;
 
-import com.nottrilix.api.dto.AgentChatResponse;
-import com.nottrilix.api.dto.AgentSource;
-import com.nottrilix.auth.AuthUser;
-import com.nottrilix.domain.AuditEventType;
-import com.nottrilix.domain.AuditOutcome;
-import com.nottrilix.kb.KnowledgeBaseIngestor;
-import com.nottrilix.service.AuditService;
-import com.nottrilix.service.AuditService.AuditContext;
+import com.nottrilix.agent.SystemGateway.Customer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.ChatClientResponse;
-import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.document.Document;
+import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -34,10 +27,9 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 /**
- * Jedan ulaz za sve kanale: tekst kupca unutra, tekst agenta van. Chat ga zove izravno; glas i telefon
+ * Jedan ulaz za sve kanale: tekst kupca unutra, tekst agenta van. Chat ga zove kroz shop; glas i telefon
  * ce ispred njega staviti STT/TTS, a ovaj servis se nece mijenjati.
  */
 @Service
@@ -46,25 +38,24 @@ public class AgentService {
     private static final Logger log = LoggerFactory.getLogger("AGENT");
     private static final Pattern CONVERSATION_ID = Pattern.compile("[A-Za-z0-9-]{1,64}");
     private static final DateTimeFormatter TODAY = DateTimeFormatter.ofPattern("d.M.yyyy.");
+    private static final String NO_PENDING_ACTION = "nema";
 
     private final ChatClient chatClient;
-    private final AuditService audit;
-    private final KnowledgeBaseIngestor knowledgeBase;
-    private final ConfirmationGate gate;
+    private final SystemGateway system;
     private final AgentProperties props;
     private final Clock clock;
+    private final boolean modelConfigured;
     private final String systemPrompt;
     private final Map<String, AtomicInteger> turns = new ConcurrentHashMap<>();
 
-    public AgentService(ChatClient agentChatClient, AuditService audit, KnowledgeBaseIngestor knowledgeBase,
-                        ConfirmationGate gate, AgentProperties props, Clock clock,
+    public AgentService(ChatClient agentChatClient, SystemGateway system, AgentProperties props, Clock clock,
+                        @Value("${spring.ai.openai.api-key:not-set}") String openAiKey,
                         @Value("classpath:agent/system-prompt.txt") Resource systemPromptResource) {
         this.chatClient = agentChatClient;
-        this.audit = audit;
-        this.knowledgeBase = knowledgeBase;
-        this.gate = gate;
+        this.system = system;
         this.props = props;
         this.clock = clock;
+        this.modelConfigured = !openAiKey.isBlank() && !"not-set".equals(openAiKey);
         try {
             this.systemPrompt = systemPromptResource.getContentAsString(StandardCharsets.UTF_8);
         } catch (IOException e) {
@@ -72,33 +63,35 @@ public class AgentService {
         }
     }
 
-    public AgentChatResponse chat(AuthUser customer, String requestedConversationId, String message, String channel) {
-        if (!knowledgeBase.isAvailable()) {
+    public AgentChatResponse chat(String customerToken, String requestedConversationId, String message,
+                                  String channel) {
+        if (!modelConfigured) {
             throw new AgentUnavailableException("Agent nije dostupan: OPENAI_API_KEY nije postavljen");
         }
+        // tko je kupac govori sustav (prema tokenu), ne pozivatelj
+        Customer customer = system.whoAmI(customerToken);
         String conversationId = conversationId(requestedConversationId);
         // kljuc memorije sadrzi kupca: razgovor jednog kupca ne moze nastaviti drugi
         String memoryKey = "c" + customer.id() + ":" + conversationId;
         AtomicInteger turnCounter = turns.computeIfAbsent(memoryKey, k -> new AtomicInteger());
         // jedan razgovor = jedan turn u isto vrijeme (redoslijed turnova je temelj potvrde radnji)
         synchronized (turnCounter) {
-            return turn(customer, conversationId, memoryKey, turnCounter.incrementAndGet(), message, channel);
+            TurnContext turn = new TurnContext(customerToken, conversationId, turnCounter.incrementAndGet(),
+                    channel, new AgentTrace());
+            return turn(customer, memoryKey, turn, message);
         }
     }
 
-    private AgentChatResponse turn(AuthUser customer, String conversationId, String memoryKey, int turn,
-                                   String message, String channel) {
-        AgentTrace trace = new AgentTrace();
-        AuditContext auditContext = new AuditContext(conversationId, customer.id(), customer.name(), channel);
+    private AgentChatResponse turn(Customer customer, String memoryKey, TurnContext turn, String message) {
+        // stanje razgovora drzi sustav: model ne mora pamtiti (ni pogadjati) sto ceka potvrdu
+        String pending = system.pendingAction(turn);
+        String pendingForPrompt = pending == null ? NO_PENDING_ACTION
+                : pending + ". Ako kupac sada potvrdi, pozovi confirmPendingAction; ako odbije, pozovi "
+                + "cancelPendingAction.";
 
-        // stanje razgovora daje server: model ne mora pamtiti (ni pogadjati) sto ceka potvrdu
-        String pendingAction = gate.peek(memoryKey)
-                .map(p -> p.summary() + ". Ako kupac sada potvrdi, pozovi confirmPendingAction; "
-                        + "ako odbije, pozovi cancelPendingAction.")
-                .orElse("nema");
-
-        log.info("TURN {} conv={} customer={} ({}) channel={} pending='{}' msg='{}'", turn, conversationId,
-                customer.id(), customer.name(), channel, pendingAction.equals("nema") ? "-" : pendingAction, message);
+        log.info("TURN {} conv={} customer={} ({}) channel={} pending='{}' msg='{}'", turn.turn(),
+                turn.conversationId(), customer.id(), customer.name(), turn.channel(),
+                pending == null ? "-" : pending, message);
         long start = System.nanoTime();
 
         ChatClientResponse response;
@@ -107,27 +100,19 @@ public class AgentService {
                     .system(s -> s.text(systemPrompt)
                             .param("agentName", props.name())
                             .param("customerName", customer.name())
-                            .param("customerEmail", customer.login())
-                            .param("channel", channel)
+                            .param("customerEmail", customer.email())
+                            .param("channel", turn.channel())
                             .param("today", LocalDate.now(clock).format(TODAY))
-                            .param("pendingAction", pendingAction))
+                            .param("pendingAction", pendingForPrompt))
                     .user(message)
-                    .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, memoryKey))
-                    .toolContext(Map.of(
-                            AgentContext.CUSTOMER_ID, customer.id(),
-                            AgentContext.CUSTOMER_NAME, customer.name(),
-                            AgentContext.CONVERSATION_ID, conversationId,
-                            AgentContext.MEMORY_KEY, memoryKey,
-                            AgentContext.TURN, turn,
-                            AgentContext.CHANNEL, channel,
-                            AgentContext.TRACE, trace))
+                    .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, memoryKey).params(turn.asMap()))
+                    .toolContext(turn.asMap())
                     .call()
                     .chatClientResponse();
         } catch (RuntimeException e) {
             long ms = (System.nanoTime() - start) / 1_000_000;
-            log.error("TURN {} conv={} neuspio nakon {} ms: {}", turn, conversationId, ms, e.toString(), e);
-            audit.record(auditContext, AuditEventType.CHAT_TURN, "turn", message, AuditOutcome.ERROR,
-                    e.getClass().getSimpleName() + ": " + e.getMessage(), ms);
+            log.error("TURN {} conv={} neuspio nakon {} ms: {}", turn.turn(), turn.conversationId(), ms,
+                    e.toString(), e);
             throw new AgentUnavailableException("Agent trenutno nije dostupan. Pokušajte ponovno za koji trenutak.");
         }
         long ms = (System.nanoTime() - start) / 1_000_000;
@@ -137,26 +122,21 @@ public class AgentService {
                 ? "" : String.valueOf(chatResponse.getResult().getOutput().getText());
         String reply = ReplyStyle.withoutClosingPhrase(modelReply);
         if (reply.length() < modelReply.strip().length()) {
-            log.info("TURN {} conv={} uklonjena završna fraza: '{}'", turn, conversationId,
+            log.info("TURN {} conv={} uklonjena završna fraza: '{}'", turn.turn(), turn.conversationId(),
                     modelReply.strip().substring(reply.length()).strip());
         }
         Usage usage = chatResponse == null ? null : chatResponse.getMetadata().getUsage();
         Integer promptTokens = usage == null ? null : usage.getPromptTokens();
         Integer completionTokens = usage == null ? null : usage.getCompletionTokens();
         List<AgentSource> sources = sources(response);
+        List<AgentToolCall> toolCalls = turn.trace().toolCalls();
+        String pendingAfter = system.pendingAction(turn);
 
-        audit.record(auditContext, AuditEventType.KB_RETRIEVAL, "retrieve", message, AuditOutcome.OK,
-                sources.isEmpty() ? "0 odlomaka iznad praga" : sources.stream()
-                        .map(s -> "%s › %s (%.2f)".formatted(s.source(), s.section(), s.score()))
-                        .collect(Collectors.joining("; ")), null);
-        audit.record(auditContext, AuditEventType.CHAT_TURN, "turn", message, AuditOutcome.OK, reply, ms,
-                promptTokens, completionTokens);
-
-        log.info("TURN {} conv={} OK {} ms, alati={}, izvori={}, tokeni={}/{} reply='{}'", turn, conversationId, ms,
-                trace.toolCalls().stream().map(t -> t.tool() + ":" + t.outcome()).toList(), sources.size(),
-                promptTokens, completionTokens, reply);
-        String pendingAfter = gate.peek(memoryKey).map(ConfirmationGate.PendingAction::summary).orElse(null);
-        return new AgentChatResponse(conversationId, reply, trace.toolCalls(), sources, ms, promptTokens,
+        log.info("TURN {} conv={} OK {} ms, alati={}, izvori={}, tokeni={}/{}, ceka potvrdu={} reply='{}'",
+                turn.turn(), turn.conversationId(), ms,
+                toolCalls.stream().map(t -> t.tool() + ":" + t.outcome()).toList(), sources.size(),
+                promptTokens, completionTokens, pendingAfter != null, reply);
+        return new AgentChatResponse(turn.conversationId(), reply, toolCalls, sources, ms, promptTokens,
                 completionTokens, pendingAfter);
     }
 
@@ -167,10 +147,10 @@ public class AgentService {
         return UUID.randomUUID().toString().substring(0, 8);
     }
 
-    /** Odlomci baze znanja koje je RAG advisor dodao pitanju (za prikaz izvora i audit). */
+    /** Odlomci baze znanja koje je RAG advisor dodao pitanju (za prikaz izvora). */
     private static List<AgentSource> sources(ChatClientResponse response) {
         List<AgentSource> sources = new ArrayList<>();
-        if (response.context().get(QuestionAnswerAdvisor.RETRIEVED_DOCUMENTS) instanceof List<?> documents) {
+        if (response.context().get(RetrievalAugmentationAdvisor.DOCUMENT_CONTEXT) instanceof List<?> documents) {
             for (Object item : documents) {
                 if (item instanceof Document doc) {
                     Map<String, Object> meta = doc.getMetadata();

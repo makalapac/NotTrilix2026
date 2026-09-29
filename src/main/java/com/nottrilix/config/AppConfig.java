@@ -26,10 +26,11 @@ public class AppConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("NotTrilix 2026 API")
-                        .version("0.1.0")
+                        .version("0.4.0")
                         .description("Prodaja bonova (A1, HT, Steam, PlayStation, Xbox). "
                                 + "Jedan API za prodajni kanal (shop, uloga CUSTOMER) i za admin/support (uloga ADMIN). "
-                                + "Prijava: POST /api/auth/customer/login ili /api/auth/admin/login -> bearer token."))
+                                + "Prijava: POST /api/auth/customer/login ili /api/auth/admin/login -> bearer token. "
+                                + "Za agente i druge MCP klijente isti servisi su dostupni kao MCP server: POST /mcp."))
                 .components(new Components().addSecuritySchemes("bearer",
                         new SecurityScheme().type(SecurityScheme.Type.HTTP).scheme("bearer")))
                 .addSecurityItem(new SecurityRequirement().addList("bearer"));

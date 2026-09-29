@@ -3,22 +3,36 @@ spring:
     name: nottrilix-2026
   ai:
     openai:
-      # Faza 2+: embeddinzi za bazu znanja. Kljuc iz okoline (skripta ga cita iz openai.key);
+      # Embeddinzi za bazu znanja. Kljuc iz okoline (skripta ga cita iz openai.key);
       # bez kljuca app radi, a baza znanja javlja da nije dostupna.
       api-key: ${OPENAI_API_KEY:not-set}
       embedding:
         options:
           model: text-embedding-3-small
-      chat:
-        options:
-          model: gpt-4o           # Faza 3: model agenta (tool calling + hrvatski)
-          temperature: 0.2
+    model:
+      chat: none                  # Faza 4: sustav vise ne razgovara s LLM-om - to radi zasebna aplikacija agenta
     vectorstore:
       pgvector:
         initialize-schema: false  # tablicu vector_store drzi Flyway (V3), ne Spring AI
         dimensions: 1536
         index-type: HNSW
         distance-type: COSINE_DISTANCE
+    # Faza 4: sustav je MCP server. Alati = SupportMcpTools (registrira ih McpServerConfig, svaki s auditom).
+    mcp:
+      server:
+        name: nottrilix-system
+        version: 0.4.0
+        type: SYNC
+        protocol: STATELESS       # HTTP bez sesije: svaki MCP poziv je jedan POST /mcp s tokenom u zaglavlju
+        streamable-http:
+          mcp-endpoint: /mcp
+        annotation-scanner:
+          enabled: false          # alate ne registrira skener nego McpServerConfig (da svaki dobije audit)
+        instructions: >-
+          NotTrilix: prodaja bonova (A1, HT, Steam, PlayStation, Xbox). Alati rade u ime prijavljenog kupca
+          (Authorization: Bearer token kupca). Kupnja, povrat i blokada se prvo predlazu, a izvrsavaju tek
+          nakon potvrde kupca u iducem turnu razgovora (confirmPendingAction); klijent u _meta salje
+          conversationId i turn.
   datasource:
     url: jdbc:postgresql://localhost:5433/nottrilix
     username: nottrilix
@@ -55,11 +69,16 @@ nottrilix:
     ingest-on-startup: true   # idempotentno: nepromijenjena datoteka se preskace (hash u metapodacima)
     top-k: 3                  # koliko odlomaka vraca pretraga
     similarity-threshold: 0.35  # 0..1 (1 = identicno); ispod praga odlomak se ne vraca (text-embedding-3-small: relevantno ~0.4-0.7, sum ~0.3)
-  # Agent podrske (Faza 3): Spring AI ChatClient = system prompt + memorija + RAG + alati
-  agent:
-    name: Nola
-    max-history-messages: 20      # koliko zadnjih poruka razgovora model vidi
+  # MCP server (Faza 4): granica sustava prema agentu i drugim MCP klijentima
+  mcp:
+    # Kljuc kojim se aplikacija agenta predstavlja pri spajanju. Demo vrijednost; ista mora biti kod agenta.
+    agent-key: ${NOTTRILIX_AGENT_KEY:nottrilix-demo-agent-key}
     confirmation-ttl-minutes: 10  # koliko dugo vrijedi prijedlog kupnje/povrata/blokade koji ceka potvrdu
+  # Aplikacija agenta (Faza 4): shop joj prosljedjuje poruke kupca (POST /api/agent/chat -> agent)
+  agent:
+    url: ${NOTTRILIX_AGENT_URL:http://localhost:8090}
+    connect-timeout-seconds: 3
+    read-timeout-seconds: 90      # turn s vise poziva alata moze trajati desetak sekundi
 
 logging:
   level:

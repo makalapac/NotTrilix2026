@@ -15,7 +15,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 /**
- * Jedan redak po API zahtjevu: metoda, putanja, tko (po tokenu), HTTP status i trajanje.
+ * Jedan redak po API i MCP zahtjevu: metoda, putanja, tko (po tokenu), HTTP status i trajanje.
  * Izvrsava se unutar Spring Security lanca (nakon njega u redoslijedu), pa je korisnik vec poznat;
  * zahtjeve koje Security odbije (401/403) logira SecurityConfig.
  */
@@ -26,7 +26,8 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !request.getRequestURI().startsWith("/api/");
+        String uri = request.getRequestURI();
+        return !uri.startsWith("/api/") && !uri.startsWith("/mcp");
     }
 
     @Override

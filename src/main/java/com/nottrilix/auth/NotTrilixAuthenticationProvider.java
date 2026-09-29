@@ -45,6 +45,7 @@ public class NotTrilixAuthenticationProvider implements AuthenticationProvider {
             case ADMIN -> adminRepo.findByUsername(login.login())
                     .filter(a -> encoder.matches(password, a.getPasswordHash()))
                     .map(a -> new AuthUser(Realm.ADMIN, a.getId(), a.getName(), a.getUsername()));
+            case AGENT -> Optional.empty(); // agent se ne prijavljuje lozinkom nego kljucem (TokenService)
         };
         AuthUser authUser = user.orElseThrow(() -> {
             log.warn("LOGIN FAILED realm={} login={}", login.realm(), login.login());
@@ -54,7 +55,7 @@ public class NotTrilixAuthenticationProvider implements AuthenticationProvider {
         return UsernamePasswordAuthenticationToken.authenticated(authUser, null, authorities(authUser));
     }
 
-    /** ROLE_CUSTOMER ili ROLE_ADMIN - koristi i bearer filter. */
+    /** ROLE_CUSTOMER, ROLE_ADMIN ili ROLE_AGENT - koristi i bearer filter. */
     public static List<GrantedAuthority> authorities(AuthUser user) {
         return List.of(new SimpleGrantedAuthority("ROLE_" + user.realm().name()));
     }

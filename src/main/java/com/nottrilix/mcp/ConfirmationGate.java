@@ -1,4 +1,4 @@
-package com.nottrilix.agent;
+package com.nottrilix.mcp;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,13 +16,14 @@ import java.util.concurrent.ConcurrentHashMap;
  * ako je predlozena u RANIJEM turnu istog razgovora - dakle kupac je izmedju prijedloga i izvrsenja imao
  * priliku odgovoriti. Agent ne moze sam sebi potvrditi radnju unutar istog turna.
  * <p>
- * Stanje drzi server, ne model: po razgovoru ceka najvise jedna radnja (zadnji prijedlog), s tocnim
- * parametrima. Model pri potvrdi ne salje parametre, pa ih ne moze ni pogrijesiti ni izmisliti.
+ * Brana je na strani sustava (MCP servera), ne agenta: vrijedi za svakog MCP klijenta. Stanje drzi server:
+ * po razgovoru ceka najvise jedna radnja (zadnji prijedlog), s tocnim parametrima. Model pri potvrdi ne salje
+ * parametre, pa ih ne moze ni pogrijesiti ni izmisliti.
  */
 @Component
 public class ConfirmationGate {
 
-    private static final Logger log = LoggerFactory.getLogger("AGENT");
+    private static final Logger log = LoggerFactory.getLogger("MCP");
 
     /** Radnja koja ceka potvrdu kupca. */
     public record PendingAction(String action, String params, String summary, int turn, Instant at) {
@@ -32,7 +33,7 @@ public class ConfirmationGate {
     private final Duration ttl;
     private final Clock clock;
 
-    public ConfirmationGate(AgentProperties props, Clock clock) {
+    public ConfirmationGate(McpProperties props, Clock clock) {
         this.ttl = Duration.ofMinutes(props.confirmationTtlMinutes());
         this.clock = clock;
     }
@@ -68,7 +69,7 @@ public class ConfirmationGate {
         return Optional.of(current);
     }
 
-    /** Radnja koja trenutno ceka potvrdu (za prikaz modelu), bez mijenjanja stanja. */
+    /** Radnja koja trenutno ceka potvrdu (za prikaz modelu i kupcu), bez mijenjanja stanja. */
     public Optional<PendingAction> peek(String conversationKey) {
         PendingAction current = pending.get(conversationKey);
         if (current == null || expired(current)) {

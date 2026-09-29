@@ -1,7 +1,5 @@
 package com.nottrilix.agent;
 
-import com.nottrilix.api.dto.AgentToolCall;
-
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 

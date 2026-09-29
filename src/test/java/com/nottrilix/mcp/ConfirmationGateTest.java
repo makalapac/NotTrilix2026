@@ -1,6 +1,6 @@
-package com.nottrilix.agent;
+package com.nottrilix.mcp;
 
-import com.nottrilix.agent.ConfirmationGate.PendingAction;
+import com.nottrilix.mcp.ConfirmationGate.PendingAction;
 import org.junit.jupiter.api.Test;
 
 import java.time.Clock;
@@ -41,7 +41,7 @@ class ConfirmationGateTest {
     }
 
     private final TestClock clock = new TestClock();
-    private final ConfirmationGate gate = new ConfirmationGate(new AgentProperties("Nola", 20, 10), clock);
+    private final ConfirmationGate gate = new ConfirmationGate(new McpProperties("test-key", 10), clock);
 
     @Test
     void firstCallOnlyProposesAndSameTurnCannotConfirm() {

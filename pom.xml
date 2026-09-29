@@ -14,7 +14,7 @@
   <artifactId>nottrilix-2026</artifactId>
   <version>0.1.0</version>
   <name>NotTrilix 2026</name>
-  <description>Prodaja bonova: baza + API + admin i customer frontend (Faza 1 - AS IS)</description>
+  <description>Prodaja bonova: baza + API + admin i customer frontend + baza znanja + MCP server (sustav)</description>
 
   <properties>
     <java.version>25</java.version>
@@ -50,10 +50,10 @@
       <groupId>org.springframework.ai</groupId>
       <artifactId>spring-ai-starter-vector-store-pgvector</artifactId>
     </dependency>
-    <!-- Faza 3: RAG advisor (QuestionAnswerAdvisor) za ChatClient agenta -->
+    <!-- Faza 4: sustav je MCP server (HTTP, bez sesije) - alati nad servisima za agenta i druge MCP klijente -->
     <dependency>
       <groupId>org.springframework.ai</groupId>
-      <artifactId>spring-ai-vector-store-advisor</artifactId>
+      <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>

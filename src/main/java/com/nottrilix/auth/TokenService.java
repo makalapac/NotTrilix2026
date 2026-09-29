@@ -1,9 +1,12 @@
 package com.nottrilix.auth;
 
+import com.nottrilix.mcp.McpProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Duration;
@@ -16,12 +19,14 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Bearer tokeni za API: neprozirni slucajni string -> prijavljeni korisnik, u memoriji, s rokom trajanja.
  * Restart aplikacije ponistava sve tokene (za demo dovoljno; produkcija = JWT ili trajna pohrana).
+ * Kljuc agenta (nottrilix.mcp.agent-key) je stalni token aplikacije agenta, s ulogom AGENT.
  */
 @Service
 public class TokenService {
 
     private static final Logger log = LoggerFactory.getLogger("AUTH");
     private static final Duration TTL = Duration.ofHours(8);
+    private static final AuthUser AGENT = new AuthUser(Realm.AGENT, 0L, "NotTrilix agent", "agent");
 
     private record Entry(AuthUser user, Instant expiresAt) {
     }
@@ -29,9 +34,11 @@ public class TokenService {
     private final Map<String, Entry> tokens = new ConcurrentHashMap<>();
     private final SecureRandom random = new SecureRandom();
     private final Clock clock;
+    private final byte[] agentKey;
 
-    public TokenService(Clock clock) {
+    public TokenService(Clock clock, McpProperties mcp) {
         this.clock = clock;
+        this.agentKey = mcp.agentKey() == null ? new byte[0] : mcp.agentKey().getBytes(StandardCharsets.UTF_8);
     }
 
     public String issue(AuthUser user) {
@@ -45,6 +52,9 @@ public class TokenService {
     }
 
     public Optional<AuthUser> resolve(String token) {
+        if (isAgentKey(token)) {
+            return Optional.of(AGENT);
+        }
         Entry entry = tokens.get(token);
         if (entry == null) {
             return Optional.empty();
@@ -62,5 +72,10 @@ public class TokenService {
         if (entry != null) {
             log.info("TOKEN revoked realm={} login={} active={}", entry.user().realm(), entry.user().login(), tokens.size());
         }
+    }
+
+    private boolean isAgentKey(String token) {
+        return agentKey.length > 0 && token != null
+                && MessageDigest.isEqual(agentKey, token.getBytes(StandardCharsets.UTF_8));
     }
 }
