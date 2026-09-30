@@ -14,8 +14,8 @@ type Runner = (successText: string, action: () => Promise<unknown>) => Promise<v
 type Reporter = (e: unknown) => void
 
 /**
- * Razgovori kupaca s agentom i post-analiza: brojke, popis s nalazom, transkript iz audit traga.
- * Analizu radi model nad pseudonimiziranim transkriptom; ovdje admin vidi izvorni transkript (ovlašteno osoblje).
+ * Customer conversations with the agent and post-analysis: figures, list with findings, transcript from the audit trail.
+ * The model analyzes the pseudonymized transcript; here the admin sees the original transcript (authorized staff).
  */
 export function ConversationsTab({ run, report }: { run: Runner; report: Reporter }) {
   const [stats, setStats] = useState<ConversationStats | null>(null)

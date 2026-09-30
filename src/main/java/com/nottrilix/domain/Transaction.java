@@ -16,7 +16,7 @@ import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
 
-/** Kupnja jednog bona. */
+/** Purchase of a single voucher. */
 @Entity
 @Table(name = "transactions")
 public class Transaction {

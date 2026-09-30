@@ -14,7 +14,7 @@ import jakarta.persistence.Table;
 
 import java.time.Instant;
 
-/** Jedan bon iz zalihe: serijski broj (javni identifikator) + aktivacijski kod (tajna koju kupac dobije). */
+/** One voucher from stock: serial number (public identifier) + activation code (the secret the customer receives). */
 @Entity
 @Table(name = "vouchers")
 public class Voucher {

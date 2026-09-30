@@ -15,7 +15,7 @@ import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
 
-/** Jedna promjena stanja walleta (knjiga promjena): iznos s predznakom i stanje nakon. */
+/** One wallet balance change (ledger entry): signed amount and the balance afterwards. */
 @Entity
 @Table(name = "wallet_entries")
 public class WalletEntry {
@@ -35,7 +35,7 @@ public class WalletEntry {
     @Column(nullable = false, length = 20)
     private WalletEntryType type;
 
-    /** + uplata / povrat, - kupnja. */
+    /** + top-up / refund, - purchase. */
     @Column(name = "amount_eur", nullable = false, precision = 10, scale = 2)
     private BigDecimal amountEur;
 

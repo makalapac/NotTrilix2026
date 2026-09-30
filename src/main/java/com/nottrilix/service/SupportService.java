@@ -30,9 +30,9 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 /**
- * Admin/support: pregled transakcija, povrat, blokada bona, prijave. Ovdje zive pravila podrske.
- * Metode "...ForCustomer" su iste radnje kad ih trazi sam kupac (kroz agenta): vrijede ista pravila,
- * a podatak koji nije kupcev ponasa se kao da ne postoji.
+ * Admin/support: transaction overview, refund, voucher block, support tickets. Support rules live here.
+ * The "...ForCustomer" methods are the same actions when requested by the customer themselves (via the agent):
+ * the same rules apply, and data that does not belong to the customer behaves as if it did not exist.
  */
 @Service
 public class SupportService {
@@ -59,7 +59,7 @@ public class SupportService {
         this.clock = clock;
     }
 
-    /** Filter za pregled transakcija; svako polje je opcionalno. */
+    /** Filter for the transaction overview; every field is optional. */
     public record TransactionFilter(TransactionStatus status, Brand brand, Long customerId) {
     }
 
@@ -85,21 +85,21 @@ public class SupportService {
     }
 
     /**
-     * Povrat novca na wallet kupca: samo unutar roka i samo ako bon nije iskoristen.
-     * Bon se blokira (kod je vec kod kupca).
+     * Refund to the customer's wallet: only within the refund window and only if the voucher has not been redeemed.
+     * The voucher is blocked (the customer already has the code).
      */
     @Transactional
     public TransactionDto refund(long id) {
         return doRefund(id, null);
     }
 
-    /** Povrat koji trazi sam kupac: kupnja mora biti njegova. */
+    /** Refund requested by the customer themselves: the purchase must be theirs. */
     @Transactional
     public TransactionDto refundForCustomer(long customerId, long id) {
         return doRefund(id, customerId);
     }
 
-    /** Ista pravila kao povrat, bez izvrsenja: sto ce se dogoditi ili zasto povrat nije moguc. */
+    /** Same rules as a refund, without executing it: what will happen, or why the refund is not possible. */
     @Transactional(readOnly = true)
     public RefundPreview previewRefundForCustomer(long customerId, long id) {
         Transaction t = transactionRepo.findByIdWithDetails(id)
@@ -115,7 +115,7 @@ public class SupportService {
 
     private TransactionDto doRefund(long id, Long ownerCustomerId) {
         log.info("REFUND request tx={}{}", id, ownerCustomerId == null ? "" : " customer=" + ownerCustomerId);
-        // redoslijed zakljucavanja: prvo transakcija (svjeze stanje, drugi povrat ceka), zatim kupac (wallet)
+        // lock order: first the transaction (fresh state, a second refund waits), then the customer (wallet)
         Transaction t = transactionRepo.findByIdForUpdate(id)
                 .orElseThrow(() -> ownerCustomerId == null
                         ? new NotFoundException("Transakcija " + id + " ne postoji")
@@ -156,7 +156,7 @@ public class SupportService {
         }
     }
 
-    /** Blokada bona (reklamacija, sumnja na zlouporabu). Iskoristen ili vec blokiran bon se ne dira. */
+    /** Voucher block (complaint, suspected abuse). A redeemed or already blocked voucher is left untouched. */
     @Transactional
     public VoucherDto blockVoucher(String serial) {
         Voucher voucher = voucherRepo.findBySerial(serial)
@@ -164,13 +164,13 @@ public class SupportService {
         return doBlock(voucher);
     }
 
-    /** Blokada koju trazi sam kupac: bon mora biti iz njegove kupnje. */
+    /** Block requested by the customer themselves: the voucher must come from their own purchase. */
     @Transactional
     public VoucherDto blockVoucherForCustomer(long customerId, String serial) {
         return doBlock(ownVoucher(customerId, serial));
     }
 
-    /** Ista pravila kao blokada, bez izvrsenja. */
+    /** Same rules as a block, without executing it. */
     @Transactional(readOnly = true)
     public VoucherDto previewBlockForCustomer(long customerId, String serial) {
         Voucher voucher = ownVoucher(customerId, serial);
@@ -193,7 +193,7 @@ public class SupportService {
             case REDEEMED -> throw deny("BLOCK", "VOUCHER_ALREADY_REDEEMED", "Bon " + serial + " je već iskorišten");
             case BLOCKED -> throw deny("BLOCK", "ALREADY_BLOCKED", "Bon " + serial + " je već blokiran");
             case AVAILABLE, SOLD -> {
-                // smije se blokirati
+                // may be blocked
             }
         }
     }
@@ -221,7 +221,7 @@ public class SupportService {
         return list;
     }
 
-    /** Nova prijava; ako se veze na transakciju, ona mora pripadati istom kupcu. */
+    /** New support ticket; if it references a transaction, that transaction must belong to the same customer. */
     @Transactional
     public TicketDto createTicket(long customerId, Long transactionId, String subject, String description) {
         log.info("TICKET create customer={} transaction={} subject='{}'", customerId, transactionId, subject);

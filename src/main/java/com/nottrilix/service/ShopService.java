@@ -29,7 +29,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
-/** Prodajni kanal: kupci, kupnja bona (naplata s walleta), pregled vlastitih kupnji. Ovdje zive pravila prodaje. */
+/** Sales channel: customers, voucher purchase (charged to the wallet), overview of own purchases. Sales rules live here. */
 @Service
 public class ShopService {
 
@@ -55,7 +55,7 @@ public class ShopService {
         this.clock = clock;
     }
 
-    /** Proizvod i cijena nakon sto su prosla pravila koja ne ovise o zalihi. */
+    /** Product and price after the rules that do not depend on stock have passed. */
     private record RuleCheck(Product product, BigDecimal price, BigDecimal spentToday) {
     }
 
@@ -74,8 +74,8 @@ public class ShopService {
     }
 
     /**
-     * Kupnja bona, naplata s walleta. Pravila: proizvod aktivan, dnevni limit po kupcu, dovoljno sredstava,
-     * bon na zalihi. Kupac je zakljucan (wallet + limit bez utrke), bon je zakljucan (isti kod ne ide dvojici).
+     * Voucher purchase, charged to the wallet. Rules: product active, daily limit per customer, sufficient funds,
+     * voucher in stock. Customer is locked (wallet + limit, no race), voucher is locked (same code never goes to two buyers).
      */
     @Transactional
     public PurchaseResponse purchase(long customerId, long productId, Channel channel) {
@@ -101,8 +101,8 @@ public class ShopService {
     }
 
     /**
-     * Ista pravila kao kupnja, ali bez izvrsenja: sluzi da se kupcu prije potvrde kaze sto ce se dogoditi
-     * (ili zasto kupnja nije moguca). Nista se ne zakljucava i ne mijenja.
+     * Same rules as a purchase, but without executing it: tells the customer, before confirmation, what will happen
+     * (or why the purchase is not possible). Nothing is locked or modified.
      */
     @Transactional(readOnly = true)
     public PurchasePreview previewPurchase(long customerId, long productId) {
@@ -119,7 +119,7 @@ public class ShopService {
                 balance, balance.subtract(check.price()));
     }
 
-    /** Koliko je kupac danas vec kupio i koliko jos smije do dnevnog limita. */
+    /** How much the customer has already bought today and how much more is allowed under the daily limit. */
     @Transactional(readOnly = true)
     public DailyLimitStatus dailyLimitStatus(long customerId) {
         BigDecimal spentToday = spentToday(customerId);
@@ -138,7 +138,7 @@ public class ShopService {
         return list;
     }
 
-    /** Pravila koja ne ovise o zalihi: proizvod aktivan, dnevni limit, dovoljno sredstava na walletu. */
+    /** Rules that do not depend on stock: product active, daily limit, sufficient funds in the wallet. */
     private RuleCheck checkRules(Customer customer, long customerId, long productId) {
         Product product = productRepo.findById(productId)
                 .orElseThrow(() -> new NotFoundException("Proizvod " + productId + " ne postoji"));

@@ -40,8 +40,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Razgovori kao zapis: okvir razgovora (tablica conversations) + transkript sastavljen iz audit traga.
- * Transkript za analizu je pseudonimiziran (bez identiteta kupca), transkript za admina i izvoz kupcu je izvoran.
+ * Conversations as records: the conversation record (conversations table) + a transcript assembled from the audit trail.
+ * The analysis transcript is pseudonymized (no customer identity); the admin and customer-export transcript is the original.
  */
 @Service
 public class ConversationService {
@@ -49,11 +49,11 @@ public class ConversationService {
     private static final Logger log = LoggerFactory.getLogger("CONVERSATION");
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
-    /** Transkript razgovora + sto o njemu znamo (za analizu). */
+    /** Conversation transcript + what we know about it (for analysis). */
     public record Transcript(String conversationId, Long customerId, String customerName, String channel,
                             List<TranscriptLine> lines, int turns, int toolCalls) {
 
-        /** Tekst za model: redak po redak, bez identiteta kupca. */
+        /** Text for the model: line by line, without the customer's identity. */
         public String asText(boolean pseudonymized) {
             StringBuilder sb = new StringBuilder();
             for (TranscriptLine line : lines) {
@@ -83,7 +83,7 @@ public class ConversationService {
         this.clock = clock;
     }
 
-    /** Svaki turn (chat ili glas) oznacava razgovor; vlastita transakcija da trag ostane i kad turn zavrsi greskom. */
+    /** Every turn (chat or voice) marks the conversation; own transaction so the trail survives even if the turn fails. */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordTurn(String conversationId, long customerId, String channel) {
         Instant now = Instant.now(clock);
@@ -93,7 +93,7 @@ public class ConversationService {
         log.debug("CONVERSATION {} turn {} channel={}", conversationId, conversation.getTurns(), channel);
     }
 
-    /** Transkript iz audit traga: KUPAC / ALAT / ZNANJE / AGENT po turnovima, kako su se dogodili. */
+    /** Transcript from the audit trail: KUPAC / ALAT / ZNANJE / AGENT (customer/tool/knowledge/agent) per turn, as they happened. */
     @Transactional(readOnly = true)
     public Optional<Transcript> transcript(String conversationId) {
         Conversation conversation = conversations.findById(conversationId).orElse(null);
@@ -127,7 +127,7 @@ public class ConversationService {
                                     : "(greška: " + event.getDetail() + ")", event.getCreatedAt()));
                 }
                 default -> {
-                    // ANALYSIS i PRIVACY nisu dio razgovora
+                    // ANALYSIS and PRIVACY are not part of the conversation
                 }
             }
         }
@@ -203,7 +203,7 @@ public class ConversationService {
                 a.getPromptTokens(), a.getCompletionTokens(), a.getDurationMs());
     }
 
-    /** Rupe u znanju su u bazi kao JSON popis. */
+    /** Knowledge gaps are stored in the database as a JSON list. */
     public static List<String> gaps(String json) {
         if (json == null || json.isBlank()) {
             return List.of();

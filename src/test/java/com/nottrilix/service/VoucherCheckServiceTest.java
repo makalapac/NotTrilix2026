@@ -33,7 +33,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/** Provjera bona: kupac vidi samo vlastite bonove; poruka slijedi odgovor pruzatelja. */
+/** Voucher check: the customer sees only their own vouchers; the message follows the provider's response. */
 @ExtendWith(MockitoExtension.class)
 class VoucherCheckServiceTest {
 
@@ -92,7 +92,7 @@ class VoucherCheckServiceTest {
                 .isInstanceOf(NotFoundException.class);
     }
 
-    /** Entitet bez baze nema id; test ga postavi refleksijom (isto sto bi napravio JPA). */
+    /** An entity without a database has no id; the test sets it via reflection (the same thing JPA would do). */
     private static Customer customerWithId(long id) throws Exception {
         Customer customer = new Customer("Kupac " + id, "kupac" + id + "@example.com", null, "$2a$10$hash");
         Field field = Customer.class.getDeclaredField("id");

@@ -1,6 +1,6 @@
 package com.nottrilix.mcp;
 
-/** Poziv alata bez potrebnog konteksta (nema kupca ili nema razgovora); alat ga vraca kao ok=false + kod. */
+/** Tool call without the required context (no customer or no conversation); the tool returns it as ok=false + code. */
 public class McpCallException extends RuntimeException {
 
     private final String code;

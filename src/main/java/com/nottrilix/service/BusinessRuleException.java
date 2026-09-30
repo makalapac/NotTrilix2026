@@ -1,6 +1,6 @@
 package com.nottrilix.service;
 
-/** Poslovno pravilo je odbilo operaciju (npr. OUT_OF_STOCK, DAILY_LIMIT_EXCEEDED). API je mapira na HTTP 409. */
+/** A business rule rejected the operation (e.g. OUT_OF_STOCK, DAILY_LIMIT_EXCEEDED). The API maps it to HTTP 409. */
 public class BusinessRuleException extends RuntimeException {
 
     private final String code;

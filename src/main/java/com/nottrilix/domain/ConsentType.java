@@ -1,6 +1,6 @@
 package com.nottrilix.domain;
 
 public enum ConsentType {
-    /** Glasovni razgovor: snimka se pretvara u tekst kod vanjskog pruzatelja, snimka se ne pohranjuje. */
+    /** Voice conversation: the recording is transcribed by an external provider; the recording is not stored. */
     VOICE
 }

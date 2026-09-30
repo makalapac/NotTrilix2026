@@ -1,19 +1,19 @@
 <#
-  NotTrilix 2026 - Faza 4 (mrezni MCP): sustav kao MCP server + agent kao zasebna aplikacija (MCP klijent).
+  NotTrilix 2026 - Phase 4 (networked MCP): the system as an MCP server + the agent as a separate application (MCP client).
 
-    sustav  :8080  baza, API, shop, admin, baza znanja, MCP server na /mcp (alati + brana potvrde + audit)
-    agent   :8090  Spring AI ChatClient (model, memorija, RAG) - sa sustavom radi iskljucivo kroz MCP
+    system  :8080  database, API, shop, admin, knowledge base, MCP server at /mcp (tools + confirmation gate + audit)
+    agent   :8090  Spring AI ChatClient (model, memory, RAG) - talks to the system exclusively through MCP
 
-  Trazi OpenAI kljuc (openai.key u ovom folderu ili $env:OPENAI_API_KEY), zatim poziva run-phase-1.ps1 -WithAgent.
+  Requires an OpenAI key (openai.key in this folder or $env:OPENAI_API_KEY), then calls run-phase-1.ps1 -WithAgent.
 
-  .\run-phase-4.ps1            build + start (sustav, pa agent; oba u ovom prozoru, Ctrl+C gasi oba)
-  .\run-phase-4.ps1 -NoBuild   preskoci build
-  .\run-phase-4.ps1 -Reset     obrisi bazu (svjezi seed + ponovni ingest baze znanja) pa start
-  .\run-phase-4.ps1 -Stop      ugasi PostgreSQL container
+  .\run-phase-4.ps1            build + start (system, then agent; both in this window, Ctrl+C stops both)
+  .\run-phase-4.ps1 -NoBuild   skip the build
+  .\run-phase-4.ps1 -Reset     drop the database (fresh seed + knowledge base re-ingest), then start
+  .\run-phase-4.ps1 -Stop      stop the PostgreSQL container
 
-  Chat s agentom: http://localhost:8080/  (prijava kao kupac -> gumb "Chat s podrskom")
-  Audit trag:     http://localhost:8080/admin/  (tab Audit)
-  Proba:          python scripts\agent_e2e.py   (razgovori)   |   python scripts\mcp_direct.py   (MCP bez agenta)
+  Chat with the agent: http://localhost:8080/  (log in as a customer -> "Chat s podrskom" button)
+  Audit trail:         http://localhost:8080/admin/  (Audit tab)
+  Try it:              python scripts\agent_e2e.py   (conversations)   |   python scripts\mcp_direct.py   (MCP without the agent)
 #>
 param(
     [switch]$NoBuild,

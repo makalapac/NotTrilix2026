@@ -1,10 +1,10 @@
 package com.nottrilix.domain;
 
 public enum ConversationStatus {
-    /** U tijeku ili zavrsen, a jos nije (ponovno) analiziran. */
+    /** In progress or finished, but not yet (re-)analyzed. */
     OPEN,
-    /** Analiziran; nova poruka ga vraca u OPEN. */
+    /** Analyzed; a new message returns it to OPEN. */
     ANALYZED,
-    /** Kupac je zatrazio brisanje: turnovi obrisani, okvir anonimiziran. */
+    /** The customer requested erasure: turns deleted, conversation record anonymized. */
     ERASED
 }

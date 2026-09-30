@@ -34,7 +34,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/** Pravila prodaje bez baze: zaliha, dnevni limit, prodaja prvog slobodnog bona uz naplatu s walleta. */
+/** Sales rules without a database: stock, daily limit, sale of the first available voucher charged to the wallet. */
 @ExtendWith(MockitoExtension.class)
 class ShopServiceTest {
 

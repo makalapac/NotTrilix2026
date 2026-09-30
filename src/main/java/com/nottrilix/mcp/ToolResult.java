@@ -1,9 +1,9 @@
 package com.nottrilix.mcp;
 
 /**
- * Jedinstven oblik rezultata svakog alata (MCP klijent ga dobiva kao JSON tekst).
- * ok=true: radnja je izvrsena / podaci su u data. ok=false: NIJE izvrseno; status je kod razloga
- * (npr. INSUFFICIENT_FUNDS, NOT_FOUND) ili CONFIRMATION_REQUIRED.
+ * Uniform shape of every tool's result (the MCP client receives it as JSON text).
+ * ok=true: the action was executed / the data is in data. ok=false: NOT executed; status is the reason code
+ * (e.g. INSUFFICIENT_FUNDS, NOT_FOUND) or CONFIRMATION_REQUIRED.
  */
 public record ToolResult(boolean ok, String status, String message, Object data) {
 

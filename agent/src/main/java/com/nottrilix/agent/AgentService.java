@@ -29,8 +29,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
 /**
- * Jedan ulaz za sve kanale: tekst kupca unutra, tekst agenta van. Chat ga zove kroz shop; glas i telefon
- * ce ispred njega staviti STT/TTS, a ovaj servis se nece mijenjati.
+ * One entry point for all channels: customer text in, agent text out. Chat calls it through the shop; voice and
+ * phone will put STT/TTS in front of it, and this service will not change.
  */
 @Service
 public class AgentService {
@@ -68,13 +68,13 @@ public class AgentService {
         if (!modelConfigured) {
             throw new AgentUnavailableException("Agent nije dostupan: OPENAI_API_KEY nije postavljen");
         }
-        // tko je kupac govori sustav (prema tokenu), ne pozivatelj
+        // the system says who the customer is (by token), not the caller
         Customer customer = system.whoAmI(customerToken);
         String conversationId = conversationId(requestedConversationId);
-        // kljuc memorije sadrzi kupca: razgovor jednog kupca ne moze nastaviti drugi
+        // the memory key includes the customer: one customer's conversation cannot be continued by another
         String memoryKey = "c" + customer.id() + ":" + conversationId;
         AtomicInteger turnCounter = turns.computeIfAbsent(memoryKey, k -> new AtomicInteger());
-        // jedan razgovor = jedan turn u isto vrijeme (redoslijed turnova je temelj potvrde radnji)
+        // one conversation = one turn at a time (turn ordering is the basis of action confirmation)
         synchronized (turnCounter) {
             TurnContext turn = new TurnContext(customerToken, conversationId, turnCounter.incrementAndGet(),
                     channel, new AgentTrace());
@@ -83,7 +83,7 @@ public class AgentService {
     }
 
     private AgentChatResponse turn(Customer customer, String memoryKey, TurnContext turn, String message) {
-        // stanje razgovora drzi sustav: model ne mora pamtiti (ni pogadjati) sto ceka potvrdu
+        // the system holds the conversation state: the model need not remember (or guess) what awaits confirmation
         String pending = system.pendingAction(turn);
         String pendingForPrompt = pending == null ? NO_PENDING_ACTION
                 : pending + ". Ako kupac sada potvrdi, pozovi confirmPendingAction; ako odbije, pozovi "
@@ -145,7 +145,7 @@ public class AgentService {
         return UUID.randomUUID().toString().substring(0, 8);
     }
 
-    /** Odlomci baze znanja koje je RAG advisor dodao pitanju (za prikaz izvora). */
+    /** Knowledge base sections the RAG advisor added to the question (for showing sources). */
     private static List<AgentSource> sources(ChatClientResponse response) {
         List<AgentSource> sources = new ArrayList<>();
         if (response.context().get(RetrievalAugmentationAdvisor.DOCUMENT_CONTEXT) instanceof List<?> documents) {

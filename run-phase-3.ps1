@@ -1,14 +1,14 @@
 <#
-  NotTrilix 2026 - Faza 3 (agent): isti sustav + baza znanja + agent podrske (Spring AI ChatClient:
-  system prompt, memorija razgovora, RAG, alati nad servisima, audit trag).
+  NotTrilix 2026 - Phase 3 (agent): the same system + knowledge base + support agent (Spring AI ChatClient:
+  system prompt, conversation memory, RAG, tools over the services, audit trail).
 
-  Od Faze 4 agent je zasebna aplikacija, pa ova skripta na ovoj grani pokrece isto sto i run-phase-4.ps1
-  (sustav + agent). Agent u istom procesu sa sustavom je na grani phase3.
+  From Phase 4 the agent is a separate application, so on this branch this script starts the same as run-phase-4.ps1
+  (system + agent). The agent in the same process as the system is on the phase3 branch.
 
   .\run-phase-3.ps1            build + start
-  .\run-phase-3.ps1 -NoBuild   preskoci build
-  .\run-phase-3.ps1 -Reset     obrisi bazu (svjezi seed + ponovni ingest baze znanja) pa start
-  .\run-phase-3.ps1 -Stop      ugasi PostgreSQL container
+  .\run-phase-3.ps1 -NoBuild   skip the build
+  .\run-phase-3.ps1 -Reset     drop the database (fresh seed + knowledge base re-ingest), then start
+  .\run-phase-3.ps1 -Stop      stop the PostgreSQL container
 #>
 param(
     [switch]$NoBuild,

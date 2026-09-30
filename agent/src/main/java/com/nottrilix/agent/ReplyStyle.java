@@ -4,9 +4,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Zadnja provjera odgovora prije nego ode kupcu. Model unatoc uputi u promptu ponekad zavrsi opcenitom frazom
- * ("Ako imate dodatnih pitanja, slobodno se javite."); u chatu je to sum, a u glasovnom kanalu cisti gubitak
- * vremena. Uklanja se samo takva zavrsna recenica i samo ako prije nje postoji sadrzaj.
+ * Last check of the reply before it goes to the customer. Despite the prompt, the model sometimes ends with a generic
+ * phrase ("Ako imate dodatnih pitanja, slobodno se javite.", i.e. "feel free to reach out"); in chat that is noise, in
+ * the voice channel a pure waste of time. Only such a closing sentence is removed, and only if content precedes it.
  */
 final class ReplyStyle {
 

@@ -13,16 +13,16 @@ import java.util.Optional;
 
 public interface VoucherRepository extends JpaRepository<Voucher, Long> {
 
-    /** Prvi slobodan bon proizvoda, zakljucan u bazi (FOR UPDATE) da dva kupca ne dobiju isti kod. */
+    /** First available voucher of the product, locked in the database (FOR UPDATE) so two customers never get the same code. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Voucher> findFirstByProductAndStatusOrderByIdAsc(Product product, VoucherStatus status);
 
     Optional<Voucher> findBySerial(String serial);
 
-    /** Ima li proizvod barem jedan bon u zadanom statusu (npr. je li dostupan za kupnju). */
+    /** Whether the product has at least one voucher in the given status (e.g. whether it is available for purchase). */
     boolean existsByProductAndStatus(Product product, VoucherStatus status);
 
-    /** Broj bonova po proizvodu i statusu (zaliha). */
+    /** Number of vouchers per product and status (stock). */
     @Query("select v.product.id as productId, v.status as status, count(v) as count "
             + "from Voucher v group by v.product.id, v.status")
     List<StockCount> countByProductAndStatus();

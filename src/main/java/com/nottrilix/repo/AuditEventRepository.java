@@ -19,12 +19,12 @@ public interface AuditEventRepository extends JpaRepository<AuditEvent, Long> {
 
     List<AuditEvent> findByCustomerIdOrderByIdDesc(Long customerId, Pageable pageable);
 
-    /** Transkript razgovora: turnovi i pozivi alata redom kako su se dogodili. */
+    /** Conversation transcript: turns and tool calls in the order they happened. */
     List<AuditEvent> findByConversationIdOrderByIdAsc(String conversationId);
 
     List<AuditEvent> findByCustomerIdAndEventTypeInOrderByIdAsc(Long customerId, Collection<AuditEventType> types);
 
-    /** Brisanje na zahtjev kupca / istek roka: sadrzaj razgovora (poruke, odgovori, dohvati iz baze znanja). */
+    /** Erasure on customer request / retention expiry: conversation content (messages, replies, knowledge base retrievals). */
     @Modifying
     @Query("delete from AuditEvent e where e.customerId = :customerId and e.eventType in :types")
     int deleteByCustomerIdAndEventTypeIn(Long customerId, Collection<AuditEventType> types);
@@ -33,7 +33,7 @@ public interface AuditEventRepository extends JpaRepository<AuditEvent, Long> {
     @Query("delete from AuditEvent e where e.eventType in :types and e.createdAt < :before")
     int deleteByEventTypeInAndCreatedAtBefore(Collection<AuditEventType> types, Instant before);
 
-    /** Anonimizacija: redak ostaje (sto je sustav napravio), a osobni podaci kupca nestaju. */
+    /** Anonymization: the row stays (what the system did), but the customer's personal data is removed. */
     @Modifying
     @Query("update AuditEvent e set e.customerId = null, e.customerName = null where e.customerId = :customerId")
     int anonymizeByCustomerId(Long customerId);

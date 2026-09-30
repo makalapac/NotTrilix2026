@@ -1,5 +1,5 @@
--- Faza 2: baza znanja (RAG). Tablica u obliku koji ocekuje Spring AI PgVectorStore
--- (id uuid, content text, metadata json, embedding vector). Embeddinzi: OpenAI text-embedding-3-small = 1536 dimenzija.
+-- Phase 2: knowledge base (RAG). Table in the shape expected by Spring AI PgVectorStore
+-- (id uuid, content text, metadata json, embedding vector). Embeddings: OpenAI text-embedding-3-small = 1536 dimensions.
 
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS hstore;

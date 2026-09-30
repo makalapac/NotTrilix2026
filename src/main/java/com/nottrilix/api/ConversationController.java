@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/** Razgovori i njihova analiza za support (uloga ADMIN). */
+/** Conversations and their analysis for support (role ADMIN). */
 @RestController
 @RequestMapping("/api/admin/conversations")
 @Tag(name = "Conversations", description = "Razgovori kupaca s agentom: transkript iz audit traga, post-analiza, statistika")

@@ -6,7 +6,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Preko mreze (MCP _meta) ide samo razgovor, turn i kanal; token ide zaglavljem, a trag ostaje u agentu. */
+/** Only conversation, turn and channel go over the wire (MCP _meta); token as a header, trace stays in the agent. */
 class TurnContextTest {
 
     @Test

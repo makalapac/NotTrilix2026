@@ -7,8 +7,8 @@ type Runner = (successText: string, action: () => Promise<unknown>) => Promise<v
 type Reporter = (e: unknown) => void
 
 /**
- * Samoučenje s čovjekom u petlji: prijedlozi odlomaka baze znanja nastali iz analize razgovora. Admin ih čita,
- * po potrebi ispravi i odobri; tek tada ulaze u bazu znanja (odmah vrijede za agenta). Ili ih odbije.
+ * Self-learning with a human in the loop: knowledge base section suggestions produced by conversation analysis. The admin reads them,
+ * corrects them if needed and approves; only then do they enter the knowledge base (effective for the agent immediately). Or rejects them.
  */
 export function SuggestionsPanel({ run, report, onChanged }: { run: Runner; report: Reporter; onChanged: () => void }) {
   const [rows, setRows] = useState<KbSuggestion[]>([])

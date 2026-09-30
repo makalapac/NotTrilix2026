@@ -11,8 +11,8 @@ import org.springframework.context.annotation.Configuration;
 import java.util.List;
 
 /**
- * Sustav kao MCP server (Spring AI, HTTP bez sesije na /mcp): alati iz {@link SupportMcpTools} postaju MCP alati,
- * svaki omotan auditom. Spring AI od ovog popisa slaze server (spring.ai.mcp.server.*).
+ * The system as an MCP server (Spring AI, sessionless HTTP at /mcp): the tools from {@link SupportMcpTools} become
+ * MCP tools, each wrapped with audit. Spring AI assembles the server from this list (spring.ai.mcp.server.*).
  */
 @Configuration
 public class McpServerConfig {

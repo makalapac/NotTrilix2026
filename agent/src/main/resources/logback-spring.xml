@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Agent pise u istu konzolu kao sustav: oznaka [agent] na pocetku retka pokazuje tko govori. -->
+<!-- The agent writes to the same console as the system: the [agent] tag at the line start shows who is speaking. -->
 <configuration>
   <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 

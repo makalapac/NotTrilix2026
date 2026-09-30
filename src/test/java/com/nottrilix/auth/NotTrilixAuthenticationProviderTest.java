@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-/** Prijava kupca (e-mail) i admina (korisnicko ime) uz bcrypt lozinke. */
+/** Customer (e-mail) and admin (username) login with bcrypt passwords. */
 class NotTrilixAuthenticationProviderTest {
 
     private final CustomerRepository customerRepo = mock(CustomerRepository.class);

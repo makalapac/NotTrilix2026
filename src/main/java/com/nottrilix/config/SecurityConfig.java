@@ -26,8 +26,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import java.io.IOException;
 
 /**
- * Pristup po putanjama: shop samo za kupce, admin samo za admine, MCP za kupce i agenta; sve preko bearer tokena
- * (bez sesija i CSRF-a). Statika (React stranice), Swagger i login endpointi su javni.
+ * Path-based access: shop only for customers, admin only for admins, MCP for customers and the agent; all via bearer
+ * tokens (no sessions and no CSRF). Static content (React pages), Swagger and the login endpoints are public.
  */
 @Configuration
 @EnableWebSecurity
@@ -58,7 +58,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/customer/login", "/api/auth/admin/login").permitAll()
                         .requestMatchers("/api/shop/**", "/api/agent/**").hasRole("CUSTOMER")
                         .requestMatchers("/api/admin/**", "/api/customers/**").hasRole("ADMIN")
-                        // MCP server: agent se spaja svojim kljucem (popis alata), alati traze token kupca
+                        // MCP server: the agent connects with its key (tool list), the tools require a customer token
                         .requestMatchers("/mcp", "/mcp/**").hasAnyRole("CUSTOMER", "AGENT")
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll())

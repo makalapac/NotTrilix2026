@@ -5,8 +5,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 /**
- * Agent podrske kao zasebna aplikacija. Nema bazu ni poslovna pravila: sve sto zna i moze dolazi iz sustava
- * preko MCP-a (alati i baza znanja), a razgovor vodi Spring AI ChatClient.
+ * Support agent as a separate application. It has no database and no business rules: everything it knows and can do
+ * comes from the system over MCP (tools and knowledge base), and the conversation is driven by Spring AI ChatClient.
  */
 @SpringBootApplication
 @ConfigurationPropertiesScan

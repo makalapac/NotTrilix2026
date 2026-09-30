@@ -13,8 +13,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 
 /**
- * Ulaz u agenta: poruka kupca (tekst ili snimka) + kupcev token (Authorization: Bearer ...). Agent token ne provjerava
- * sam: prosljedjuje ga sustavu uz svaki MCP poziv, a sustav odlucuje tko je kupac i sto smije.
+ * Entry into the agent: customer message (text or recording) + customer token (Authorization: Bearer ...). The agent
+ * does not verify the token itself: it forwards it to the system with every MCP call, and the system decides who the
+ * customer is and what they may do.
  */
 @RestController
 public class AgentController {
@@ -23,7 +24,7 @@ public class AgentController {
     private static final String DEFAULT_CHANNEL = "CHAT";
     private static final String VOICE_CHANNEL = "VOICE";
 
-    /** Glasovni turn: transkript, odgovor (kao u chatu) i govor kao mp3 (base64). */
+    /** Voice turn: transcript, reply (as in chat) and speech as mp3 (base64). */
     public record VoiceTurnResponse(String transcript, AgentChatResponse chat, String audioBase64,
                                     String audioMimeType, long sttMs, long ttsMs, String ttsProvider) {
     }
@@ -44,7 +45,7 @@ public class AgentController {
         return agentService.chat(token(authorization), request.conversationId(), request.message().trim(), channel);
     }
 
-    /** Snimka iz preglednika (webm/ogg/mp3/wav) -> transkript -> isti agent -> govor. Snimka se ne pohranjuje. */
+    /** Browser recording (webm/ogg/mp3/wav) -> transcript -> the same agent -> speech. The recording is not stored. */
     @PostMapping(value = "/voice", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public VoiceTurnResponse voice(@RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
                                    @RequestParam("audio") MultipartFile audio,

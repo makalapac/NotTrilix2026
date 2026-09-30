@@ -21,9 +21,9 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Samoucenje s covjekom u petlji: prijedlog iz analize razgovora postaje dio baze znanja tek kad ga admin odobri
- * (i po potrebi ispravi). Odobreni odlomak odmah ulazi u vector_store i vrijedi za sve buduce razgovore;
- * pri startu se ponovno ucitava iz baze (idempotentno).
+ * Self-learning with a human in the loop: a suggestion from conversation analysis becomes part of the knowledge base
+ * only once an admin approves it (and corrects it if needed). The approved chunk goes straight into vector_store and
+ * applies to all future conversations; on startup it is reloaded from the database (idempotent).
  */
 @Service
 public class KnowledgeLearningService {

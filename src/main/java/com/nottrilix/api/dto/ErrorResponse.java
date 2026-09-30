@@ -1,5 +1,5 @@
 package com.nottrilix.api.dto;
 
-/** Jedinstven oblik greske za API: strojni kod + poruka za covjeka. */
+/** Uniform error shape for the API: machine-readable code + human-readable message. */
 public record ErrorResponse(String error, String message) {
 }

@@ -16,9 +16,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 /**
- * Razgovor kupca s agentom, gledano iz sustava: poruka (tekst ili glas) ide aplikaciji agenta, odgovor natrag kupcu,
- * a turn se biljezi u audit trag i u okvir razgovora (za analizu i prava kupca). Glas trazi privolu kupca.
- * Sto agent pritom radi u sustavu (alati, baza znanja) dolazi zasebno, kroz MCP.
+ * The customer's conversation with the agent, as seen from the system: the message (text or voice) goes to the agent application,
+ * the reply back to the customer, and the turn is recorded in the audit trail and the conversation record (for analysis and customer rights).
+ * Voice requires the customer's consent. What the agent does in the system meanwhile (tools, knowledge base) comes separately, via MCP.
  */
 @Service
 public class AgentChatService {
@@ -55,7 +55,7 @@ public class AgentChatService {
         }
     }
 
-    /** Glas: snimka se prosljedjuje agentu i ne pohranjuje; u trag ide transkript, kao poruka kupca. */
+    /** Voice: the recording is forwarded to the agent and not stored; the transcript goes into the audit trail as the customer's message. */
     public VoiceTurnResponse voice(AuthUser customer, String authorization, String conversationId, byte[] audio,
                                    String filename, String contentType) {
         privacy.requireConsent(customer.id(), ConsentType.VOICE);

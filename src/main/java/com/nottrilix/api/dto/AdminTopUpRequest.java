@@ -8,7 +8,7 @@ import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 
-/** Uplata podrske na wallet kupca (npr. goodwill), s obaveznom napomenom. */
+/** Support top-up of a customer's wallet (e.g. goodwill), with a mandatory note. */
 public record AdminTopUpRequest(@NotNull(message = "je obavezan")
                                 @Positive(message = "mora biti veći od 0")
                                 @Digits(integer = 8, fraction = 2, message = "najviše 2 decimale") BigDecimal amountEur,

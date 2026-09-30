@@ -5,8 +5,8 @@ import { dateTime, errorMessage } from '../shared/format'
 import { VOICE_CONSENT_TEXT } from './ChatWidget'
 
 /**
- * Prava kupca nad podacima (GDPR): što čuvamo i koliko dugo, privole, izvoz svih podataka (JSON) i brisanje razgovora.
- * Kupnje, wallet i bonovi se ne brišu (ugovor i računovodstvo); to piše ovdje, ne skriva se.
+ * The customer's rights over their data (GDPR): what we keep and for how long, consents, export of all data (JSON) and erasure of conversations.
+ * Purchases, wallet and vouchers are not erased (contract and accounting); that is stated here, not hidden.
  */
 export function PrivacyModal({
   onClose,

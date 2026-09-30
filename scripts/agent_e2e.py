@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-E2E razgovori s agentom (Faza 3) protiv pokrenute aplikacije - generalna proba prije demoa.
+E2E conversations with the agent (Phase 3) against the running application - dress rehearsal before the demo.
 
-  .\\run-phase-3.ps1 -Reset                 # svjeza baza (scenariji ocekuju seed podatke)
+  .\\run-phase-3.ps1 -Reset                 # fresh database (the scenarios expect the seed data)
   $env:PYTHONIOENCODING = "utf-8"
-  python scripts\\agent_e2e.py               # svi scenariji + audit
-  python scripts\\agent_e2e.py b c audit     # samo odabrani
+  python scripts\\agent_e2e.py               # all scenarios + audit
+  python scripts\\agent_e2e.py b c audit     # only the selected ones
 
-Treba samo Python 3 (bez dodatnih paketa). Svaki scenarij ispisuje poruke, pozive alata s ishodom,
-odlomke baze znanja i radnju koja ceka potvrdu. Skripta nista ne provjerava automatski: cita se ocima.
-Scenariji mijenjaju podatke (kupnja, povrat, blokada), zato prije ponavljanja -Reset.
+Needs only Python 3 (no extra packages). Each scenario prints the messages, tool calls with their outcome,
+knowledge base sections and the action awaiting confirmation. The script checks nothing automatically: read it by eye.
+The scenarios change data (purchase, refund, block), so -Reset before repeating.
 """
 import json
 import sys

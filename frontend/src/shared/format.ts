@@ -59,7 +59,7 @@ export const CHANNEL: Record<Channel, string> = {
   AGENT: 'Agent',
 }
 
-/** Nazivi alata agenta za prikaz (chat i audit). */
+/** Display names of the agent's tools (chat and audit). */
 export const TOOL_LABEL: Record<string, string> = {
   getCatalog: 'Katalog',
   getMyPurchases: 'Moje kupnje',
@@ -76,7 +76,7 @@ export const TOOL_LABEL: Record<string, string> = {
   turn: 'Turn razgovora',
 }
 
-/** Faza 5: operacije analize i privatnosti u auditu. */
+/** Phase 5: analysis and privacy operations in the audit. */
 Object.assign(TOOL_LABEL, {
   analyze: 'Analiza razgovora',
   learn: 'Učenje (baza znanja)',

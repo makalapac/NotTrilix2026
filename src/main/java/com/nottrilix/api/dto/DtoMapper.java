@@ -7,7 +7,7 @@ import com.nottrilix.domain.Transaction;
 import com.nottrilix.domain.Voucher;
 import com.nottrilix.domain.WalletEntry;
 
-/** Entitet -> DTO. Poziva se unutar transakcije (lazy veze). */
+/** Entity -> DTO. Called inside a transaction (lazy associations). */
 public final class DtoMapper {
 
     private DtoMapper() {

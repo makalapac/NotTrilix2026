@@ -7,8 +7,8 @@ import com.nottrilix.domain.Sentiment;
 import java.util.List;
 
 /**
- * Sto model vraca za jedan razgovor (Spring AI structured output: iz ovog recorda nastaje JSON shema koju model
- * mora postovati). Sve je poopceno: bez imena, e-maila, serijskih brojeva i kodova.
+ * What the model returns for one conversation (Spring AI structured output: this record produces the JSON schema the model
+ * must adhere to). Everything is generalized: no names, e-mails, serial numbers or codes.
  */
 public record ConversationInsight(
         String summary,
@@ -21,7 +21,7 @@ public record ConversationInsight(
         List<KnowledgeSuggestion> knowledgeSuggestions,
         String improvementNotes) {
 
-    /** Prijedlog odlomka baze znanja: pitanje kako bi ga kupac postavio + nacrt odgovora koji admin provjerava. */
+    /** Knowledge base section suggestion: the question as a customer would ask it + a draft answer that the admin reviews. */
     public record KnowledgeSuggestion(String question, String answer) {
     }
 }

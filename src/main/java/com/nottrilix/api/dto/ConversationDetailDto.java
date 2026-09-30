@@ -2,6 +2,6 @@ package com.nottrilix.api.dto;
 
 import java.util.List;
 
-/** Razgovor s transkriptom (iz audit traga) i analizom. */
+/** A conversation with its transcript (from the audit trail) and analysis. */
 public record ConversationDetailDto(ConversationDto conversation, List<TranscriptLine> transcript) {
 }

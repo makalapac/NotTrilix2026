@@ -24,9 +24,9 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Rok cuvanja (GDPR cl. 5(1)(e), ogranicenje pohrane): sadrzaj razgovora stariji od roka se brise, a ostali tragovi
- * i analize ostaju bez veze s kupcem. Radi pri startu i jednom dnevno; svaki prolaz ostavlja trag u auditu.
- * Transakcija je na razini klase: onStartup() i nightly() zovu run() iznutra (samopozivanje ne prolazi kroz proxy).
+ * Retention (GDPR Art. 5(1)(e), storage limitation): conversation content older than the retention period is deleted, while the other traces
+ * and analyses remain without a link to the customer. Runs at startup and once a day; every pass leaves a trace in the audit trail.
+ * The transaction is at class level: onStartup() and nightly() call run() internally (a self-invocation does not go through the proxy).
  */
 @Component
 @Transactional
@@ -34,7 +34,7 @@ public class RetentionJob {
 
     private static final Logger log = LoggerFactory.getLogger("PRIVACY");
 
-    /** Sto je jedan prolaz obrisao odnosno anonimizirao. */
+    /** What a single pass deleted or anonymized. */
     public record RetentionResult(int deletedMessages, int anonymizedEvents, int erasedConversations,
                                   int anonymizedAnalyses) {
     }

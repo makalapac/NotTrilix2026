@@ -15,20 +15,20 @@ import org.springframework.stereotype.Service;
 import java.util.Base64;
 
 /**
- * Glasovni kanal ispred istog tekstualnog agenta: snimka -> prepoznavanje govora (STT) -> AgentService (tekst unutra,
- * tekst van) -> sinteza govora (TTS) -> mp3. Oboje kroz Spring AI (TranscriptionModel, TextToSpeechModel).
- * Snimka kupca zivi samo u memoriji ovog poziva: ne pohranjuje se i ne logira. U trag ide transkript.
+ * Voice channel in front of the same text agent: recording -> speech-to-text (STT) -> AgentService (text in,
+ * text out) -> text-to-speech (TTS) -> mp3. Both go through Spring AI (TranscriptionModel, TextToSpeechModel).
+ * The customer's recording lives only in this call's memory: never stored, never logged. Only the transcript is logged.
  */
 @Service
 public class VoiceService {
 
     private static final Logger log = LoggerFactory.getLogger("VOICE");
 
-    /** Govor kao mp3 + tko ga je sintetizirao. */
+    /** Speech as mp3 + who synthesized it. */
     public record Speech(byte[] audio, String mimeType, String provider) {
     }
 
-    /** Glasovni kanal nije konfiguriran (nema STT/TTS modela ili je iskljucen). */
+    /** The voice channel is not configured (no STT/TTS model, or it is disabled). */
     public static class VoiceUnavailableException extends RuntimeException {
         public VoiceUnavailableException(String message) {
             super(message);
@@ -79,7 +79,7 @@ public class VoiceService {
                 speech.provider());
     }
 
-    /** Prepoznavanje govora; naziv datoteke (ekstenzija) govori modelu o formatu snimke. */
+    /** Speech-to-text; the file name (extension) tells the model the recording format. */
     String transcribe(byte[] audio, String filename) {
         ByteArrayResource resource = new ByteArrayResource(audio) {
             @Override
@@ -92,7 +92,7 @@ public class VoiceService {
         return text == null ? "" : text.strip();
     }
 
-    /** Sinteza govora; dugacak odgovor se za govor skrati (kupac cijeli tekst vidi u chatu). */
+    /** Text-to-speech; a long reply is shortened for speech (the customer sees the full text in chat). */
     Speech speak(String text) {
         String spoken = text.length() <= props.maxReplyChars() ? text
                 : text.substring(0, props.maxReplyChars()).replaceAll("\\s+\\S*$", "") + "…";

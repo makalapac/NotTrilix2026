@@ -11,7 +11,7 @@ import jakarta.persistence.Table;
 
 import java.time.Instant;
 
-/** Jedan redak audit traga agenta. Nema settera: redak se nakon upisa ne mijenja. */
+/** One row of the agent audit trail. No setters: a row is never modified after being written. */
 @Entity
 @Table(name = "audit_events")
 public class AuditEvent {

@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.io.IOException;
 import java.util.List;
 
-/** Baza znanja za podrsku (uloga ADMIN): semanticka pretraga, stanje, ponovni ingest, prijedlozi iz razgovora (samoucenje). */
+/** Support knowledge base (role ADMIN): semantic search, status, re-ingest, suggestions from conversations (self-learning). */
 @RestController
 @RequestMapping("/api/admin/kb")
 @Tag(name = "Knowledge base", description = "Baza znanja podrske (RAG): pretraga odlomaka, stanje, ingest")

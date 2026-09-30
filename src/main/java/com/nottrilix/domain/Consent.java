@@ -11,7 +11,7 @@ import jakarta.persistence.Table;
 
 import java.time.Instant;
 
-/** Privola kupca (GDPR cl. 7): sto je prihvatio, kada i koju verziju teksta; povlacenje ostavlja trag. */
+/** Customer consent (GDPR Art. 7): what was accepted, when and which text version; withdrawal leaves a trace. */
 @Entity
 @Table(name = "consents")
 public class Consent {

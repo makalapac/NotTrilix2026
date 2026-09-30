@@ -11,7 +11,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-/** Jedan redak po zahtjevu prema agentu: metoda, putanja, HTTP status i trajanje. */
+/** One line per request to the agent: method, path, HTTP status and duration. */
 @Component
 public class RequestLoggingFilter extends OncePerRequestFilter {
 

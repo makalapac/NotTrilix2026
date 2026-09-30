@@ -1,5 +1,5 @@
-# NotTrilix 2026 - baza. Port 5433 na hostu da se ne sudara s drugim lokalnim Postgresima.
-# Slika s pgvectorom = obicni Postgres 17 (ekstenzija se ne koristi u Fazi 1; kasnije faze je ne moraju mijenjati).
+# NotTrilix 2026 - database. Port 5433 on the host so it does not collide with other local Postgres instances.
+# The pgvector image = plain Postgres 17 (the extension is not used in Phase 1; later phases need not change it).
 services:
   postgres:
     image: pgvector/pgvector:pg17

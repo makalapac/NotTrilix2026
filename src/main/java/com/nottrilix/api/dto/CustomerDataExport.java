@@ -3,7 +3,7 @@ package com.nottrilix.api.dto;
 import java.time.Instant;
 import java.util.List;
 
-/** Svi podaci koje sustav cuva o kupcu, u strojno citljivom obliku (GDPR cl. 15 pravo pristupa, cl. 20 prenosivost). */
+/** All data the system keeps about the customer, in machine-readable form (GDPR Art. 15 right of access, Art. 20 portability). */
 public record CustomerDataExport(Instant exportedAt, CustomerDto customer, WalletDto wallet,
                                  List<TransactionDto> transactions, List<TicketDto> tickets,
                                  List<ConversationExport> conversations, List<AnalysisDto> analyses,

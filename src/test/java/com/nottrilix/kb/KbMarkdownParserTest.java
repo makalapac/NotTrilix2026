@@ -6,7 +6,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Front matter -> metapodaci, "##" odjeljci -> odlomci, preambula se ne embedda, hash stabilan. */
+/** Front matter -> metadata, "##" sections -> chunks, the preamble is not embedded, the hash is stable. */
 class KbMarkdownParserTest {
 
     private static final String DOC = """

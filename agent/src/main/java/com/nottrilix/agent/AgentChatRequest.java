@@ -4,8 +4,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /**
- * Poruka kupca. conversationId je opcionalan (bez njega pocinje novi razgovor), channel je kanal razgovora
- * (CHAT; kasnije glas i telefon). Tko je kupac ne pise ovdje: to govori token u zaglavlju Authorization.
+ * Customer message. conversationId is optional (without it a new conversation starts); channel is the conversation
+ * channel (CHAT; later voice and phone). Who the customer is comes from the Authorization header token, not from here.
  */
 public record AgentChatRequest(String conversationId,
                                @NotBlank(message = "je obavezna") @Size(max = 2000) String message,

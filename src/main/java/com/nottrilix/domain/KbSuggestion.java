@@ -12,8 +12,8 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 
 /**
- * Prijedlog odlomka baze znanja nastao iz razgovora (rupa u znanju). Model predlaze, covjek odlucuje:
- * tek odobren prijedlog ulazi u bazu znanja. Sadrzaj je poopcen - bez osobnih podataka kupca.
+ * Proposed knowledge base section derived from a conversation (knowledge gap). The model proposes, a human decides:
+ * only an approved suggestion enters the knowledge base. The content is generalized - no personal customer data.
  */
 @Entity
 @Table(name = "kb_suggestions")
@@ -56,7 +56,7 @@ public class KbSuggestion {
         this.status = SuggestionStatus.PROPOSED;
     }
 
-    /** Admin je (mozda ispravljen) tekst odobrio: od sada je dio baze znanja. */
+    /** The admin approved the (possibly corrected) text: from now on it is part of the knowledge base. */
     public void approve(String question, String answer, String decidedBy, Instant at) {
         this.question = question;
         this.answer = answer;
@@ -71,7 +71,7 @@ public class KbSuggestion {
         this.decidedAt = at;
     }
 
-    /** Izvor odlomka u vector_store; po njemu se ponovni ingest prepoznaje kao vec ucitan. */
+    /** Source of the section in vector_store; used to recognize a repeated ingest as already loaded. */
     public String source() {
         return "nauceno-" + id;
     }

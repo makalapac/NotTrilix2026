@@ -32,7 +32,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/** Wallet: nedovoljno sredstava, skidanje i povrat s knjizenjem, limit uplate. */
+/** Wallet: insufficient funds, debit and refund with ledger entries, top-up limit. */
 @ExtendWith(MockitoExtension.class)
 class WalletServiceTest {
 

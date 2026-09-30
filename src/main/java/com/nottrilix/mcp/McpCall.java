@@ -9,10 +9,11 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
- * Kontekst jednog MCP poziva alata.
+ * Context of a single MCP tool call.
  * <ul>
- *   <li><b>Tko je kupac</b> odlucuje token u HTTP zahtjevu (Spring Security), ne klijent i ne model.</li>
- *   <li><b>Koji razgovor i koji turn</b> javlja aplikacija agenta u MCP polju {@code _meta}; model ga ne vidi.</li>
+ *   <li><b>Who the customer is</b> is decided by the HTTP request token (Spring Security), not the client or model.</li>
+ *   <li><b>Which conversation and which turn</b> is reported by the agent application in the MCP {@code _meta} field;
+ *       the model does not see it.</li>
  * </ul>
  */
 public record McpCall(AuthUser user, Map<String, Object> meta) {
@@ -23,14 +24,14 @@ public record McpCall(AuthUser user, Map<String, Object> meta) {
 
     private static final Pattern CONVERSATION = Pattern.compile("[A-Za-z0-9-]{1,64}");
 
-    /** Poziv koji se upravo izvrsava (alat radi na dretvi HTTP zahtjeva, pa je prijava dostupna). */
+    /** The call currently executing (the tool runs on the HTTP request thread, so the authenticated user is available). */
     public static McpCall current(Map<String, Object> meta) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         AuthUser user = auth != null && auth.getPrincipal() instanceof AuthUser u ? u : null;
         return new McpCall(user, meta == null ? Map.of() : meta);
     }
 
-    /** Kupac u cije ime se alat izvrsava; bez kupceva tokena alat ne radi. */
+    /** The customer on whose behalf the tool executes; without the customer's token the tool does not work. */
     public AuthUser customer() {
         if (user == null || user.realm() != Realm.CUSTOMER) {
             throw new McpCallException("CUSTOMER_REQUIRED",
@@ -43,18 +44,18 @@ public record McpCall(AuthUser user, Map<String, Object> meta) {
         return customer().id();
     }
 
-    /** Razgovor iz _meta ili null ako ga klijent nije poslao. */
+    /** The conversation from _meta, or null if the client did not send it. */
     public String conversationId() {
         return meta.get(CONVERSATION_ID) instanceof String id && CONVERSATION.matcher(id).matches() ? id : null;
     }
 
-    /** Kanal razgovora iz _meta (CHAT, kasnije glas i telefon); MCP ako ga klijent nije poslao. */
+    /** The conversation channel from _meta (CHAT, later voice and phone); MCP if the client did not send it. */
     public String channel() {
         return meta.get(CHANNEL) instanceof String channel && !channel.isBlank() && channel.length() <= 10
                 ? channel : "MCP";
     }
 
-    /** Kljuc razgovora za branu potvrde: kupac (iz tokena) + razgovor (iz _meta). */
+    /** The conversation key for the confirmation gate: customer (from the token) + conversation (from _meta). */
     public String conversationKey() {
         String conversationId = conversationId();
         if (conversationId == null) {
@@ -64,7 +65,7 @@ public record McpCall(AuthUser user, Map<String, Object> meta) {
         return "c" + customerId() + ":" + conversationId;
     }
 
-    /** Redni broj turna razgovora; potvrda je moguca tek u turnu nakon prijedloga. */
+    /** The sequence number of the conversation turn; confirmation is possible only in a turn after the proposal. */
     public int turn() {
         if (meta.get(TURN) instanceof Number turn && turn.intValue() > 0) {
             return turn.intValue();

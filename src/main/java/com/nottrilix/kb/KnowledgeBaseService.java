@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Map;
 
-/** Semanticka pretraga baze znanja (Spring AI VectorStore) + stanje baze. Kasnije je koristi agent kao RAG. */
+/** Semantic search over the knowledge base (Spring AI VectorStore) + knowledge base status. Later used by the agent as RAG. */
 @Service
 public class KnowledgeBaseService {
 
@@ -33,7 +33,7 @@ public class KnowledgeBaseService {
         this.props = props;
     }
 
-    /** Najslicniji odlomci za upit (topK <= 0 = zadani iz konfiguracije). */
+    /** Most similar chunks for the query (topK <= 0 = default from configuration). */
     public List<KbHit> search(String query, int topK) {
         if (!ingestor.isAvailable()) {
             throw new KnowledgeBaseUnavailableException("Baza znanja nije dostupna: OPENAI_API_KEY nije postavljen");

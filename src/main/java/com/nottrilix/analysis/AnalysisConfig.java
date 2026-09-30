@@ -5,8 +5,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Model za back-office analizu razgovora (Spring AI ChatClient bez alata i bez memorije). Sustav i dalje ne vodi
- * razgovor s kupcem - to radi zasebna aplikacija agenta; ovaj klijent cita pseudonimizirane transkripte.
+ * Model for back-office conversation analysis (Spring AI ChatClient without tools and without memory). The system still does
+ * not hold the conversation with the customer - the separate agent application does; this client reads pseudonymized transcripts.
  */
 @Configuration
 public class AnalysisConfig {

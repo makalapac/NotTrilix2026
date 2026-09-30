@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Modelu na analizu ide razgovor bez identiteta kupca; iznosi, proizvodi i tijek ostaju. */
+/** The conversation goes to the model for analysis without the customer's identity; amounts, products and flow remain. */
 class PseudonymizerTest {
 
     @Test

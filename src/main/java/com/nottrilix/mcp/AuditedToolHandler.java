@@ -19,9 +19,9 @@ import java.util.Set;
 import java.util.function.BiFunction;
 
 /**
- * Omotac oko svakog MCP alata: audit na granici sustava, ne u svakom alatu posebno i ne kod klijenta.
- * Biljezi tko je zvao (kupac iz tokena), u kojem razgovoru (_meta), koji alat, s kojim argumentima, ishod i
- * trajanje. Klijent ga ne moze zaobici: bez obzira koji MCP klijent zove, trag nastaje ovdje.
+ * Wrapper around every MCP tool: audit at the system boundary, not in each tool separately and not at the client.
+ * Records who called (the customer from the token), in which conversation (_meta), which tool, with which arguments,
+ * the outcome and the duration. The client cannot bypass it: whichever MCP client calls, the trail is created here.
  */
 final class AuditedToolHandler implements BiFunction<McpTransportContext, CallToolRequest, CallToolResult> {
 
@@ -30,7 +30,7 @@ final class AuditedToolHandler implements BiFunction<McpTransportContext, CallTo
     static final String ERROR_RESULT =
             "{\"ok\":false,\"status\":\"ERROR\",\"message\":\"Alat trenutno nije dostupan. Radnja NIJE izvršena.\"}";
 
-    /** Alati koje zove aplikacija agenta, a ne model: nisu radnja agenta pa ne idu u audit kao poziv alata. */
+    /** Tools called by the agent application, not the model: not an agent action, so not audited as a tool call. */
     static final Set<String> APPLICATION_TOOLS = Set.of("whoAmI", "getPendingAction", "searchKnowledgeBase");
 
     private final String tool;
@@ -84,7 +84,7 @@ final class AuditedToolHandler implements BiFunction<McpTransportContext, CallTo
         return result;
     }
 
-    /** Ishod iz rezultata alata (ToolResult kao JSON): ok=true -> OK, inace po statusu. */
+    /** Outcome from the tool result (ToolResult as JSON): ok=true -> OK, otherwise by status. */
     static AuditOutcome outcomeOf(String resultJson) {
         JsonNode node = parse(resultJson);
         if (node == null || !node.has("ok") || node.path("ok").asBoolean(false)) {
@@ -97,7 +97,7 @@ final class AuditedToolHandler implements BiFunction<McpTransportContext, CallTo
         };
     }
 
-    /** "KOD: poruka" iz rezultata alata koji nije izvrsen. */
+    /** "CODE: message" from the result of a tool that was not executed. */
     static String reasonOf(String resultJson) {
         JsonNode node = parse(resultJson);
         if (node == null) {

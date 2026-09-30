@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-/** Alat je s druge strane mreze: poziv ide u ime kupca, model dobiva cist rezultat, a kvar ne rusi razgovor. */
+/** Tool over the network: runs as the customer, plain result to the model, a failure does not end the conversation. */
 @ExtendWith(MockitoExtension.class)
 class TracingToolCallbackTest {
 
@@ -36,7 +36,7 @@ class TracingToolCallbackTest {
         callback = new TracingToolCallback(mcpTool);
     }
 
-    /** Onako kako Spring AI MCP klijent vraca rezultat: popis dijelova sadrzaja, tekst je JSON alata. */
+    /** The way the Spring AI MCP client returns a result: a list of content parts whose text is the tool's JSON. */
     private static String mcpContent(String toolResultJson) {
         return "[{\"type\":\"text\",\"text\":\"" + toolResultJson.replace("\\", "\\\\").replace("\"", "\\\"")
                 + "\"}]";
@@ -67,7 +67,7 @@ class TracingToolCallbackTest {
         callback.call(INPUT, context);
 
         assertThat(tokenDuringCall.get()).isEqualTo("token-ana");
-        assertThat(CustomerToken.current()).isEmpty(); // token vrijedi samo za trajanja poziva
+        assertThat(CustomerToken.current()).isEmpty(); // the token is valid only for the duration of the call
     }
 
     @Test

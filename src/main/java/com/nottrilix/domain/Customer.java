@@ -20,18 +20,18 @@ public class Customer {
     @Column(nullable = false, length = 100)
     private String name;
 
-    /** Ujedno korisnicko ime za prijavu u shop. */
+    /** Also the username for logging in to the shop. */
     @Column(nullable = false, unique = true, length = 150)
     private String email;
 
     @Column(length = 30)
     private String phone;
 
-    /** bcrypt; nikad ne izlazi iz servisnog sloja. */
+    /** bcrypt; never leaves the service layer. */
     @Column(name = "password_hash", nullable = false, length = 100)
     private String passwordHash;
 
-    /** Stanje walleta; svaka promjena ima redak u wallet_entries. Mijenja se samo kroz credit/debit. */
+    /** Wallet balance; every change has a row in wallet_entries. Modified only through credit/debit. */
     @Column(name = "wallet_balance_eur", nullable = false, precision = 10, scale = 2)
     private BigDecimal walletBalanceEur = BigDecimal.ZERO;
 

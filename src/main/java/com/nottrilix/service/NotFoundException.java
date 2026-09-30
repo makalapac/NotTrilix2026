@@ -1,6 +1,6 @@
 package com.nottrilix.service;
 
-/** Trazeni entitet ne postoji. API je mapira na HTTP 404. */
+/** The requested entity does not exist. The API maps it to HTTP 404. */
 public class NotFoundException extends RuntimeException {
 
     public NotFoundException(String message) {

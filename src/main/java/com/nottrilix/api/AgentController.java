@@ -23,8 +23,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 
 /**
- * Razgovor s agentom podrske za prijavljenog kupca (uloga CUSTOMER): tekst ili glas unutra, tekst (i govor) van.
- * Agent je zasebna aplikacija; ovi endpointi joj prosljedjuju poruku i kupcev token.
+ * Conversation with the support agent for the logged-in customer (role CUSTOMER): text or voice in, text (and speech) out.
+ * The agent is a separate application; these endpoints forward the message and the customer's token to it.
  */
 @RestController
 @RequestMapping("/api/agent")

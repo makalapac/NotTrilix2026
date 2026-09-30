@@ -15,27 +15,27 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Ono sto aplikacija agenta sama pita sustav (ne model): tko je kupac, ceka li neka radnja potvrdu i sto o pitanju
- * kaze baza znanja. Ide istim putem kao alati modela - MCP poziv s tokenom kupca - pa agent i dalje nema
- * nikakav drugi pristup sustavu.
+ * What the agent application itself asks the system (not the model): who the customer is, whether an action awaits
+ * confirmation, and what the knowledge base says about the question. It takes the same path as the model's tools -
+ * an MCP call with the customer token - so the agent still has no other access to the system.
  */
 @Component
 public class SystemGateway {
 
     private static final Logger log = LoggerFactory.getLogger("AGENT");
 
-    /** Kupac kako ga vidi sustav (prema tokenu). */
+    /** The customer as the system sees them (by token). */
     public record Customer(long id, String name, String email) {
     }
 
-    /** Sustav ne prihvaca token (istekao, odjavljen ili nije kupcev). */
+    /** The system rejects the token (expired, logged out, or not a customer's). */
     public static class InvalidTokenException extends RuntimeException {
         public InvalidTokenException(String message) {
             super(message);
         }
     }
 
-    /** Sustav ne odgovara ili je vratio gresku. */
+    /** The system does not respond or returned an error. */
     public static class SystemUnavailableException extends RuntimeException {
         public SystemUnavailableException(String message, Throwable cause) {
             super(message, cause);
@@ -58,13 +58,13 @@ public class SystemGateway {
                 data.path("email").asString(""));
     }
 
-    /** Sazetak radnje koja u razgovoru ceka potvrdu kupca; null ako nista ne ceka. */
+    /** Summary of the action awaiting the customer's confirmation in the conversation; null if nothing is pending. */
     public String pendingAction(TurnContext turn) {
         JsonNode data = call(turn.customerToken(), "getPendingAction", Map.of(), turn.meta());
         return data.path("pending").asBoolean(false) ? data.path("summary").asString(null) : null;
     }
 
-    /** Odlomci baze znanja najslicniji upitu, kao Spring AI dokumenti (tekst + izvor, odjeljak, slicnost). */
+    /** Knowledge base chunks most similar to the query, as Spring AI documents (text + source, section, score). */
     public List<Document> searchKnowledgeBase(String query, String customerToken, Map<String, Object> meta) {
         JsonNode data = call(customerToken, "searchKnowledgeBase", Map.of("query", query), meta);
         List<Document> documents = new ArrayList<>();
@@ -113,7 +113,7 @@ public class SystemGateway {
         return node.path("data");
     }
 
-    /** HTTP 401/403 od sustava: MCP klijent ga javlja iznimkom, a status je u poruci ili uzroku. */
+    /** HTTP 401/403 from the system: the MCP client raises an exception with the status in the message or the cause. */
     private static boolean isUnauthorized(Throwable e) {
         for (Throwable cause = e; cause != null; cause = cause.getCause() == cause ? null : cause.getCause()) {
             String text = cause.getClass().getSimpleName() + " " + cause.getMessage();

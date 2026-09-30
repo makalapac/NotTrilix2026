@@ -10,8 +10,8 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 
 /**
- * Okvir jednog razgovora kupca s agentom (turnovi su u audit_events). Kupac je obican stupac, ne veza:
- * na zahtjev kupca razgovor se anonimizira (customer_id = null), a redak ostaje radi statistike.
+ * Frame of one customer-agent conversation (turns are in audit_events). The customer is a plain column, not a relation:
+ * at the customer's request the conversation is anonymized (customer_id = null), and the row is kept for statistics.
  */
 @Entity
 @Table(name = "conversations")
@@ -53,7 +53,7 @@ public class Conversation {
         this.turns = 0;
     }
 
-    /** Novi turn: razgovor je opet otvoren (ranija analiza vise nije potpuna). */
+    /** New turn: the conversation is open again (the earlier analysis is no longer complete). */
     public void turn(Instant at, String channel) {
         this.turns++;
         this.lastTurnAt = at;
@@ -69,7 +69,7 @@ public class Conversation {
         }
     }
 
-    /** Brisanje na zahtjev kupca: veza s kupcem nestaje, okvir ostaje bez osobnih podataka. */
+    /** Erasure at the customer's request: the link to the customer disappears, the conversation record remains without personal data. */
     public void erase() {
         this.customerId = null;
         this.status = ConversationStatus.ERASED;

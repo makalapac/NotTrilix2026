@@ -17,9 +17,9 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Bearer tokeni za API: neprozirni slucajni string -> prijavljeni korisnik, u memoriji, s rokom trajanja.
- * Restart aplikacije ponistava sve tokene (za demo dovoljno; produkcija = JWT ili trajna pohrana).
- * Kljuc agenta (nottrilix.mcp.agent-key) je stalni token aplikacije agenta, s ulogom AGENT.
+ * Bearer tokens for the API: opaque random string -> logged-in user, in memory, with an expiry.
+ * An application restart invalidates all tokens (enough for the demo; production = JWT or persistent storage).
+ * The agent key (nottrilix.mcp.agent-key) is the permanent token of the agent application, with the AGENT role.
  */
 @Service
 public class TokenService {

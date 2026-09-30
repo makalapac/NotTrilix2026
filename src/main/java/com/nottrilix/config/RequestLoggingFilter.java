@@ -15,9 +15,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 /**
- * Jedan redak po API i MCP zahtjevu: metoda, putanja, tko (po tokenu), HTTP status i trajanje.
- * Izvrsava se unutar Spring Security lanca (nakon njega u redoslijedu), pa je korisnik vec poznat;
- * zahtjeve koje Security odbije (401/403) logira SecurityConfig.
+ * One line per API and MCP request: method, path, who (by token), HTTP status and duration.
+ * Runs in the Spring Security filter chain, after the authentication filter, so the user is already known;
+ * requests that Security rejects (401/403) are logged by SecurityConfig.
  */
 @Component
 public class RequestLoggingFilter extends OncePerRequestFilter {
@@ -47,7 +47,7 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
     private static String currentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getPrincipal() instanceof AuthUser user) {
-            // bez e-maila u logu (GDPR: logovi su kratkog vijeka, ali ne trebaju identitet)
+            // no e-mail in the log (GDPR: logs are short-lived, but they do not need the identity)
             return user.realm().name().toLowerCase() + "#" + user.id();
         }
         return "anonymous";

@@ -14,8 +14,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Utihnuli razgovori (bez nove poruke dulje od idle-minutes) idu na analizu: po rasporedu svake minute ili rucno
- * kroz admin API. Svaki razgovor je vlastita transakcija (poziv analyze() kroz proxy); greska jednog ne zaustavlja ostale.
+ * Idle conversations (no new message for longer than idle-minutes) go to analysis: on a schedule every minute or manually
+ * through the admin API. Each conversation is its own transaction (analyze() is called through the proxy); one failure does not stop the others.
  */
 @Component
 public class AnalysisScheduler {

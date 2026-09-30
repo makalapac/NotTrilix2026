@@ -1,12 +1,12 @@
 package com.nottrilix.domain;
 
 public enum VoucherStatus {
-    /** Na zalihi, jos nije prodan. */
+    /** In stock, not yet sold. */
     AVAILABLE,
-    /** Prodan kupcu, kod aktivan. */
+    /** Sold to a customer, code active. */
     SOLD,
-    /** Kupac ga je iskoristio kod providera (A1, Steam...). */
+    /** Redeemed by the customer at the provider (A1, Steam...). */
     REDEEMED,
-    /** Blokiran (reklamacija, povrat, sumnja na zlouporabu). */
+    /** Blocked (complaint, refund, suspected abuse). */
     BLOCKED
 }

@@ -7,6 +7,6 @@ import java.util.List;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
-    /** Redoslijed kataloga = redoslijed unosa (A1, HT, Steam, PlayStation, Xbox; rastuce denominacije). */
+    /** Catalog order = insertion order (A1, HT, Steam, PlayStation, Xbox; ascending denominations). */
     List<Product> findAllByOrderByIdAsc();
 }

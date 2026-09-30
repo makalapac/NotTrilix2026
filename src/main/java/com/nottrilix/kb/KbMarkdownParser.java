@@ -10,8 +10,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Markdown dokument baze znanja -> odlomci. Bez vanjskih biblioteka: front matter je "kljuc: vrijednost",
- * a granica odlomka je "## " naslov (konvencija iz docs/PHASE2.md). Preambula prije prvog "##" (H1 + uvod) se ne embedda.
+ * Knowledge base markdown document -> chunks. No external libraries: front matter is "key: value",
+ * and a chunk boundary is a "## " heading (convention from docs/PHASE2.md). The preamble before the first "##" (H1 + intro) is not embedded.
  */
 public final class KbMarkdownParser {
 
@@ -68,7 +68,7 @@ public final class KbMarkdownParser {
         }
     }
 
-    /** "[a, b, c]" -> [a, b, c]; prazno -> []. */
+    /** "[a, b, c]" -> [a, b, c]; empty -> []. */
     private static List<String> parseList(String value) {
         if (value == null || value.isBlank()) {
             return List.of();

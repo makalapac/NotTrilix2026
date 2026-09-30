@@ -1,5 +1,5 @@
 package com.nottrilix.auth;
 
-/** Prijavljeni korisnik (principal u SecurityContextu). {@code login} = e-mail kupca ili korisnicko ime admina. */
+/** The logged-in user (principal in the SecurityContext). {@code login} = customer's e-mail or admin's username. */
 public record AuthUser(Realm realm, Long id, String name, String login) {
 }

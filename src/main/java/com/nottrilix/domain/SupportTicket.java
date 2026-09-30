@@ -14,7 +14,7 @@ import jakarta.persistence.Table;
 
 import java.time.Instant;
 
-/** Prijava kupca podrsci (otvara je support agent). */
+/** Customer's support ticket (opened by the support agent). */
 @Entity
 @Table(name = "support_tickets")
 public class SupportTicket {

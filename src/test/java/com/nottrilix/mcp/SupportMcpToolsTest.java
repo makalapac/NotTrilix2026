@@ -52,8 +52,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * Granica alata preko MCP-a: kupac dolazi iz prijave (tokena), razgovor iz _meta; bez punog koda u izlazu,
- * radnje tek nakon potvrde, odbijanje pravila = rezultat a ne greska.
+ * The tool boundary over MCP: the customer comes from the login (token), the conversation from _meta; no full code
+ * in the output, actions only after confirmation, a rule denial = a result and not an error.
  */
 @ExtendWith(MockitoExtension.class)
 class SupportMcpToolsTest {
@@ -99,7 +99,7 @@ class SupportMcpToolsTest {
                 UsernamePasswordAuthenticationToken.authenticated(user, null, List.of()));
     }
 
-    /** _meta koji salje aplikacija agenta: razgovor i redni broj turna. */
+    /** The _meta the agent application sends: conversation and turn sequence number. */
     private static McpMeta turn(int turn) {
         return new McpMeta(Map.of(McpCall.CONVERSATION_ID, "abc12345", McpCall.TURN, turn, McpCall.CHANNEL, "CHAT"));
     }
@@ -131,7 +131,7 @@ class SupportMcpToolsTest {
         assertThat(views).extracting(SupportMcpTools.PurchaseView::codeLast4).containsOnly("9012");
         assertThat(views).extracting(SupportMcpTools.PurchaseView::refundPossible)
                 .containsExactly(true, false, false);
-        // datum iskoristenja zna samo pruzatelj: popis kupnji upucuje na provjeru umjesto da ga model pogadja
+        // only the provider knows the redemption date: the purchase list points to the check instead of the model guessing
         assertThat(views.get(0).redemptionDate()).isNull();
         assertThat(views.get(2).redemptionDate()).contains("checkVoucherAtProvider");
     }
@@ -148,7 +148,7 @@ class SupportMcpToolsTest {
 
     @Test
     void withoutCustomerTokenToolsDoNothing() {
-        loggedIn(AGENT); // agent se spojio svojim kljucem, ali bez tokena kupca
+        loggedIn(AGENT); // the agent connected with its key, but without a customer token
 
         ToolResult asAgent = tools.getMyPurchases(turn(1));
         SecurityContextHolder.clearContext();

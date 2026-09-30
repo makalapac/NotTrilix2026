@@ -3,8 +3,8 @@ package com.nottrilix.agent;
 import java.util.List;
 
 /**
- * Odgovor agenta + sto je pritom napravio (alati) i na sto se oslonio (odlomci baze znanja).
- * pendingAction: sazetak radnje koja nakon ovog turna ceka potvrdu kupca (null ako nista ne ceka).
+ * The agent's reply + what it did along the way (tools) and what it relied on (knowledge base sections).
+ * pendingAction: summary of the action awaiting customer confirmation after this turn (null if nothing is pending).
  */
 public record AgentChatResponse(String conversationId, String reply, List<AgentToolCall> toolCalls,
                                 List<AgentSource> sources, long durationMs, Integer promptTokens,

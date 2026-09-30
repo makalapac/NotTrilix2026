@@ -37,9 +37,9 @@ import {
 
 type Tab = 'transactions' | 'customers' | 'stock' | 'tickets' | 'conversations' | 'knowledge' | 'audit'
 type Notice = { kind: 'ok' | 'err'; text: string } | null
-/** Izvrši akciju; uspjeh/greška ide u banner na vrhu (401 = natrag na prijavu). */
+/** Runs an action; success/error goes to the banner at the top (401 = back to login). */
 type Runner = (successText: string, action: () => Promise<unknown>) => Promise<void>
-/** Prijavi grešku iz učitavanja (bez poruke o uspjehu). */
+/** Reports a load error (no success message). */
 type Reporter = (e: unknown) => void
 
 const TAB_LABEL: Record<Tab, string> = {
@@ -53,7 +53,7 @@ const TAB_LABEL: Record<Tab, string> = {
 }
 const BRANDS: Brand[] = ['A1', 'HT', 'STEAM', 'SONY', 'XBOX']
 
-/** Prijava (korisničko ime + lozinka) pa admin konzola. */
+/** Login (username + password), then the admin console. */
 export default function App() {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [checking, setChecking] = useState(() => getToken() != null)
@@ -99,7 +99,7 @@ export default function App() {
         try {
           await api.auth.logout()
         } catch {
-          /* token ionako odbacujemo */
+          /* we discard the token anyway */
         }
         signOut()
       }}
@@ -194,7 +194,7 @@ const EVENT_TYPE: Record<AuditEvent['eventType'], string> = {
   PRIVACY: 'privatnost',
 }
 
-/** Audit trag agenta: što je agent radio, za koga, s kojim ishodom. Klik na razgovor filtrira. */
+/** Agent audit trail: what the agent did, for whom, with what outcome. Clicking a conversation filters. */
 function AuditTab({ run, report }: { run: Runner; report: Reporter }) {
   const [rows, setRows] = useState<AuditEvent[]>([])
   const [conversationId, setConversationId] = useState('')
@@ -294,7 +294,7 @@ const KB_EXAMPLES = [
   'radno vrijeme podrške',
 ]
 
-/** Baza znanja (RAG): semantička pretraga odlomaka + stanje + ponovni ingest. */
+/** Knowledge base (RAG): semantic search over sections + status + re-ingest. */
 function KnowledgeTab({ run, report }: { run: Runner; report: Reporter }) {
   const [status, setStatus] = useState<KbStatus | null>(null)
   const [query, setQuery] = useState('')

@@ -1,14 +1,14 @@
 package com.nottrilix.domain;
 
 public enum AuditEventType {
-    /** Agent je pozvao alat (tool). */
+    /** The agent called a tool. */
     TOOL_CALL,
-    /** Dohvat odlomaka iz baze znanja za pitanje kupca (RAG). */
+    /** Retrieval of knowledge base sections for the customer's question (RAG). */
     KB_RETRIEVAL,
-    /** Jedan turn razgovora: poruka kupca i odgovor agenta. */
+    /** One conversation turn: the customer's message and the agent's reply. */
     CHAT_TURN,
-    /** Analiza razgovora i ucenje iz nje (back-office, bez kupca u razgovoru). */
+    /** Conversation analysis and learning from it (back-office, no customer in the conversation). */
     ANALYSIS,
-    /** Privatnost: privola, izvoz podataka, brisanje na zahtjev, retencija. */
+    /** Privacy: consent, data export, erasure on request, retention. */
     PRIVACY
 }

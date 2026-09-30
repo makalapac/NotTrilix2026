@@ -1,11 +1,11 @@
 package com.nottrilix.domain;
 
-/** Prodajni kanal kroz koji je kupnja obavljena. */
+/** Sales channel through which the purchase was made. */
 public enum Channel {
     /** Web shop. */
     WEB,
-    /** Kiosk / prodajno mjesto. */
+    /** Kiosk / point of sale. */
     POS,
-    /** Agent podrske u ime kupca (chat; kasnije glas i telefon). */
+    /** Support agent on behalf of the customer (chat; later voice and phone). */
     AGENT
 }

@@ -1,5 +1,5 @@
 package com.nottrilix.api.dto;
 
-/** Token ide u header {@code Authorization: Bearer <token>} na svakom sljedecem zahtjevu. */
+/** The token goes in the {@code Authorization: Bearer <token>} header on every subsequent request. */
 public record LoginResponse(String token, AuthUserDto user) {
 }

@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-MCP bez agenta (Faza 4): izravni pozivi MCP servera sustava. MCP preko HTTP-a bez sesije je obican
-POST /mcp s JSON-RPC porukom; tko zove govori zaglavlje Authorization, a razgovor i turn polje _meta.
+MCP without the agent (Phase 4): direct calls to the system's MCP server. MCP over sessionless HTTP is a plain
+POST /mcp with a JSON-RPC message; the Authorization header says who is calling, the _meta field carries the conversation and turn.
 
-  .\\run-phase-4.ps1 -Reset                  # svjeza baza (pozivi ocekuju seed podatke)
+  .\\run-phase-4.ps1 -Reset                  # fresh database (the calls expect the seed data)
   $env:PYTHONIOENCODING = "utf-8"
-  python scripts\\mcp_direct.py              # popis alata + pozivi
-  python scripts\\mcp_direct.py list         # samo popis alata
-  python scripts\\mcp_direct.py calls        # samo pozivi
+  python scripts\\mcp_direct.py              # tool list + calls
+  python scripts\\mcp_direct.py list         # tool list only
+  python scripts\\mcp_direct.py calls        # calls only
 
-Pokazuje granice sustava neovisno o agentu i modelu: bez tokena nema pristupa, s kljucem agenta vidi se samo
-popis alata, kupac dolazi iz tokena, radnja se izvrsava tek u turnu nakon prijedloga, tudja radnja se ne moze
-potvrditi. Treba samo Python 3. Pozivi mijenjaju podatke (Marko kupi HT bon 10 EUR).
+Shows the system's boundaries independently of the agent and the model: no token means no access, with the agent key only
+the tool list is visible, the customer comes from the token, an action is executed only in the turn after the proposal, and
+someone else's action cannot be confirmed. Needs only Python 3. The calls change data (Marko buys an HT 10 EUR voucher).
 """
 import json
 import sys
@@ -19,7 +19,7 @@ import urllib.error
 import urllib.request
 
 BASE = "http://localhost:8080"
-AGENT_KEY = "nottrilix-demo-agent-key"  # demo vrijednost iz application.yml (nottrilix.mcp.agent-key)
+AGENT_KEY = "nottrilix-demo-agent-key"  # demo value from application.yml (nottrilix.mcp.agent-key)
 _id = 0
 
 

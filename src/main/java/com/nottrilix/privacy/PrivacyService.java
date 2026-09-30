@@ -35,15 +35,15 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Prava kupca nad vlastitim podacima (GDPR): privola (cl. 7), pristup i prenosivost (cl. 15, 20), brisanje (cl. 17).
- * Sto se cuva zbog ugovora i racunovodstva (kupnje, wallet, bonovi) ostaje; sto je nastalo u razgovoru brise se.
+ * The customer's rights over their own data (GDPR): consent (Art. 7), access and portability (Art. 15, 20), erasure (Art. 17).
+ * What is kept for contractual and accounting reasons (purchases, wallet, vouchers) stays; what arose in conversation is erased.
  */
 @Service
 public class PrivacyService {
 
     private static final Logger log = LoggerFactory.getLogger("PRIVACY");
     private static final String CHANNEL = "SYSTEM";
-    /** Sadrzaj razgovora: to se brise na zahtjev kupca i po isteku roka. */
+    /** Conversation content: this is erased on the customer's request and when the retention period expires. */
     static final Set<AuditEventType> CONVERSATION_CONTENT = Set.of(AuditEventType.CHAT_TURN, AuditEventType.KB_RETRIEVAL);
 
     private final ConsentRepository consents;
@@ -76,7 +76,7 @@ public class PrivacyService {
         this.clock = clock;
     }
 
-    // ---- privola ----
+    // ---- consent ----
 
     @Transactional(readOnly = true)
     public boolean hasConsent(long customerId, ConsentType type) {
@@ -85,7 +85,7 @@ public class PrivacyService {
                 .isPresent();
     }
 
-    /** Glasovni razgovor bez privole nije moguc. */
+    /** A voice conversation without consent is not possible. */
     public void requireConsent(long customerId, ConsentType type) {
         if (!hasConsent(customerId, type)) {
             throw new ConsentRequiredException("Za glasovni razgovor potrebna je privola kupca (verzija "
@@ -119,7 +119,7 @@ public class PrivacyService {
                 });
     }
 
-    // ---- pregled, izvoz, brisanje ----
+    // ---- overview, export, erasure ----
 
     @Transactional(readOnly = true)
     public PrivacyOverview overview(AuthUser customer) {
@@ -130,7 +130,7 @@ public class PrivacyService {
                 conversations.findByCustomerIdOrderByLastTurnAtDesc(customer.id()).size());
     }
 
-    /** Pravo pristupa i prenosivosti: sve o kupcu u jednom JSON-u. Izvoz se biljezi u audit. */
+    /** Right of access and portability: everything about the customer in a single JSON. The export is recorded in the audit trail. */
     @Transactional(readOnly = true)
     public CustomerDataExport export(AuthUser customer) {
         long id = customer.id();
@@ -157,8 +157,8 @@ public class PrivacyService {
     }
 
     /**
-     * Pravo na brisanje (cl. 17) za ono sto nije potrebno za ugovor: poruke razgovora se brisu, ostali tragovi
-     * (pozivi alata, analize) ostaju bez veze s kupcem. Kupnje, wallet i bonovi ostaju (ugovor, racunovodstvo).
+     * Right to erasure (Art. 17) for what is not needed for the contract: conversation messages are deleted, the other traces
+     * (tool calls, analyses) remain without a link to the customer. Purchases, wallet and vouchers stay (contract, accounting).
      */
     @Transactional
     public EraseResult eraseConversations(AuthUser customer) {
@@ -170,7 +170,7 @@ public class PrivacyService {
         List<ConversationAnalysis> ownAnalyses = analyses.findByCustomerId(id);
         ownAnalyses.forEach(ConversationAnalysis::anonymize);
         EraseResult result = new EraseResult(deletedMessages, anonymizedEvents, own.size(), ownAnalyses.size());
-        // sam zahtjev za brisanje ostaje zapisan uz kupca: dokaz da je proveden
+        // the erasure request itself stays recorded against the customer: proof that it was carried out
         audit.record(context(customer), AuditEventType.PRIVACY, "erase", null, AuditOutcome.OK,
                 "%d poruka obrisano, %d događaja anonimizirano, %d razgovora, %d analiza".formatted(
                         deletedMessages, anonymizedEvents, own.size(), ownAnalyses.size()), null);

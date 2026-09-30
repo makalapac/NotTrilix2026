@@ -7,7 +7,7 @@ import com.nottrilix.domain.Sentiment;
 import java.time.Instant;
 import java.util.List;
 
-/** Analiza jednog razgovora (sto je model zakljucio iz pseudonimiziranog transkripta). */
+/** Analysis of one conversation (what the model concluded from the pseudonymized transcript). */
 public record AnalysisDto(Long id, String conversationId, Instant createdAt, String model, AnalysisCategory category,
                           AnalysisOutcome outcome, Sentiment sentiment, int qualityScore, boolean rulesFollowed,
                           String summary, List<String> knowledgeGaps, String improvementNotes, int turns,

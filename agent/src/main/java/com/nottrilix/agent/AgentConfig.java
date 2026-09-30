@@ -27,16 +27,16 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Agent = Spring AI ChatClient s cetiri sastojka, isto kao u Fazi 3:
- * system prompt (po pozivu, s podacima kupca) + memorija razgovora + RAG nad bazom znanja + alati.
- * Razlika je odakle stizu alati i znanje: vise nisu u istom procesu nego ih sustav nudi preko MCP-a.
+ * Agent = Spring AI ChatClient with four ingredients, just as in Phase 3:
+ * system prompt (per call, with customer data) + conversation memory + RAG over the knowledge base + tools.
+ * The difference is where tools and knowledge come from: no longer the same process, the system serves them over MCP.
  */
 @Configuration
 public class AgentConfig {
 
     private static final Logger log = LoggerFactory.getLogger("AGENT");
 
-    /** Kako se odlomci baze znanja dodaju pitanju kupca. Mora sadrzavati query i context. */
+    /** How knowledge base sections are added to the customer's question. Must contain query and context. */
     static final String RAG_TEMPLATE = """
             {query}
 
@@ -50,7 +50,7 @@ public class AgentConfig {
             ponude dodatne pomoći i bez poziva kupcu da se ponovno javi.
             """;
 
-    /** Jedan izvor vremena (testovi ubace fiksni Clock). */
+    /** A single source of time (tests inject a fixed Clock). */
     @Bean
     Clock clock() {
         return Clock.system(ZoneId.of("Europe/Zagreb"));
@@ -64,7 +64,7 @@ public class AgentConfig {
                 .build();
     }
 
-    /** Baza znanja je u sustavu: dohvat je MCP poziv u ime kupca, s kontekstom razgovora. */
+    /** The knowledge base is in the system: retrieval is an MCP call for the customer, with conversation context. */
     @Bean
     DocumentRetriever knowledgeBaseRetriever(SystemGateway system) {
         return (Query query) -> {
@@ -92,14 +92,14 @@ public class AgentConfig {
                 .defaultAdvisors(
                         MessageChatMemoryAdvisor.builder(chatMemory).build(),
                         RetrievalAugmentationAdvisor.builder()
-                                // Prije petlje poziva alata: baza znanja se pita jednom po turnu. Sa zadanim
-                                // redoslijedom (0) advisor bi bio unutar petlje i trazio ponovno pri svakom
-                                // pozivu modela u istom turnu.
+                                // Before the tool-calling loop: the knowledge base is queried once per turn. With
+                                // the default order (0) the advisor would sit inside the loop and search again on
+                                // every model call within the same turn.
                                 .order(ToolCallingAdvisor.DEFAULT_ORDER - 50)
                                 .documentRetriever(knowledgeBase)
                                 .queryAugmenter(ContextualQueryAugmenter.builder()
                                         .promptTemplate(new PromptTemplate(RAG_TEMPLATE))
-                                        .allowEmptyContext(true) // bez odlomaka pitanje ide modelu kakvo jest
+                                        .allowEmptyContext(true) // no sections: the question goes to the model as is
                                         .documentFormatter(documents -> documents.stream()
                                                 .map(Document::getText)
                                                 .collect(Collectors.joining("\n\n")))

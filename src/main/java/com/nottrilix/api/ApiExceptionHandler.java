@@ -22,7 +22,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 import java.util.stream.Collectors;
 
-/** Greske -> JSON {error, message}. Poslovna pravila su vec logirana u servisu (WARN). */
+/** Errors -> JSON {error, message}. Business rule violations are already logged in the service (WARN). */
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
@@ -34,7 +34,7 @@ public class ApiExceptionHandler {
         return new ErrorResponse(e.code(), e.getMessage());
     }
 
-    /** Neuspjela prijava (login endpointi); pokusaj je vec logiran u AuthenticationProvideru. */
+    /** Failed login (login endpoints); the attempt is already logged in the AuthenticationProvider. */
     @ExceptionHandler(AuthenticationException.class)
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public ErrorResponse authentication(AuthenticationException e) {
@@ -96,7 +96,7 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> other(Exception e) {
-        // Springove vlastite HTTP greske (404 resurs, 405 metoda...) zadrze svoj status
+        // Spring's own HTTP errors (404 resource, 405 method...) keep their status
         if (e instanceof org.springframework.web.ErrorResponse spring) {
             HttpStatusCode status = spring.getStatusCode();
             log.warn("HTTP {} - {}", status.value(), e.getMessage());

@@ -32,7 +32,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/** Svaki MCP poziv alata ostavlja trag u sustavu: tko (iz tokena), koji razgovor (_meta), sto i s kojim ishodom. */
+/** Every MCP tool call leaves a trail in the system: who (from the token), which conversation (_meta), what and outcome. */
 @ExtendWith(MockitoExtension.class)
 class AuditedToolHandlerTest {
 

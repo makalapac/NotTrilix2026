@@ -14,13 +14,13 @@ import java.time.ZoneId;
 @Configuration
 public class AppConfig {
 
-    /** Jedan izvor vremena za servise (testovi ubace fiksni Clock). */
+    /** A single time source for the services (tests inject a fixed Clock). */
     @Bean
     Clock clock() {
         return Clock.system(ZoneId.of("Europe/Zagreb"));
     }
 
-    /** Swagger: gumb "Authorize" prima bearer token dobiven na /api/auth/.../login. */
+    /** Swagger: the "Authorize" button takes the bearer token obtained at /api/auth/.../login. */
     @Bean
     OpenAPI openApi() {
         return new OpenAPI()

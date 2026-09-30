@@ -4,9 +4,9 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 /**
- * Token kupca u cije ime agent upravo zove sustav. Vezan je uz poziv (ScopedValue), ne uz aplikaciju:
- * MCP klijent je jedan, a kupaca je mnogo, pa svaki MCP zahtjev nosi token onoga za koga se radi.
- * Model token nikad ne vidi.
+ * Token of the customer on whose behalf the agent is currently calling the system. It is bound to the call
+ * (ScopedValue), not to the application: there is one MCP client and many customers, so every MCP request carries
+ * the token of the one it is for. The model never sees the token.
  */
 public final class CustomerToken {
 
@@ -15,7 +15,7 @@ public final class CustomerToken {
     private CustomerToken() {
     }
 
-    /** Izvrsi radnju u ime kupca s ovim tokenom (bez tokena = u ime agenta). */
+    /** Run the action on behalf of the customer with this token (no token = on behalf of the agent). */
     public static <T> T callWith(String token, Supplier<T> action) {
         if (token == null || token.isBlank()) {
             return action.get();
@@ -23,7 +23,7 @@ public final class CustomerToken {
         return ScopedValue.where(CURRENT, token).call(action::get);
     }
 
-    /** Token kupca za poziv koji je u tijeku; prazno ako agent zove u svoje ime (spajanje, popis alata). */
+    /** Customer token for the call in progress; empty if the agent calls on its own behalf (connect, tool list). */
     public static Optional<String> current() {
         return CURRENT.isBound() ? Optional.of(CURRENT.get()) : Optional.empty();
     }

@@ -1,6 +1,6 @@
 package com.nottrilix.domain;
 
-/** Raspolozenje kupca u razgovoru. */
+/** The customer's mood in the conversation. */
 public enum Sentiment {
     POZITIVNO,
     NEUTRALNO,

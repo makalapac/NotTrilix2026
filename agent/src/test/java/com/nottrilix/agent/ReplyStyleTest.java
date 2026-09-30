@@ -6,7 +6,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Uklanja se samo opcenita zavrsna fraza; sadrzajne recenice (sljedeci korak, pitanje) ostaju. */
+/** Only the generic closing phrase is removed; meaningful sentences (next step, question) stay. */
 class ReplyStyleTest {
 
     private static final String CONTENT = "Bon HT-5-001 je uspješno blokiran. Blokada sama po sebi ne vraća novac.";

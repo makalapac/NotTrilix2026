@@ -1,6 +1,6 @@
 package com.nottrilix.domain;
 
-/** Kako je razgovor zavrsio za kupca. */
+/** How the conversation ended for the customer. */
 public enum AnalysisOutcome {
     RIJESENO,
     NERIJESENO,

@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/** Audit trag agenta za podrsku (uloga ADMIN). */
+/** Agent audit trail for support (role ADMIN). */
 @RestController
 @RequestMapping("/api/admin/audit")
 @Tag(name = "Audit", description = "Audit trag agenta: pozivi alata, dohvati iz baze znanja, turnovi razgovora")

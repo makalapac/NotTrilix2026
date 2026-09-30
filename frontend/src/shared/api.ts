@@ -31,7 +31,7 @@ import type {
   Wallet,
 } from './types'
 
-/** Greška iz API-ja: HTTP status + strojni kod (npr. OUT_OF_STOCK, UNAUTHORIZED) + poruka za korisnika. */
+/** API error: HTTP status + machine code (e.g. OUT_OF_STOCK, UNAUTHORIZED) + message for the user. */
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -43,7 +43,7 @@ export class ApiError extends Error {
   }
 }
 
-// Bearer token u localStorage; svaka aplikacija (shop / admin) ima svoj ključ pa prijave ne smetaju jedna drugoj.
+// Bearer token in localStorage; each app (shop / admin) has its own key so the logins do not interfere with each other.
 let storageKey = 'nottrilix.token'
 
 export function configureAuth(key: string) {
@@ -63,7 +63,7 @@ export function setToken(token: string | null) {
     if (token) localStorage.setItem(storageKey, token)
     else localStorage.removeItem(storageKey)
   } catch {
-    /* localStorage nedostupan - token živi samo do reloada */
+    /* localStorage unavailable - the token lives only until reload */
   }
 }
 
@@ -85,7 +85,7 @@ function post<T>(path: string, payload?: unknown): Promise<T> {
   return request<T>(path, { method: 'POST', body: payload === undefined ? undefined : JSON.stringify(payload) })
 }
 
-/** Multipart (snimka glasa): bez Content-Type zaglavlja, preglednik ga slaže sam. */
+/** Multipart (voice recording): no Content-Type header, the browser builds it itself. */
 async function postForm<T>(path: string, form: FormData): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json' }
   const token = getToken()
@@ -130,7 +130,7 @@ export const api = {
     return postForm<VoiceTurnResponse>('/api/agent/voice', form)
   },
 
-  /** GDPR: privole, pregled, izvoz i brisanje podataka prijavljenog kupca. */
+  /** GDPR: consents, overview, export and erasure of the logged-in customer's data. */
   privacy: {
     overview: () => request<PrivacyOverview>('/api/shop/privacy'),
     consent: (type: ConsentType) => post<Consent>('/api/shop/privacy/consent', { type }),
@@ -189,5 +189,5 @@ export const api = {
   },
 }
 
-/** 401 = token istekao / ne vrijedi (npr. restart servera) -> aplikacija vraća korisnika na prijavu. */
+/** 401 = token expired / invalid (e.g. server restart) -> the app sends the user back to login. */
 export const isUnauthorized = (e: unknown) => e instanceof ApiError && e.status === 401

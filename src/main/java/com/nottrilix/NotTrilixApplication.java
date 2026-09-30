@@ -7,7 +7,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @ConfigurationPropertiesScan
-@EnableScheduling // Faza 5: analiza utihnulih razgovora i retencija podataka po rasporedu
+@EnableScheduling // Phase 5: analysis of idle conversations and data retention on a schedule
 public class NotTrilixApplication {
 
     public static void main(String[] args) {

@@ -12,7 +12,7 @@ interface Props {
   onLogin: (identity: string, password: string) => Promise<void>
 }
 
-/** Zajednički ekran prijave: shop (e-mail) i admin (korisničko ime). */
+/** Shared login screen: shop (e-mail) and admin (username). */
 export function LoginPage({ title, subtitle, identityLabel, identityType, identityPlaceholder, hint, onLogin }: Props) {
   const [identity, setIdentity] = useState('')
   const [password, setPassword] = useState('')

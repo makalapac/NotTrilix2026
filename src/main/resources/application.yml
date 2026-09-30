@@ -3,33 +3,33 @@ spring:
     name: nottrilix-2026
   ai:
     openai:
-      # Embeddinzi za bazu znanja. Kljuc iz okoline (skripta ga cita iz openai.key);
-      # bez kljuca app radi, a baza znanja javlja da nije dostupna.
+      # Embeddings for the knowledge base. Key from the environment (the script reads it from openai.key);
+      # without a key the app still runs, and the knowledge base reports itself unavailable.
       api-key: ${OPENAI_API_KEY:not-set}
       embedding:
         options:
           model: text-embedding-3-small
       chat:
         options:
-          model: gpt-4o           # Faza 5: back-office analiza razgovora (razgovor s kupcem vodi zasebna aplikacija agenta)
+          model: gpt-4o           # Phase 5: back-office conversation analysis (the customer conversation is run by the separate agent app)
           temperature: 0.1
     vectorstore:
       pgvector:
-        initialize-schema: false  # tablicu vector_store drzi Flyway (V3), ne Spring AI
+        initialize-schema: false  # the vector_store table is owned by Flyway (V3), not Spring AI
         dimensions: 1536
         index-type: HNSW
         distance-type: COSINE_DISTANCE
-    # Faza 4: sustav je MCP server. Alati = SupportMcpTools (registrira ih McpServerConfig, svaki s auditom).
+    # Phase 4: the system is an MCP server. Tools = SupportMcpTools (registered by McpServerConfig, each with audit).
     mcp:
       server:
         name: nottrilix-system
         version: 0.4.0
         type: SYNC
-        protocol: STATELESS       # HTTP bez sesije: svaki MCP poziv je jedan POST /mcp s tokenom u zaglavlju
+        protocol: STATELESS       # sessionless HTTP: every MCP call is one POST /mcp with the token in the header
         streamable-http:
           mcp-endpoint: /mcp
         annotation-scanner:
-          enabled: false          # alate ne registrira skener nego McpServerConfig (da svaki dobije audit)
+          enabled: false          # tools are registered by McpServerConfig, not the scanner (so each gets audit)
         instructions: >-
           NotTrilix: prodaja bonova (A1, HT, Steam, PlayStation, Xbox). Alati rade u ime prijavljenog kupca
           (Authorization: Bearer token kupca). Kupnja, povrat i blokada se prvo predlazu, a izvrsavaju tek
@@ -41,17 +41,17 @@ spring:
     password: nottrilix
   jpa:
     hibernate:
-      ddl-auto: validate      # shemu drzi Flyway (db/migration), JPA je samo provjerava
+      ddl-auto: validate      # the schema is owned by Flyway (db/migration), JPA only validates it
     open-in-view: false
   flyway:
     enabled: true
   servlet:
     multipart:
-      max-file-size: 10MB       # glasovna poruka iz preglednika
+      max-file-size: 10MB       # voice message from the browser
       max-request-size: 11MB
   output:
     ansi:
-      enabled: always         # boje u konzoli (Windows Terminal / PowerShell); 'never' ako smeta
+      enabled: always         # console colors (Windows Terminal / PowerShell); 'never' if they get in the way
 
 server:
   port: 8080
@@ -62,45 +62,45 @@ springdoc:
     operations-sorter: alpha
     tags-sorter: alpha
 
-# Poslovna pravila (koristi ih servisni sloj)
+# Business rules (used by the service layer)
 nottrilix:
   rules:
-    daily-limit-eur: 150      # max iznos kupnji po kupcu po danu
-    refund-window-days: 14    # povrat moguc samo unutar N dana od kupnje
-    max-top-up-eur: 500       # najveca pojedinacna uplata na wallet
+    daily-limit-eur: 150      # max purchase amount per customer per day
+    refund-window-days: 14    # refund possible only within N days of purchase
+    max-top-up-eur: 500       # largest single wallet top-up
   provider:
-    max-latency-ms: 400       # simulirana latencija fiktivnog pruzatelja pri provjeri bona (0 = bez cekanja)
-  # Baza znanja (RAG): classpath:kb/*.md -> odjeljci -> embeddinzi -> vector_store
+    max-latency-ms: 400       # simulated latency of the fictional provider on voucher check (0 = no wait)
+  # Knowledge base (RAG): classpath:kb/*.md -> sections -> embeddings -> vector_store
   kb:
-    ingest-on-startup: true   # idempotentno: nepromijenjena datoteka se preskace (hash u metapodacima)
-    top-k: 3                  # koliko odlomaka vraca pretraga
-    similarity-threshold: 0.35  # 0..1 (1 = identicno); ispod praga odlomak se ne vraca (text-embedding-3-small: relevantno ~0.4-0.7, sum ~0.3)
-  # MCP server (Faza 4): granica sustava prema agentu i drugim MCP klijentima
+    ingest-on-startup: true   # idempotent: an unchanged file is skipped (hash in metadata)
+    top-k: 3                  # how many sections a search returns
+    similarity-threshold: 0.35  # 0..1 (1 = identical); below the threshold a section is not returned (text-embedding-3-small: relevant ~0.4-0.7, noise ~0.3)
+  # MCP server (Phase 4): the system's boundary towards the agent and other MCP clients
   mcp:
-    # Kljuc kojim se aplikacija agenta predstavlja pri spajanju. Demo vrijednost; ista mora biti kod agenta.
+    # Key the agent app identifies itself with when connecting. Demo value; the agent must have the same one.
     agent-key: ${NOTTRILIX_AGENT_KEY:nottrilix-demo-agent-key}
-    confirmation-ttl-minutes: 10  # koliko dugo vrijedi prijedlog kupnje/povrata/blokade koji ceka potvrdu
-  # Aplikacija agenta (Faza 4): shop joj prosljedjuje poruke kupca (POST /api/agent/chat i /voice -> agent)
+    confirmation-ttl-minutes: 10  # how long a proposed purchase/refund/block awaiting confirmation stays valid
+  # Agent app (Phase 4): the shop forwards customer messages to it (POST /api/agent/chat and /voice -> agent)
   agent:
     url: ${NOTTRILIX_AGENT_URL:http://localhost:8090}
     connect-timeout-seconds: 3
-    read-timeout-seconds: 90      # turn s vise poziva alata moze trajati desetak sekundi
-  # Post-analiza razgovora (Faza 5): utihnuli razgovori -> pseudonimizirani transkript -> model -> nalaz + prijedlozi znanja
+    read-timeout-seconds: 90      # a turn with several tool calls can take around ten seconds
+  # Conversation post-analysis (Phase 5): idle conversations -> pseudonymized transcript -> model -> findings + knowledge suggestions
   analysis:
     enabled: true
-    idle-minutes: 2               # razgovor bez nove poruke toliko minuta smatra se zavrsenim
-    poll-seconds: 60              # koliko cesto raspored trazi utihnule razgovore
+    idle-minutes: 2               # a conversation with no new message for this many minutes is considered finished
+    poll-seconds: 60              # how often the schedule looks for idle conversations
     max-suggestions-per-conversation: 3
-  # Privatnost (GDPR): rokovi cuvanja i verzija teksta privole za glas
+  # Privacy (GDPR): retention periods and the voice consent text version
   privacy:
-    conversation-retention-days: 30   # poruke razgovora i veza razgovora s kupcem
-    analysis-retention-days: 365      # nakon toga analize ostaju samo anonimne (statistika)
-    voice-consent-version: "2026-09"  # nova verzija teksta = kupac privolu daje ponovno
-    retention-cron: "0 15 3 * * *"    # jednom dnevno (i pri svakom startu)
+    conversation-retention-days: 30   # conversation messages and the conversation's link to the customer
+    analysis-retention-days: 365      # after that, analyses remain only anonymous (statistics)
+    voice-consent-version: "2026-09"  # new text version = the customer gives consent again
+    retention-cron: "0 15 3 * * *"    # once a day (and on every startup)
 
 logging:
   level:
     com.nottrilix: DEBUG
-    org.hibernate.SQL: INFO   # DEBUG => ispis svakog SQL-a
+    org.hibernate.SQL: INFO   # DEBUG => prints every SQL statement
     org.flywaydb: INFO
     org.springframework.ai: INFO

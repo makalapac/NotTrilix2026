@@ -141,7 +141,7 @@ td.num, th.num { text-align: right; }
 .resolve { display: flex; flex-direction: column; gap: 6px; min-width: 240px; }
 .resolve textarea { padding: 6px 8px; border: 1px solid var(--line); border-radius: 7px; }
 
-/* prijava */
+/* login */
 .login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
 .login { width: min(400px, 100%); border-left-width: 1px; padding: 26px 28px 24px; }
 .login h1 { margin: 0 0 4px; font-size: 22px; }
@@ -164,13 +164,13 @@ td.num, th.num { text-align: right; }
 .subtable { background: #f8fafc; }
 .subtable table { font-size: 13px; }
 
-/* provjera bona kod pružatelja */
+/* voucher check at the provider */
 .badge.active { background: #ecfdf5; color: #047857; }
 .badge.not_activated { background: #f3f4f6; color: #374151; }
 .check-result { margin-top: 6px; padding: 6px 8px; border-radius: 7px; background: #f8fafc; border: 1px solid var(--line); font-size: 12.5px; line-height: 1.5; max-width: 320px; }
 .check-result .meta { color: var(--muted); font-size: 11.5px; }
 
-/* baza znanja (RAG) */
+/* knowledge base (RAG) */
 .kb-search { display: flex; gap: 8px; margin: 12px 0; }
 .kb-search input { flex: 1; padding: 9px 11px; border: 1px solid var(--line); border-radius: 7px; font-size: 15px; }
 .chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0 14px; }
@@ -182,14 +182,14 @@ td.num, th.num { text-align: right; }
 .hit .content { white-space: pre-wrap; font-size: 14px; line-height: 1.5; margin-top: 8px; }
 .kb-status { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; font-size: 14px; margin-bottom: 6px; }
 
-/* agent: ishodi alata (chat + audit) */
+/* agent: tool outcomes (chat + audit) */
 .badge.outcome-ok { background: #ecfdf5; color: #047857; }
 .badge.outcome-denied { background: #fef2f2; color: var(--danger); }
 .badge.outcome-confirmation_required { background: #fff7ed; color: #b45309; }
 .badge.outcome-error { background: #fef2f2; color: var(--danger); }
 .audit-text { max-width: 340px; font-size: 12.5px; word-break: break-word; }
 
-/* chat s agentom */
+/* chat with the agent */
 .chat-fab { position: fixed; right: 22px; bottom: 22px; z-index: 40; padding: 12px 20px; border: none; border-radius: 999px; background: var(--primary); color: #fff; font-weight: 600; font-size: 15px; box-shadow: 0 8px 24px rgba(15, 118, 110, 0.35); }
 .chat-fab:hover { background: var(--primary-dark); }
 .chat-panel { position: fixed; right: 22px; bottom: 22px; z-index: 40; width: min(400px, calc(100vw - 24px)); height: min(620px, calc(100vh - 44px)); display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25); overflow: hidden; }
@@ -213,7 +213,7 @@ td.num, th.num { text-align: right; }
 .chat-input { display: flex; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--line); background: #fff; }
 .chat-input input { flex: 1; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; }
 
-/* modalni dijalog (potvrda kupnje, nadoplata) */
+/* modal dialog (purchase confirmation, top-up) */
 .modal-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); display: grid; place-items: center; z-index: 50; padding: 16px; }
 .modal { background: var(--surface); border-radius: var(--radius); padding: 22px 24px; width: min(460px, 100%); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25); }
 .modal h3 { margin: 0 0 8px; font-size: 18px; }
@@ -223,13 +223,13 @@ td.num, th.num { text-align: right; }
 .modal .actions { justify-content: flex-end; margin-top: 16px; }
 .modal .banner { margin: 12px 0 0; }
 
-/* prijavljeni korisnik u zaglavlju */
+/* logged-in user in the header */
 .userbox { display: flex; align-items: center; gap: 12px; font-size: 14px; }
 .userbox .who { opacity: 0.9; }
 .btn.ghost { background: transparent; border-color: rgba(255, 255, 255, 0.45); color: #fff; }
 .btn.ghost:hover:not(:disabled) { border-color: #fff; background: rgba(255, 255, 255, 0.1); }
 
-/* Faza 5: glas, privatnost, razgovori i analiza, samoučenje */
+/* Phase 5: voice, privacy, conversations and analysis, self-learning */
 .privacy-note { margin-top: 4px; font-size: 11.5px; color: var(--muted); }
 .voice-mark { opacity: 0.8; }
 .replay { align-self: flex-start; margin-top: 2px; padding: 2px 8px; font-size: 12px; color: var(--primary); }

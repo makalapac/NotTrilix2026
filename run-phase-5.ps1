@@ -1,20 +1,20 @@
 <#
-  NotTrilix 2026 - Faza 5 (glas, analiza razgovora, samoucenje, GDPR): isti sustav + agent kao u Fazi 4, uz:
-    - glasovni kanal u agentu (STT OpenAI, TTS ElevenLabs ako postoji elevenlabs.key, inace OpenAI)
-    - post-analizu razgovora u sustavu (pseudonimizirani transkript -> model -> nalaz + prijedlozi za bazu znanja)
-    - privolu za glas, izvoz i brisanje podataka kupca, retenciju po rasporedu
+  NotTrilix 2026 - Phase 5 (voice, conversation analysis, self-learning, GDPR): the same system + agent as in Phase 4, plus:
+    - a voice channel in the agent (STT OpenAI, TTS ElevenLabs if elevenlabs.key exists, otherwise OpenAI)
+    - conversation post-analysis in the system (pseudonymized transcript -> model -> findings + knowledge base suggestions)
+    - voice consent, export and erasure of customer data, scheduled retention
 
-  Trazi OpenAI kljuc (openai.key ili $env:OPENAI_API_KEY). ElevenLabs kljuc (elevenlabs.key) je opcionalan.
-  Zatim poziva run-phase-1.ps1 -WithAgent.
+  Requires an OpenAI key (openai.key or $env:OPENAI_API_KEY). The ElevenLabs key (elevenlabs.key) is optional.
+  Then calls run-phase-1.ps1 -WithAgent.
 
-  .\run-phase-5.ps1            build + start (sustav, pa agent; oba u ovom prozoru, Ctrl+C gasi oba)
-  .\run-phase-5.ps1 -NoBuild   preskoci build
-  .\run-phase-5.ps1 -Reset     obrisi bazu (svjezi seed + ponovni ingest baze znanja) pa start
-  .\run-phase-5.ps1 -Stop      ugasi PostgreSQL container
+  .\run-phase-5.ps1            build + start (system, then agent; both in this window, Ctrl+C stops both)
+  .\run-phase-5.ps1 -NoBuild   skip the build
+  .\run-phase-5.ps1 -Reset     drop the database (fresh seed + knowledge base re-ingest), then start
+  .\run-phase-5.ps1 -Stop      stop the PostgreSQL container
 
-  Shop:   http://localhost:8080/        (Chat s podrskom: tekst ili gumb s mikrofonom; Privatnost: izvoz, brisanje)
-  Admin:  http://localhost:8080/admin/  (tab Razgovori: analiza; tab Znanje: prijedlozi iz razgovora; tab Audit)
-  Proba:  python scripts\phase5_e2e.py  (glas, privatnost, analiza, ucenje)
+  Shop:   http://localhost:8080/        (Chat s podrskom: text or the microphone button; Privatnost: export, erasure)
+  Admin:  http://localhost:8080/admin/  (Razgovori tab: analysis; Znanje tab: suggestions from conversations; Audit tab)
+  Try it: python scripts\phase5_e2e.py  (voice, privacy, analysis, learning)
 #>
 param(
     [switch]$NoBuild,

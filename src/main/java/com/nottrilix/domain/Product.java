@@ -11,7 +11,7 @@ import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
 
-/** Proizvod = brend + denominacija, npr. "Steam Wallet 25 EUR". */
+/** Product = brand + denomination, e.g. "Steam Wallet 25 EUR". */
 @Entity
 @Table(name = "products")
 public class Product {
@@ -51,7 +51,7 @@ public class Product {
         this.denominationEur = denominationEur;
     }
 
-    /** Npr. "Steam Wallet 25 €". */
+    /** E.g. "Steam Wallet 25 €". */
     public String displayName() {
         return name + " " + denominationEur.stripTrailingZeros().toPlainString() + " €";
     }

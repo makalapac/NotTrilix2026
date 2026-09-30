@@ -1,4 +1,4 @@
-// Oblici koje vraća API (zrcalo Java recorda u com.nottrilix.api.dto)
+// Shapes returned by the API (mirror of the Java records in com.nottrilix.api.dto)
 
 export type Category = 'TELEKOM' | 'GAMING'
 export type Brand = 'A1' | 'HT' | 'STEAM' | 'SONY' | 'XBOX'
@@ -8,7 +8,7 @@ export type TicketStatus = 'OPEN' | 'RESOLVED'
 export type Channel = 'WEB' | 'POS' | 'AGENT'
 export type AgentOutcome = 'OK' | 'DENIED' | 'CONFIRMATION_REQUIRED' | 'ERROR'
 
-/** Jedan poziv alata koji je agent napravio u turnu. */
+/** One tool call the agent made in a turn. */
 export interface AgentToolCall {
   tool: string
   input: string
@@ -16,7 +16,7 @@ export interface AgentToolCall {
   durationMs: number
 }
 
-/** Odlomak baze znanja koji je agent dobio uz pitanje (RAG). */
+/** Knowledge base section the agent received with the question (RAG). */
 export interface AgentSource {
   source: string
   title: string
@@ -32,7 +32,7 @@ export interface AgentChatResponse {
   durationMs: number
   promptTokens: number | null
   completionTokens: number | null
-  /** Sažetak radnje koja čeka potvrdu kupca; null ako ništa ne čeka. */
+  /** Summary of the action awaiting the customer's confirmation; null if nothing is pending. */
   pendingAction: string | null
 }
 
@@ -56,7 +56,7 @@ export type Realm = 'CUSTOMER' | 'ADMIN'
 export type WalletEntryType = 'TOPUP' | 'PURCHASE' | 'REFUND'
 export type ProviderVoucherStatus = 'NOT_ACTIVATED' | 'ACTIVE' | 'REDEEMED' | 'BLOCKED'
 
-/** Rezultat (fiktivne) provjere bona kod pružatelja usluge. */
+/** Result of the (fictional) voucher check at the service provider. */
 export interface VoucherCheck {
   serial: string
   brand: Brand
@@ -74,7 +74,7 @@ export interface AuthUser {
   realm: Realm
   id: number
   name: string
-  /** e-mail kupca ili korisničko ime admina */
+  /** customer's e-mail or admin's username */
   login: string
 }
 
@@ -132,7 +132,7 @@ export interface WalletEntry {
   id: number
   createdAt: string
   type: WalletEntryType
-  /** + uplata / povrat, − kupnja */
+  /** + top-up / refund, − purchase */
   amountEur: number
   balanceAfterEur: number
   transactionId: number | null
@@ -157,14 +157,14 @@ export interface Ticket {
   resolvedAt: string | null
 }
 
-/** Pogodak semantičke pretrage baze znanja (RAG). */
+/** Hit from the knowledge base semantic search (RAG). */
 export interface KbHit {
   source: string
   title: string
   section: string
   category: string
   tags: string
-  /** sličnost upitu, 0..1 */
+  /** similarity to the query, 0..1 */
   score: number
   content: string
 }
@@ -211,9 +211,9 @@ export interface StockRow {
   blocked: number
 }
 
-// ---- Faza 5: glas, privatnost, razgovori i analiza, samoučenje ----
+// ---- Phase 5: voice, privacy, conversations and analysis, self-learning ----
 
-/** Glasovni turn: transkript + odgovor kao u chatu + govor (mp3, base64). */
+/** Voice turn: transcript + reply as in chat + speech (mp3, base64). */
 export interface VoiceTurnResponse {
   transcript: string
   chat: AgentChatResponse

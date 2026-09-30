@@ -1,16 +1,16 @@
 <#
-  NotTrilix 2026 - Faza 1 (AS IS): cijeli sustav jednim potezom.
+  NotTrilix 2026 - Phase 1 (AS IS): the whole system in one go.
 
-  Sto radi: Docker (pokrene Docker Desktop ako ne radi) -> PostgreSQL (docker compose)
-            -> JDK 25 -> Maven build (backend + React frontendi) -> pokrene aplikaciju u ovom prozoru.
+  What it does: Docker (starts Docker Desktop if it is not running) -> PostgreSQL (docker compose)
+                -> JDK 25 -> Maven build (backend + React frontends) -> starts the application in this window.
 
   .\run-phase-1.ps1            build + start
-  .\run-phase-1.ps1 -NoBuild   preskoci build (koristi postojeci target\nottrilix-2026.jar)
-  .\run-phase-1.ps1 -Reset     obrisi bazu (svjezi seed) pa start
-  .\run-phase-1.ps1 -Stop      ugasi PostgreSQL container (aplikacija se gasi s Ctrl+C)
+  .\run-phase-1.ps1 -NoBuild   skip the build (uses the existing target\nottrilix-2026.jar)
+  .\run-phase-1.ps1 -Reset     drop the database (fresh seed), then start
+  .\run-phase-1.ps1 -Stop      stop the PostgreSQL container (the application stops with Ctrl+C)
 
-  -WithAgent (koriste ga run-phase-3.ps1 i run-phase-4.ps1): uz sustav builda i pokrece aplikaciju agenta
-  (agent\, port 8090). Oba procesa pisu u ovaj prozor; agentovi retci imaju oznaku [agent ]. Ctrl+C gasi oba.
+  -WithAgent (used by run-phase-3.ps1 and run-phase-4.ps1): also builds and starts the agent application
+  (agent\, port 8090) next to the system. Both processes write to this window; agent lines carry the [agent ] tag. Ctrl+C stops both.
 #>
 param(
     [switch]$NoBuild,
@@ -44,7 +44,7 @@ function Test-Port([int]$port) {
     }
 }
 
-# Pokrene java proces u ovom prozoru (dijeli konzolu) i vrati ga; ceka da port proradi.
+# Starts a java process in this window (shares the console) and returns it; waits for the port to come up.
 function Start-App([string]$name, [string]$jarPath, [int]$port, [int]$timeoutSeconds) {
     $process = Start-Process -FilePath "java" -NoNewWindow -PassThru `
         -ArgumentList @("-Dfile.encoding=UTF-8", "-Dstdout.encoding=UTF-8", "-jar", "`"$jarPath`"")
@@ -108,7 +108,7 @@ if ($javaVersion -notmatch 'version "25') {
     throw "Treba JDK 25 (JAVA_HOME=$env:JAVA_HOME). Instaliraj ga u $env:ProgramFiles\Java\jdk-25*."
 }
 
-# 3b) OpenAI kljuc (Faza 2+: embeddinzi za bazu znanja, Faza 3+: model agenta). Datoteka openai.key je gitignored.
+# 3b) OpenAI key (Phase 2+: embeddings for the knowledge base, Phase 3+: the agent's model). The openai.key file is gitignored.
 $keyFile = Join-Path $PSScriptRoot "openai.key"
 if (Test-Path $keyFile) {
     $env:OPENAI_API_KEY = (Get-Content $keyFile -Raw).Trim()
@@ -119,7 +119,7 @@ if (Test-Path $keyFile) {
     Write-Host "OpenAI kljuc: nije pronadjen - baza znanja (RAG) i agent nece biti dostupni" -ForegroundColor Yellow
 }
 
-# 3c) ElevenLabs kljuc (Faza 5: sinteza govora). Bez njega agent govori kroz OpenAI TTS.
+# 3c) ElevenLabs key (Phase 5: speech synthesis). Without it the agent speaks through OpenAI TTS.
 $elevenFile = Join-Path $PSScriptRoot "elevenlabs.key"
 if (Test-Path $elevenFile) {
     $env:ELEVENLABS_API_KEY = (Get-Content $elevenFile -Raw).Trim()
@@ -154,8 +154,8 @@ if ($WithAgent) {
     }
 }
 
-# 5) Run - u ovom prozoru; logovi idu u konzolu i u logs\
-# UTF-8 u konzoli da hrvatski znakovi u logovima ostanu citljivi
+# 5) Run - in this window; logs go to the console and to logs\
+# UTF-8 in the console so Croatian characters in the logs stay readable
 chcp 65001 | Out-Null
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
@@ -175,7 +175,7 @@ if (-not $WithAgent) {
     exit $LASTEXITCODE
 }
 
-# Dva procesa u istom prozoru: prvo sustav (MCP server), pa agent (MCP klijent se spaja pri startu).
+# Two processes in the same window: first the system (MCP server), then the agent (the MCP client connects at startup).
 $system = $null
 $agent = $null
 try {

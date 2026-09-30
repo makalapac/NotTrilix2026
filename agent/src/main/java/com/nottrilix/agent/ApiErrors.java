@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.stream.Collectors;
 
-/** Greske -> JSON {error, message}, isti oblik kao u sustavu. */
+/** Errors -> JSON {error, message}, the same shape as in the system. */
 @RestControllerAdvice
 public class ApiErrors {
 

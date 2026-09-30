@@ -1,6 +1,6 @@
 package com.nottrilix.domain;
 
-/** O cemu je razgovor bio (glavna tema). */
+/** What the conversation was about (main topic). */
 public enum AnalysisCategory {
     KUPNJA,
     POVRAT,

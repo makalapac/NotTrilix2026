@@ -6,7 +6,7 @@ import com.nottrilix.provider.ProviderVoucherStatus;
 
 import java.time.Instant;
 
-/** Rezultat provjere bona kod pruzatelja usluge, uz nase lokalno stanje za usporedbu. */
+/** Result of the voucher check with the service provider, alongside our local status for comparison. */
 public record VoucherCheckDto(String serial, Brand brand, String providerName,
                               ProviderVoucherStatus providerStatus, VoucherStatus localStatus,
                               Instant redeemedAt, Instant checkedAt, String providerReference, long latencyMs,

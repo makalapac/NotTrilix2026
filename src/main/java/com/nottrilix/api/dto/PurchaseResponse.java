@@ -2,6 +2,6 @@ package com.nottrilix.api.dto;
 
 import java.math.BigDecimal;
 
-/** Rezultat kupnje: transakcija s bonom + novo stanje walleta kupca. */
+/** Purchase result: the transaction with the voucher + the customer's new wallet balance. */
 public record PurchaseResponse(TransactionDto transaction, BigDecimal walletBalanceEur) {
 }

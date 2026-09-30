@@ -23,8 +23,8 @@ import java.net.http.HttpClient;
 import java.time.Duration;
 
 /**
- * HTTP klijent prema aplikaciji agenta (zaseban proces). Sustav agentu prosljedjuje poruku kupca (tekst ili
- * snimku) i kupcev token; agent se tim tokenom vraca u sustav kroz MCP, pa i dalje moze samo ono sto smije taj kupac.
+ * HTTP client towards the agent application (a separate process). The system forwards the customer's message (text or
+ * recording) and the customer's token to the agent; the agent comes back into the system via MCP with that token, so it can still only do what that customer may.
  */
 @Component
 public class AgentClient {
@@ -32,7 +32,7 @@ public class AgentClient {
     private static final Logger log = LoggerFactory.getLogger("AGENT");
     private static final JsonMapper JSON = JsonMapper.builder().build();
 
-    /** Poruka kupca za agenta; conversationId je opcionalan (bez njega agent pocinje novi razgovor). */
+    /** The customer's message for the agent; conversationId is optional (without it the agent starts a new conversation). */
     public record TurnRequest(String conversationId, String message, String channel) {
     }
 
@@ -57,7 +57,7 @@ public class AgentClient {
                 .body(AgentChatResponse.class));
     }
 
-    /** Glasovni turn: snimka kupca (webm/ogg/mp3/wav) -> agent vraca transkript, odgovor i govor. */
+    /** Voice turn: the customer's recording (webm/ogg/mp3/wav) -> the agent returns the transcript, the reply and speech. */
     public VoiceTurnResponse voice(String authorization, String conversationId, byte[] audio, String filename,
                                    String contentType) {
         ByteArrayResource file = new ByteArrayResource(audio) {
@@ -100,7 +100,7 @@ public class AgentClient {
         } catch (RestClientResponseException e) {
             String body = e.getResponseBodyAsString();
             log.error("AGENT {} -> HTTP {} {}", url, e.getStatusCode().value(), body);
-            // agent vraca {error, message}; poruka je vec namijenjena kupcu (npr. glas nije dostupan)
+            // the agent returns {error, message}; the message is already meant for the customer (e.g. voice is unavailable)
             String message = messageOf(body);
             throw new AgentUnavailableException(message != null ? message
                     : "Agent trenutno nije dostupan. Pokušajte ponovno za koji trenutak.");

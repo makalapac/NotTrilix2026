@@ -10,13 +10,13 @@ import java.time.ZoneId;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Radnja se izvrsava tek ako je predlozena u ranijem turnu istog razgovora i prijedlog jos vrijedi. */
+/** An action executes only if proposed in an earlier turn of the same conversation and the proposal is still valid. */
 class ConfirmationGateTest {
 
     private static final String CONV = "c1:abc";
     private static final String SUMMARY = "kupnja Steam Wallet 25 €";
 
-    /** Sat koji test moze pomaknuti. */
+    /** A clock the test can advance. */
     private static final class TestClock extends Clock {
         private Instant now = Instant.parse("2026-10-12T10:00:00Z");
 
@@ -59,7 +59,7 @@ class ConfirmationGateTest {
             assertThat(action.action()).isEqualTo("REFUND");
             assertThat(action.params()).isEqualTo("6");
         });
-        // potvrda je potrosena
+        // the confirmation has been consumed
         assertThat(gate.takeConfirmable(CONV, 3)).isEmpty();
         assertThat(gate.peek(CONV)).isEmpty();
     }
@@ -76,7 +76,7 @@ class ConfirmationGateTest {
     void differentParametersReplaceTheProposalInsteadOfExecuting() {
         gate.confirmed(CONV, 1, "PURCHASE", "5", "kupnja HT bon 10 €");
 
-        // model je u iducem turnu poslao krivi proizvod: nista se ne izvrsava, to je novi prijedlog
+        // the model sent the wrong product in the next turn: nothing is executed, this is a new proposal
         assertThat(gate.confirmed(CONV, 2, "PURCHASE", "3", "kupnja A1 bon 20 €")).isFalse();
         assertThat(gate.peek(CONV)).map(PendingAction::params).contains("3");
         assertThat(gate.takeConfirmable(CONV, 2)).isEmpty();

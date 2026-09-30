@@ -14,31 +14,31 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Kako kontekst prelazi mreznu granicu. Spring AI slaze MCP klijenta iz konfiguracije
- * (spring.ai.mcp.client.*); ovdje su samo cetiri dodatka:
+ * How the context crosses the network boundary. Spring AI assembles the MCP client from configuration
+ * (spring.ai.mcp.client.*); only four additions live here:
  * <ol>
- *   <li>svaki MCP zahtjev nosi token: kupcev kad se radi u ime kupca, inace kljuc agenta;</li>
- *   <li>u MCP _meta ide samo razgovor, turn i kanal;</li>
- *   <li>model vidi alate pod njihovim imenima (bez prefiksa veze);</li>
- *   <li>alate namijenjene aplikaciji agenta model ne vidi.</li>
+ *   <li>every MCP request carries a token: the customer's when acting for the customer, otherwise the agent key;</li>
+ *   <li>only the conversation, turn and channel go into MCP _meta;</li>
+ *   <li>the model sees tools under their own names (no connection prefix);</li>
+ *   <li>tools meant for the agent application are hidden from the model.</li>
  * </ol>
  */
 @Configuration
 public class McpClientConfig {
 
-    /** Alati koje zove aplikacija agenta (tko je kupac, sto ceka potvrdu, baza znanja), a ne model. */
+    /** Tools the agent application calls (who the customer is, pending confirmation, knowledge base), not the model. */
     public static final Set<String> APPLICATION_TOOLS = Set.of("whoAmI", "getPendingAction", "searchKnowledgeBase");
 
     private static final String TOKEN = "token";
 
-    /** Na dretvi poziva: koji token vrijedi za ovaj MCP zahtjev. */
+    /** On the calling thread: which token applies to this MCP request. */
     @Bean
     McpClientCustomizer<McpClient.SyncSpec> tokenPerCall(AgentProperties props) {
         return (connection, client) -> client.transportContextProvider(
                 () -> McpTransportContext.create(Map.of(TOKEN, CustomerToken.current().orElse(props.agentKey()))));
     }
 
-    /** Pri slanju: token u HTTP zaglavlje. */
+    /** When sending: the token goes into the HTTP header. */
     @Bean
     McpClientCustomizer<HttpClientStreamableHttpTransport.Builder> tokenIntoHeader(AgentProperties props) {
         return (connection, transport) -> transport.httpRequestCustomizer((request, method, uri, body, context) -> {

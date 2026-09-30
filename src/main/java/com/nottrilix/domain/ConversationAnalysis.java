@@ -11,7 +11,7 @@ import jakarta.persistence.Table;
 
 import java.time.Instant;
 
-/** Sto je model zakljucio o jednom razgovoru (iz pseudonimiziranog transkripta). Jedan redak po razgovoru. */
+/** What the model concluded about one conversation (from the pseudonymized transcript). One row per conversation. */
 @Entity
 @Table(name = "conversation_analyses")
 public class ConversationAnalysis {
@@ -101,7 +101,7 @@ public class ConversationAnalysis {
         this.durationMs = durationMs;
     }
 
-    /** Anonimizacija (zahtjev kupca ili istek roka): analiza ostaje za statistiku, bez veze s kupcem. */
+    /** Anonymization (customer request or retention expiry): the analysis is kept for statistics, without a link to the customer. */
     public void anonymize() {
         this.customerId = null;
     }

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Sve sto se dogadja ide u konzolu (i u logs/nottrilix-2026.log). %clr = Spring Boot ANSI boje.
-     Od Faze 4 istu konzolu dijele sustav i agent: oznaka [sustav] / [agent ] na pocetku retka pokazuje tko govori. -->
+<!-- Everything that happens goes to the console (and to logs/nottrilix-2026.log). %clr = Spring Boot ANSI colors.
+     From Phase 4 the system and the agent share the same console: the [sustav] / [agent ] tag at the start of a line shows who is speaking. -->
 <configuration>
   <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 

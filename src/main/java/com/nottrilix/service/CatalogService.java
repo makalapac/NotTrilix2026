@@ -29,7 +29,7 @@ public class CatalogService {
         this.voucherRepo = voucherRepo;
     }
 
-    /** Katalog za prodajni kanal: aktivni proizvodi i je li bon dostupan (kolicina zalihe ostaje interna). */
+    /** Catalog for the sales channel: active products and whether a voucher is available (stock quantity stays internal). */
     @Transactional(readOnly = true)
     public List<CatalogItem> catalog() {
         Map<Long, Map<VoucherStatus, Long>> stock = stockCounts();
@@ -42,7 +42,7 @@ public class CatalogService {
         return items;
     }
 
-    /** Stanje zalihe po proizvodu i statusu (admin). */
+    /** Stock levels per product and status (admin). */
     @Transactional(readOnly = true)
     public List<StockRow> stock() {
         Map<Long, Map<VoucherStatus, Long>> stock = stockCounts();

@@ -2,8 +2,8 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'node:path'
 
-// Dvije stranice (customer + admin) -> build ide ravno u Spring Boot static resurse.
-// Dev: `npm run dev` (port 5173) proxyja /api na Spring Boot (8080).
+// Two pages (customer + admin) -> the build goes straight into Spring Boot static resources.
+// Dev: `npm run dev` (port 5173) proxies /api to Spring Boot (8080).
 export default defineConfig({
   plugins: [react()],
   build: {

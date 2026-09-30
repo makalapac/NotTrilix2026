@@ -1,11 +1,11 @@
 <#
-  NotTrilix 2026 - Faza 2 (znanje / RAG): isti sustav kao Faza 1 + baza znanja (Spring AI, OpenAI embeddinzi, pgvector).
-  Trazi OpenAI kljuc (openai.key u ovom folderu ili $env:OPENAI_API_KEY), zatim poziva run-phase-1.ps1 s istim parametrima.
+  NotTrilix 2026 - Phase 2 (knowledge / RAG): the same system as Phase 1 + knowledge base (Spring AI, OpenAI embeddings, pgvector).
+  Requires an OpenAI key (openai.key in this folder or $env:OPENAI_API_KEY), then calls run-phase-1.ps1 with the same parameters.
 
-  .\run-phase-2.ps1            build + start (ingest baze znanja pri startu)
-  .\run-phase-2.ps1 -NoBuild   preskoci build
-  .\run-phase-2.ps1 -Reset     obrisi bazu (svjezi seed + ponovni ingest) pa start
-  .\run-phase-2.ps1 -Stop      ugasi PostgreSQL container
+  .\run-phase-2.ps1            build + start (knowledge base ingest at startup)
+  .\run-phase-2.ps1 -NoBuild   skip the build
+  .\run-phase-2.ps1 -Reset     drop the database (fresh seed + re-ingest), then start
+  .\run-phase-2.ps1 -Stop      stop the PostgreSQL container
 #>
 param(
     [switch]$NoBuild,

@@ -1,6 +1,6 @@
--- NotTrilix 2026 - demo podaci
+-- NotTrilix 2026 - demo data
 
--- Lozinke su bcrypt (pgcrypto). Demo racuni: ana123 / marko123 / ivana123; admin: admin / admin123
+-- Passwords are bcrypt (pgcrypto). Demo accounts: ana123 / marko123 / ivana123; admin: admin / admin123
 INSERT INTO customers (name, email, phone, password_hash) VALUES
   ('Ana Anić',    'ana.anic@example.com',    '+385 91 111 2222', crypt('ana123',   gen_salt('bf', 10))),
   ('Marko Marić', 'marko.maric@example.com', '+385 98 333 4444', crypt('marko123', gen_salt('bf', 10))),
@@ -24,8 +24,8 @@ INSERT INTO products (category, brand, name, serial_prefix, denomination_eur) VA
   ('GAMING',  'XBOX',  'Xbox Gift Card',    'XBX', 15),
   ('GAMING',  'XBOX',  'Xbox Gift Card',    'XBX', 30);
 
--- Zaliha: 8 bonova po proizvodu.
--- Serijski = PREFIX-DENOMINACIJA-NNN, aktivacijski kod = 12 znamenki (deterministicki iz serijskog broja).
+-- Stock: 8 vouchers per product.
+-- Serial = PREFIX-DENOMINATION-NNN, activation code = 12 digits (deterministic from the serial number).
 INSERT INTO vouchers (product_id, serial_number, code, status)
 SELECT s.product_id,
        s.serial_number,
@@ -36,51 +36,51 @@ FROM (SELECT p.id AS product_id,
       FROM products p CROSS JOIN generate_series(1, 8) AS g) s
 ORDER BY s.product_id, s.serial_number;
 
--- Povijest kupnji (razliciti statusi za admin/support scenarije)
+-- Purchase history (various statuses for admin/support scenarios)
 
--- 1) Ana: A1 10 EUR, web, prije 3 dana - aktivan bon
+-- 1) Ana: A1 10 EUR, web, 3 days ago - active voucher
 UPDATE vouchers SET status = 'SOLD', sold_at = now() - interval '3 days' WHERE serial_number = 'A1-10-001';
 INSERT INTO transactions (created_at, channel, status, customer_id, product_id, voucher_id, amount_eur)
 SELECT now() - interval '3 days', 'WEB', 'COMPLETED', c.id, v.product_id, v.id, p.denomination_eur
 FROM vouchers v JOIN products p ON p.id = v.product_id, customers c
 WHERE v.serial_number = 'A1-10-001' AND c.email = 'ana.anic@example.com';
 
--- 2) Ana: Steam 25 EUR, web, prije 10 dana - bon vec iskoristen
+-- 2) Ana: Steam 25 EUR, web, 10 days ago - voucher already redeemed
 UPDATE vouchers SET status = 'REDEEMED', sold_at = now() - interval '10 days' WHERE serial_number = 'STM-25-001';
 INSERT INTO transactions (created_at, channel, status, customer_id, product_id, voucher_id, amount_eur)
 SELECT now() - interval '10 days', 'WEB', 'COMPLETED', c.id, v.product_id, v.id, p.denomination_eur
 FROM vouchers v JOIN products p ON p.id = v.product_id, customers c
 WHERE v.serial_number = 'STM-25-001' AND c.email = 'ana.anic@example.com';
 
--- 3) Marko: HT 5 EUR, kiosk (POS), prije 2 dana - aktivan bon
+-- 3) Marko: HT 5 EUR, kiosk (POS), 2 days ago - active voucher
 UPDATE vouchers SET status = 'SOLD', sold_at = now() - interval '2 days' WHERE serial_number = 'HT-5-001';
 INSERT INTO transactions (created_at, channel, status, customer_id, product_id, voucher_id, amount_eur)
 SELECT now() - interval '2 days', 'POS', 'COMPLETED', c.id, v.product_id, v.id, p.denomination_eur
 FROM vouchers v JOIN products p ON p.id = v.product_id, customers c
 WHERE v.serial_number = 'HT-5-001' AND c.email = 'marko.maric@example.com';
 
--- 4) Marko: PlayStation 20 EUR, web, prije 20 dana - iskoristen (i izvan roka za povrat)
+-- 4) Marko: PlayStation 20 EUR, web, 20 days ago - redeemed (and outside the refund window)
 UPDATE vouchers SET status = 'REDEEMED', sold_at = now() - interval '20 days' WHERE serial_number = 'PSN-20-001';
 INSERT INTO transactions (created_at, channel, status, customer_id, product_id, voucher_id, amount_eur)
 SELECT now() - interval '20 days', 'WEB', 'COMPLETED', c.id, v.product_id, v.id, p.denomination_eur
 FROM vouchers v JOIN products p ON p.id = v.product_id, customers c
 WHERE v.serial_number = 'PSN-20-001' AND c.email = 'marko.maric@example.com';
 
--- 5) Ivana: Xbox 15 EUR, web, prije 5 dana - reklamacija: bon blokiran, iznos vracen na wallet
+-- 5) Ivana: Xbox 15 EUR, web, 5 days ago - complaint: voucher blocked, amount refunded to the wallet
 UPDATE vouchers SET status = 'BLOCKED', sold_at = now() - interval '5 days' WHERE serial_number = 'XBX-15-001';
 INSERT INTO transactions (created_at, channel, status, customer_id, product_id, voucher_id, amount_eur, refunded_at)
 SELECT now() - interval '5 days', 'WEB', 'REFUNDED', c.id, v.product_id, v.id, p.denomination_eur, now() - interval '4 days'
 FROM vouchers v JOIN products p ON p.id = v.product_id, customers c
 WHERE v.serial_number = 'XBX-15-001' AND c.email = 'ivana.ivic@example.com';
 
--- 6) Ivana: Steam 50 EUR, web, jucer - aktivan bon
+-- 6) Ivana: Steam 50 EUR, web, yesterday - active voucher
 UPDATE vouchers SET status = 'SOLD', sold_at = now() - interval '1 day' WHERE serial_number = 'STM-50-001';
 INSERT INTO transactions (created_at, channel, status, customer_id, product_id, voucher_id, amount_eur)
 SELECT now() - interval '1 day', 'WEB', 'COMPLETED', c.id, v.product_id, v.id, p.denomination_eur
 FROM vouchers v JOIN products p ON p.id = v.product_id, customers c
 WHERE v.serial_number = 'STM-50-001' AND c.email = 'ivana.ivic@example.com';
 
--- Prijave podrske
+-- Support tickets
 INSERT INTO support_tickets (created_at, status, customer_id, transaction_id, subject, description, resolution, resolved_at)
 SELECT now() - interval '4 days', 'RESOLVED', t.customer_id, t.id,
        'Xbox kod ne radi',
@@ -95,7 +95,7 @@ SELECT now() - interval '1 day', 'OPEN', t.customer_id, t.id,
        'Kupljeno na kiosku, kupac trazi da mu se kod posalje na e-mail.'
 FROM transactions t JOIN vouchers v ON v.id = t.voucher_id WHERE v.serial_number = 'HT-5-001';
 
--- Walleti: pocetna uplata + knjizenja povijesnih kupnji/povrata. Zavrsna stanja: Ana 115, Marko 25, Ivana 50.
+-- Wallets: initial top-up + entries for the historical purchases/refunds. Final balances: Ana 115, Marko 25, Ivana 50.
 INSERT INTO wallet_entries (customer_id, created_at, type, amount_eur, balance_after_eur, transaction_id, note)
 SELECT c.id, now() - interval '12 days', 'TOPUP', 150, 150, NULL, 'Uplata karticom' FROM customers c WHERE c.email = 'ana.anic@example.com';
 INSERT INTO wallet_entries (customer_id, created_at, type, amount_eur, balance_after_eur, transaction_id, note)

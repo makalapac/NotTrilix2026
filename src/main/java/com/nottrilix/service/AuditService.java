@@ -18,15 +18,15 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Audit trag agenta u bazi (audit_events) + zrcalo u logu (logger AUDIT).
- * Upis ide u vlastitoj transakciji (REQUIRES_NEW): trag ostaje i kad se poslovna transakcija ponisti.
+ * Agent audit trail in the database (audit_events) + a mirror in the log (logger AUDIT).
+ * Writes run in their own transaction (REQUIRES_NEW): the trail survives even when the business transaction is rolled back.
  */
 @Service
 public class AuditService {
 
     private static final Logger log = LoggerFactory.getLogger("AUDIT");
 
-    /** Tko, u kojem razgovoru i kojim kanalom. */
+    /** Who, in which conversation and through which channel. */
     public record AuditContext(String conversationId, Long customerId, String customerName, String channel) {
     }
 

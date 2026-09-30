@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-Proba Faze 5 protiv pokrenutih aplikacija (run-phase-5.ps1): glas, privatnost (GDPR), analiza razgovora, samoucenje.
+Phase 5 trial against the running applications (run-phase-5.ps1): voice, privacy (GDPR), conversation analysis, self-learning.
 
   .\\run-phase-5.ps1 -Reset
   $env:PYTHONIOENCODING = "utf-8"
-  python scripts\\phase5_e2e.py               # sve
-  python scripts\\phase5_e2e.py voice         # samo glas (treba openai.key u korijenu: iz njega se napravi probna snimka)
+  python scripts\\phase5_e2e.py               # everything
+  python scripts\\phase5_e2e.py voice         # voice only (needs openai.key in the project root: the test recording is made with it)
   python scripts\\phase5_e2e.py privacy | analysis | learning
 
-Treba samo Python 3. Skripta cita openai.key iskljucivo da bi tekst pretvorila u govor (probna snimka kupca);
-kljuc se ne ispisuje. Ishodi se citaju ocima; skripta ne provjerava automatski.
+Needs only Python 3. The script reads openai.key solely to turn text into speech (the customer's test recording);
+the key is never printed. Outcomes are read by eye; the script checks nothing automatically.
 """
 import base64
 import json
@@ -73,7 +73,7 @@ def show_chat(label, body):
     print("   [%d ms, razgovor %s]" % (body["durationMs"], body["conversationId"]))
 
 
-# ---- probna snimka kupca: tekst -> govor (OpenAI TTS), kljuc iz openai.key, nikad na ekran ----
+# ---- customer test recording: text -> speech (OpenAI TTS), key from openai.key, never printed ----
 
 def synthesize(text):
     with open(KEY_FILE, encoding="utf-8") as f:

@@ -13,7 +13,7 @@ import java.time.ZoneId;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Fiktivni pruzatelj: odgovor slijedi nase stanje bona, iskoristen bon dobije datum i referencu. */
+/** Fictional provider: the answer follows our voucher state, a redeemed voucher gets a date and a reference. */
 class SimulatedProviderGatewayTest {
 
     private final Clock clock = Clock.fixed(Instant.parse("2026-10-12T10:00:00Z"), ZoneId.of("Europe/Zagreb"));

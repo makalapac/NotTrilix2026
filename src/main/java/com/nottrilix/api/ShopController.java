@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-/** Prodajni kanal; sve operacije se odnose na prijavljenog kupca (uloga CUSTOMER). */
+/** Sales channel; all operations refer to the logged-in customer (role CUSTOMER). */
 @RestController
 @RequestMapping("/api/shop")
 @Tag(name = "Shop", description = "Prodajni kanal - web aplikacija za kupce (uloga CUSTOMER)")

@@ -8,14 +8,14 @@ interface ChatMessage {
   role: 'user' | 'agent' | 'error'
   text: string
   response?: AgentChatResponse
-  /** glasovni turn: poruka je transkript, odgovor ima govor */
+  /** voice turn: the message is a transcript, the reply has speech */
   voice?: boolean
   audioUrl?: string
 }
 
 const SUGGESTIONS = ['Koliko imam na walletu?', 'Moj kod ne radi', 'Mogu li vratiti zadnji bon?', 'Što čuvate o meni?']
 
-/** Tekst privole za glas; verzija mora odgovarati nottrilix.privacy.voice-consent-version u sustavu. */
+/** Voice consent text; the version must match nottrilix.privacy.voice-consent-version in the system. */
 export const VOICE_CONSENT_TEXT =
   'Glasovnu poruku pretvara u tekst OpenAI, a odgovor u govor ElevenLabs (izvršitelji obrade). Snimka se ne pohranjuje: ' +
   'čuva se samo transkript, kao i poruke u chatu, 30 dana. Glas se ne koristi za prepoznavanje identiteta. ' +
@@ -34,9 +34,9 @@ function extensionOf(mimeType: string): string {
 }
 
 /**
- * Chat s agentom podrške, tekstom ili glasom. Agent radi u ime prijavljenog kupca; ispod svakog odgovora vidi se što je
- * napravio (alati) i na što se oslonio (odlomci baze znanja). Glas: drži gumb i govori; snimka ide sustavu, koji je
- * pretvori u tekst i odgovor vrati kao govor. Prvi put traži privolu kupca (GDPR).
+ * Chat with the support agent, by text or voice. The agent acts on behalf of the logged-in customer; under every reply you
+ * can see what it did (tools) and what it relied on (knowledge base sections). Voice: hold the button and speak; the recording
+ * goes to the system, which turns it into text and returns the reply as speech. The first time it asks for the customer's consent (GDPR).
  */
 export function ChatWidget({
   user,
@@ -99,7 +99,7 @@ export function ChatWidget({
     setMessages((m) => [...m, { role: 'user', text: '🎤 …', voice: true }])
     try {
       const turn = await api.agentVoice(conversationId, blob, `speech.${extensionOf(mimeType)}`)
-      // transkript zamjenjuje privremeni "…" u poruci kupca
+      // the transcript replaces the temporary "…" in the customer's message
       setMessages((m) => {
         const copy = [...m]
         const last = copy.length - 1
@@ -109,7 +109,7 @@ export function ChatWidget({
       const audioUrl = `data:${turn.audioMimeType};base64,${turn.audioBase64}`
       handleResponse(turn.chat, { voice: true, audioUrl })
       new Audio(audioUrl).play().catch(() => {
-        /* autoplay može biti blokiran; gumb ▶ ostaje */
+        /* autoplay may be blocked; the ▶ button remains */
       })
     } catch (e) {
       setMessages((m) => m.filter((x) => !(x.role === 'user' && x.voice && x.text === '🎤 …')))
@@ -175,7 +175,7 @@ export function ChatWidget({
     send(text)
   }
 
-  // što čeka potvrdu zna server (ConfirmationGate), ne nagađamo iz teksta odgovora
+  // the server (ConfirmationGate) knows what awaits confirmation; we do not guess from the reply text
   const last = messages[messages.length - 1]
   const pendingAction = !busy && last?.role === 'agent' ? (last.response?.pendingAction ?? null) : null
 
@@ -307,7 +307,7 @@ export function ChatWidget({
   )
 }
 
-/** Što je agent napravio u ovom turnu: alati s ishodom i odlomci baze znanja. */
+/** What the agent did in this turn: tools with their outcome and knowledge base sections. */
 function AgentActivity({ response }: { response: AgentChatResponse }) {
   if (response.toolCalls.length === 0 && response.sources.length === 0) return null
   return (

@@ -12,20 +12,20 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Pravilo u kodu, ne u promptu: radnja koja mijenja novac ili bon (kupnja, povrat, blokada) izvrsava se tek
- * ako je predlozena u RANIJEM turnu istog razgovora - dakle kupac je izmedju prijedloga i izvrsenja imao
- * priliku odgovoriti. Agent ne moze sam sebi potvrditi radnju unutar istog turna.
+ * A rule in code, not in the prompt: an action that changes money or a voucher (purchase, refund, block) is executed
+ * only if it was proposed in an EARLIER turn of the same conversation - so the customer had a chance to respond
+ * between the proposal and the execution. The agent cannot confirm an action to itself within the same turn.
  * <p>
- * Brana je na strani sustava (MCP servera), ne agenta: vrijedi za svakog MCP klijenta. Stanje drzi server:
- * po razgovoru ceka najvise jedna radnja (zadnji prijedlog), s tocnim parametrima. Model pri potvrdi ne salje
- * parametre, pa ih ne moze ni pogrijesiti ni izmisliti.
+ * The gate is on the system side (the MCP server), not the agent's: it applies to every MCP client. The server holds
+ * the state: at most one action (the latest proposal) waits per conversation, with exact parameters. The model sends
+ * no parameters when confirming, so it can neither get them wrong nor make them up.
  */
 @Component
 public class ConfirmationGate {
 
     private static final Logger log = LoggerFactory.getLogger("MCP");
 
-    /** Radnja koja ceka potvrdu kupca. */
+    /** An action waiting for the customer's confirmation. */
     public record PendingAction(String action, String params, String summary, int turn, Instant at) {
     }
 
@@ -39,8 +39,8 @@ public class ConfirmationGate {
     }
 
     /**
-     * Poziv alata s parametrima. Ako ista radnja vec ceka potvrdu iz ranijeg turna, smije se izvrsiti (true);
-     * inace se ovim pozivom predlaze i zamjenjuje prethodni prijedlog (false).
+     * A tool call with parameters. If the same action already awaits confirmation from an earlier turn, it may be
+     * executed (true); otherwise this call proposes it and replaces the previous proposal (false).
      */
     public boolean confirmed(String conversationKey, int turn, String action, String params, String summary) {
         PendingAction current = pending.get(conversationKey);
@@ -56,7 +56,7 @@ public class ConfirmationGate {
         return false;
     }
 
-    /** Potvrda bez parametara: vraca radnju koja ceka, ako se u ovom turnu smije izvrsiti, i uklanja je. */
+    /** Parameterless confirmation: returns the waiting action if it may be executed in this turn, and removes it. */
     public Optional<PendingAction> takeConfirmable(String conversationKey, int turn) {
         PendingAction current = pending.get(conversationKey);
         if (current == null || !confirmableNow(current, turn)) {
@@ -69,7 +69,7 @@ public class ConfirmationGate {
         return Optional.of(current);
     }
 
-    /** Radnja koja trenutno ceka potvrdu (za prikaz modelu i kupcu), bez mijenjanja stanja. */
+    /** The action currently waiting for confirmation (to show the model and the customer), without changing state. */
     public Optional<PendingAction> peek(String conversationKey) {
         PendingAction current = pending.get(conversationKey);
         if (current == null || expired(current)) {
@@ -78,7 +78,7 @@ public class ConfirmationGate {
         return Optional.of(current);
     }
 
-    /** Kupac je odustao. */
+    /** The customer cancelled the proposed action. */
     public Optional<PendingAction> cancel(String conversationKey) {
         PendingAction removed = pending.remove(conversationKey);
         if (removed != null) {

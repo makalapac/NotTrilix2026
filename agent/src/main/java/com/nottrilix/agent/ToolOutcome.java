@@ -5,8 +5,8 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Rezultat alata kako ga salje sustav: MCP sadrzaj (popis dijelova) u kojem je tekst = JSON
- * {ok, status, message, data}. Agent ga cita samo da bi znao ishod; pravila i podaci ostaju u sustavu.
+ * Tool result as the system sends it: MCP content (a list of parts) whose text = JSON
+ * {ok, status, message, data}. The agent reads it only to learn the outcome; rules and data stay in the system.
  */
 public final class ToolOutcome {
 
@@ -15,7 +15,7 @@ public final class ToolOutcome {
     public static final String CONFIRMATION_REQUIRED = "CONFIRMATION_REQUIRED";
     public static final String ERROR = "ERROR";
 
-    /** Sto model dobije kad alat ne odgovori (mreza, sustav ne radi): jasan "nije izvrseno". */
+    /** What the model gets when a tool does not respond (network, system down): a clear "not executed". */
     public static final String ERROR_RESULT =
             "{\"ok\":false,\"status\":\"ERROR\",\"message\":\"Alat trenutno nije dostupan. Radnja NIJE izvršena.\"}";
 
@@ -24,7 +24,7 @@ public final class ToolOutcome {
     private ToolOutcome() {
     }
 
-    /** MCP sadrzaj ([{"type":"text","text":"..."}]) -> tekst prvog tekstualnog dijela; inace ulaz kakav jest. */
+    /** MCP content ([{"type":"text","text":"..."}]) -> text of the first text part; otherwise the input as is. */
     public static String text(String mcpContent) {
         JsonNode content = parse(mcpContent);
         if (content != null && content.isArray()) {
@@ -37,7 +37,7 @@ public final class ToolOutcome {
         return mcpContent == null ? "" : mcpContent;
     }
 
-    /** Rezultat alata kao JSON stablo (null ako nije JSON). */
+    /** Tool result as a JSON tree (null if not JSON). */
     public static JsonNode parse(String json) {
         try {
             return json == null || json.isBlank() ? null : JSON.readTree(json);
@@ -46,7 +46,7 @@ public final class ToolOutcome {
         }
     }
 
-    /** Ishod iz rezultata alata: ok=true -> OK, inace po statusu. */
+    /** Outcome from the tool result: ok=true -> OK, otherwise by status. */
     public static String of(String resultJson) {
         JsonNode node = parse(resultJson);
         if (node == null || !node.has("ok") || node.path("ok").asBoolean(false)) {

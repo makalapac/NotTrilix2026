@@ -48,17 +48,18 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
- * Granica alata (tool boundary) sustava, izlozena kao MCP server: tanki adapteri nad postojecim servisima.
- * Ovdje nema poslovnih pravila - pravila su u servisima i vrijede jednako za web shop, admin i svakog MCP klijenta.
+ * The system's tool boundary, exposed as an MCP server: thin adapters over the existing services.
+ * No business rules live here - they are in the services and apply equally to the web shop, admin and every MCP client.
  * <ul>
- *   <li>Svaki alat radi samo s podacima prijavljenog kupca: kupac dolazi iz tokena HTTP zahtjeva ({@link McpCall}),
- *       ne iz parametara alata i ne od modela.</li>
- *   <li>Izlaz nikad ne sadrzi puni aktivacijski kod (samo zadnje 4 znamenke) ni kolicinu zalihe.</li>
- *   <li>Kupnja, povrat i blokada prolaze kroz ConfirmationGate: prvi poziv samo predlaze, izvrsenje tek nakon
- *       potvrde kupca u iducem turnu (confirmPendingAction bez parametara - stanje drzi server).</li>
- *   <li>Cega ovdje nema, MCP klijent ne moze: uplata na wallet, goodwill, tudji podaci, admin radnje.</li>
+ *   <li>Every tool works only with the logged-in customer's data: the customer comes from the HTTP request token
+ *       ({@link McpCall}), not from tool parameters and not from the model.</li>
+ *   <li>Output never contains the full activation code (only the last 4 digits) or the stock quantity.</li>
+ *   <li>Purchase, refund and block go through the ConfirmationGate: the first call only proposes; execution happens
+ *       only after the customer confirms in the next turn (confirmPendingAction has no parameters - the server holds
+ *       the state).</li>
+ *   <li>What is not here, an MCP client cannot do: wallet top-up, goodwill, other customers' data, admin actions.</li>
  * </ul>
- * Zadnja tri alata (whoAmI, getPendingAction, searchKnowledgeBase) zove aplikacija agenta, a ne model.
+ * The agent application, not the model, calls the last three tools (whoAmI, getPendingAction, searchKnowledgeBase).
  */
 @Component
 public class SupportMcpTools {
@@ -99,15 +100,15 @@ public class SupportMcpTools {
         this.dates = DateTimeFormatter.ofPattern("d.M.yyyy. HH:mm").withZone(clock.getZone());
     }
 
-    // ---- sto klijent vidi (pogledi bez punog koda i bez kolicine zalihe) ----
+    // ---- what the client sees (views without the full code and without the stock quantity) ----
 
     public record CatalogView(Long productId, String brand, String name, BigDecimal denominationEur,
                               boolean available) {
     }
 
     /**
-     * refundDeadline i refundPossible su orijentir za razgovor; povrat uvijek provjerava servis.
-     * redemptionDate nikad nije datum: za iskoristen bon upucuje na provjeru kod pruzatelja.
+     * refundDeadline and refundPossible are a guide for the conversation; the refund is always verified by the service.
+     * redemptionDate is never a date: for a redeemed voucher it points to the check at the provider.
      */
     public record PurchaseView(Long transactionId, String purchaseDate, String product, BigDecimal amountEur,
                                String channel, String purchaseStatus, String voucherSerial, String codeLast4,
@@ -151,7 +152,7 @@ public class SupportMcpTools {
     public record KnowledgeView(String source, String title, String section, double score, String content) {
     }
 
-    // ---- citanje ----
+    // ---- reading ----
 
     @McpTool(name = "getCatalog", description = "Katalog bonova koje NotTrilix prodaje: productId, brend, naziv, "
             + "denominacija u EUR i je li bon trenutno dostupan ili rasprodan. Koristi ga prije kupnje da nadjes "
@@ -226,7 +227,7 @@ public class SupportMcpTools {
         });
     }
 
-    // ---- radnje koje traze potvrdu kupca ----
+    // ---- actions that require customer confirmation ----
 
     @McpTool(name = "purchaseVoucher", description = "Kupnja bona za prijavljenog kupca uz naplatu s njegovog "
             + "walleta. Pozovi odmah kad kupac zatrazi kupnju: prvi poziv nista ne kupuje, samo provjerava pravila "
@@ -316,7 +317,7 @@ public class SupportMcpTools {
             int turn = call.turn();
             Optional<PendingAction> pending = gate.takeConfirmable(conversation, turn);
             if (pending.isEmpty()) {
-                // radnja predlozena u ovom istom turnu: kupac jos nije imao priliku odgovoriti
+                // action proposed in this very turn: the customer has not yet had a chance to respond
                 return gate.peek(conversation)
                         .map(waiting -> ToolResult.confirmationRequired(waiting.summary(), null))
                         .orElseGet(() -> ToolResult.denied("NOTHING_TO_CONFIRM", "Nema radnje koja čeka potvrdu "
@@ -330,7 +331,7 @@ public class SupportMcpTools {
                 case BLOCK -> executeBlock(customerId, action.params());
                 default -> ToolResult.denied("UNKNOWN_ACTION", "Nepoznata radnja: " + action.action());
             });
-            // alat nema parametara, pa u rezultat (i time u audit) ide sto je tocno potvrdjeno
+            // the tool has no parameters, so the result (and thus the audit) records exactly what was confirmed
             return new ToolResult(result.ok(), result.status(), "%s Potvrđena radnja: %s %s (%s).".formatted(
                     result.message(), action.action(), action.params(), action.summary()), result.data());
         });
@@ -346,7 +347,7 @@ public class SupportMcpTools {
                 .orElseGet(() -> ToolResult.denied("NOTHING_TO_CANCEL", "Nema radnje koja čeka potvrdu kupca.")));
     }
 
-    // ---- izvrsenje (uvijek nakon potvrde; pravila se u servisima provjeravaju ponovno) ----
+    // ---- execution (always after confirmation; the services check the rules again) ----
 
     private ToolResult executePurchase(long customerId, long productId) {
         PurchaseResponse done = shopService.purchase(customerId, productId, Channel.AGENT);
@@ -367,7 +368,7 @@ public class SupportMcpTools {
         return ToolResult.ok("Bon je blokiran.", new BlockDoneView(voucher.serial(), voucher.status().name()));
     }
 
-    // ---- radnja bez potvrde ----
+    // ---- action without confirmation ----
 
     @McpTool(name = "openSupportTicket", description = "Otvaranje prijave (ticketa) podrske za prijavljenog kupca. "
             + "Koristi kad problem ne mozes rijesiti alatima ili kad treba odluka voditelja podrske (tada naslov "
@@ -389,7 +390,7 @@ public class SupportMcpTools {
         });
     }
 
-    // ---- alati za aplikaciju agenta (ne za model) ----
+    // ---- tools for the agent application (not for the model) ----
 
     @McpTool(name = "whoAmI", description = "Za aplikaciju agenta: tko je kupac u cije ime se radi (prema tokenu).",
             annotations = @McpAnnotations(title = "Tko je kupac", readOnlyHint = true, destructiveHint = false,
@@ -440,14 +441,14 @@ public class SupportMcpTools {
         });
     }
 
-    // ---- pomocno ----
+    // ---- helpers ----
 
     private static McpCall call(McpMeta meta) {
         Map<String, Object> values = meta == null ? null : meta.meta();
         return McpCall.current(values);
     }
 
-    /** Odbijanje poslovnog pravila nije greska alata nego rezultat: klijent ga dobiva kao ok=false + razlog. */
+    /** A business rule denial is not a tool error but a result: the client receives it as ok=false + reason. */
     private static ToolResult guarded(Supplier<ToolResult> action) {
         try {
             return action.get();

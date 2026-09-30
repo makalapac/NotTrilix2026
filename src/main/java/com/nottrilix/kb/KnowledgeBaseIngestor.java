@@ -33,11 +33,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Ingest baze znanja: classpath:kb/*.md -> odlomci (KbMarkdownParser) -> embeddinzi -> vector_store (Spring AI VectorStore).
- * Idempotentno: hash datoteke je u metapodacima svakog odlomka; nepromijenjena datoteka se preskace,
- * promijenjena se brise (po izvoru) i ponovno ucitava.
- * Uz datoteke ucitava i nauceno iz razgovora: odobrene prijedloge (kb_suggestions), svaki kao jedan odlomak
- * s izvorom "nauceno-<id>", po istom pravilu (hash sadrzaja).
+ * Knowledge base ingest: classpath:kb/*.md -> chunks (KbMarkdownParser) -> embeddings -> vector_store (Spring AI VectorStore).
+ * Idempotent: the file hash is stored in the metadata of every chunk; an unchanged file is skipped,
+ * a changed one is deleted (by source) and reloaded.
+ * Besides the files it also loads what was learned from conversations: approved suggestions (kb_suggestions), each as one chunk
+ * with source "nauceno-<id>", under the same rule (content hash).
  */
 @Component
 public class KnowledgeBaseIngestor {
@@ -89,7 +89,7 @@ public class KnowledgeBaseIngestor {
         }
     }
 
-    /** @param force true = ponovno ucitaj sve datoteke bez obzira na hash */
+    /** @param force true = reload all files regardless of the hash */
     public synchronized KbIngestResult ingest(boolean force) throws IOException {
         if (!available) {
             throw new KnowledgeBaseUnavailableException("Baza znanja nije dostupna: OPENAI_API_KEY nije postavljen");
@@ -127,7 +127,7 @@ public class KnowledgeBaseIngestor {
             log.info("KB INGEST {} -> {} odjeljaka ({})", source, documents.size(),
                     storedHash == null ? "novo" : "zamijenjeno");
         }
-        // nauceno iz razgovora (odobreni prijedlozi) - isto pravilo: nepromijenjeno se preskace
+        // learned from conversations (approved suggestions) - same rule: unchanged entries are skipped
         int learned = 0;
         for (KbSuggestion suggestion : suggestions.findByStatusOrderByCreatedAtDesc(SuggestionStatus.APPROVED)) {
             if (ingestLearned(suggestion, force)) {
@@ -145,8 +145,8 @@ public class KnowledgeBaseIngestor {
     }
 
     /**
-     * Odobreni prijedlog kao odlomak baze znanja (izvor "nauceno-<id>"). Vraca true ako je (ponovno) ucitan,
-     * false ako je nepromijenjen pa je preskocen.
+     * An approved suggestion as a knowledge base chunk (source "nauceno-<id>"). Returns true if it was (re)loaded,
+     * false if it was unchanged and therefore skipped.
      */
     public boolean ingestLearned(KbSuggestion suggestion, boolean force) {
         if (!available) {

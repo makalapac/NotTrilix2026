@@ -4,7 +4,7 @@ import com.nottrilix.domain.ConversationStatus;
 
 import java.time.Instant;
 
-/** Razgovor kako ga vidi admin: okvir + analiza (null dok nije analiziran). customerName je null nakon anonimizacije. */
+/** A conversation as the admin sees it: the conversation record + analysis (null until analyzed). customerName is null after anonymization. */
 public record ConversationDto(String id, Long customerId, String customerName, String channel,
                               ConversationStatus status, Instant startedAt, Instant lastTurnAt, int turns,
                               AnalysisDto analysis) {

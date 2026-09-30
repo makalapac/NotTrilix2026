@@ -32,7 +32,7 @@ function groupByBrand(items: CatalogItem[]): [Brand, CatalogItem[]][] {
   return [...groups.entries()]
 }
 
-/** Prijava (e-mail + lozinka) pa shop; token se pamti u localStorage i provjerava na startu. */
+/** Login (e-mail + password), then the shop; the token is kept in localStorage and verified at startup. */
 export default function App() {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [checking, setChecking] = useState(() => getToken() != null)
@@ -84,7 +84,7 @@ export default function App() {
         try {
           await api.auth.logout()
         } catch {
-          /* token ionako odbacujemo */
+          /* we discard the token anyway */
         }
         signOut()
       }}
@@ -97,7 +97,7 @@ function Shop({ user, onLogout, onSessionExpired }: { user: AuthUser; onLogout: 
   const [catalog, setCatalog] = useState<CatalogItem[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [wallet, setWallet] = useState<Wallet | null>(null)
-  const [pending, setPending] = useState<CatalogItem | null>(null) // bon koji čeka potvrdu naplate
+  const [pending, setPending] = useState<CatalogItem | null>(null) // voucher awaiting payment confirmation
   const [topUpOpen, setTopUpOpen] = useState(false)
   const [lastPurchase, setLastPurchase] = useState<PurchaseResponse | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -106,7 +106,7 @@ function Shop({ user, onLogout, onSessionExpired }: { user: AuthUser; onLogout: 
   const [revealed, setRevealed] = useState<Record<number, boolean>>({})
   const [checks, setChecks] = useState<Record<string, VoucherCheck | 'loading'>>({})
   const [privacyOpen, setPrivacyOpen] = useState(false)
-  const [voiceConsent, setVoiceConsent] = useState(false) // privola za glas, stanje zna server
+  const [voiceConsent, setVoiceConsent] = useState(false) // voice consent; the server knows the state
 
   const fail = useCallback(
     (e: unknown) => {
@@ -181,7 +181,7 @@ function Shop({ user, onLogout, onSessionExpired }: { user: AuthUser; onLogout: 
 
   const balance = wallet?.balanceEur ?? 0
 
-  /** Agent je možda kupio, vratio ili blokirao: osvježi sve što kupac vidi. */
+  /** The agent may have purchased, refunded or blocked: refresh everything the customer sees. */
   const reloadAfterAgent = useCallback(() => {
     setChecks({})
     Promise.all([loadCatalog(), loadTransactions(), loadWallet()]).catch(fail)
@@ -397,7 +397,7 @@ function Shop({ user, onLogout, onSessionExpired }: { user: AuthUser; onLogout: 
   )
 }
 
-/** Pitanje prije kupnje: naplatiti iznos s walleta? Ako nema dovoljno, nudi nadoplatu (server pravilo svejedno provjerava). */
+/** Question before purchase: charge the amount to the wallet? If there is not enough, offers a top-up (the server checks the rule regardless). */
 function ConfirmPurchaseModal({
   item,
   balance,
@@ -456,7 +456,7 @@ function ConfirmPurchaseModal({
   )
 }
 
-/** Nadoplata walleta - u demu simulirano plaćanje karticom (iznos se odmah knjiži). */
+/** Wallet top-up - in the demo a simulated card payment (the amount is booked immediately). */
 function TopUpModal({
   balance,
   busy,

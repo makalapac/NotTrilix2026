@@ -3,7 +3,7 @@ package com.nottrilix.agent;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-/** Sto je agent napravio u jednom turnu (pozivi alata redom); vraca se klijentu uz odgovor. */
+/** What the agent did in one turn (tool calls in order); returned to the client along with the reply. */
 public class AgentTrace {
 
     private final List<AgentToolCall> toolCalls = new CopyOnWriteArrayList<>();

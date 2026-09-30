@@ -8,10 +8,10 @@ import org.springframework.ai.tool.definition.ToolDefinition;
 import org.springframework.ai.tool.metadata.ToolMetadata;
 
 /**
- * Omotac oko svakog MCP alata na strani agenta. Alat je sada s druge strane mreze, pa omotac radi tri stvari:
- * poziv izvrsava u ime kupca (njegov token), modelu vraca cist rezultat alata i pamti sto je model radio u turnu.
- * Ako sustav ne odgovori, razgovor se ne rusi: model dobiva jasan "nije izvrseno".
- * Audit nije ovdje nego u sustavu - agent ga ne moze ni preskociti ni krivotvoriti.
+ * Wrapper around every MCP tool on the agent side. The tool now sits across the network, so the wrapper does three
+ * things: runs the call on behalf of the customer (their token), returns the plain tool result to the model, and
+ * records what the model did in the turn. If the system does not respond, the conversation does not crash: the model
+ * gets a clear "not executed". The audit is not here but in the system - the agent can neither skip nor forge it.
  */
 public class TracingToolCallback implements ToolCallback {
 

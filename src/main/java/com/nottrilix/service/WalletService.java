@@ -21,8 +21,8 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Wallet kupca: stanje na kupcu + knjiga promjena (wallet_entries). Kupnja se naplacuje s walleta,
- * povrat ide natrag na wallet. Skidanje/vracanje se pozivaju iz ShopService/SupportService unutar njihove transakcije.
+ * Customer wallet: balance on the customer + ledger of changes (wallet_entries). A purchase is charged to the wallet,
+ * a refund goes back to the wallet. Debit/credit are called from ShopService/SupportService within their transaction.
  */
 @Service
 public class WalletService {
@@ -60,7 +60,7 @@ public class WalletService {
                 .getWalletBalanceEur();
     }
 
-    /** Uplata na wallet (kupac: simulirano placanje karticom; podrska: uplata s napomenom). */
+    /** Wallet top-up (customer: simulated card payment; support: top-up with a note). */
     @Transactional
     public WalletDto topUp(long customerId, BigDecimal amount, String note) {
         log.info("WALLET TOPUP request customer={} amount={} €", customerId, fmt(amount));
@@ -78,7 +78,7 @@ public class WalletService {
         return wallet(customerId);
     }
 
-    /** Provjera prije kupnje. Kupac je zakljucan (FOR UPDATE) pa se stanje do skidanja ne moze promijeniti. */
+    /** Check before a purchase. The customer is locked (FOR UPDATE), so the balance cannot change before the debit. */
     public void requireFunds(Customer customer, BigDecimal price) {
         BigDecimal balance = customer.getWalletBalanceEur();
         if (balance.compareTo(price) < 0) {
@@ -88,7 +88,7 @@ public class WalletService {
         }
     }
 
-    /** Skidanje iznosa kupnje; poziva se unutar transakcije kupnje, nakon sto je transakcija spremljena. */
+    /** Debits the purchase amount; called within the purchase transaction, after the transaction has been saved. */
     public BigDecimal debitForPurchase(Customer customer, Transaction tx) {
         BigDecimal amount = tx.getAmountEur();
         requireFunds(customer, amount);
@@ -100,7 +100,7 @@ public class WalletService {
         return customer.getWalletBalanceEur();
     }
 
-    /** Povrat iznosa kupnje na wallet; poziva se unutar transakcije povrata. */
+    /** Credits the purchase amount back to the wallet; called within the refund transaction. */
     public BigDecimal creditForRefund(Customer customer, Transaction tx, Instant at) {
         BigDecimal amount = tx.getAmountEur();
         customer.credit(amount);

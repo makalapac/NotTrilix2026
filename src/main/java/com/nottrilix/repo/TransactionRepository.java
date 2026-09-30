@@ -28,17 +28,17 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     Optional<Transaction> findByIdWithDetails(@Param("id") long id);
 
     /**
-     * Transakcija zakljucana u bazi (FOR UPDATE) - mora biti PRVO citanje u povratu, da dva istovremena
-     * povrata iste transakcije ne prodju oba (drugi ceka i vidi status REFUNDED).
+     * Transaction locked in the database (FOR UPDATE) - must be the FIRST read in a refund, so that two concurrent
+     * refunds of the same transaction do not both go through (the second one waits and sees status REFUNDED).
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select t from Transaction t where t.id = :id")
     Optional<Transaction> findByIdForUpdate(@Param("id") long id);
 
-    /** Kupnja u kojoj je bon prodan (bon je u najvise jednoj transakciji). */
+    /** The purchase in which the voucher was sold (a voucher is in at most one transaction). */
     Optional<Transaction> findByVoucherSerial(String serial);
 
-    /** Zbroj kupnji kupca u zadanom statusu od zadanog trenutka (dnevni limit). Prazno ako nema kupnji. */
+    /** Sum of the customer's purchases in the given status since the given instant (daily limit). Empty if there are none. */
     @Query("select sum(t.amountEur) from Transaction t "
             + "where t.customer.id = :customerId and t.status = :status and t.createdAt >= :since")
     Optional<BigDecimal> sumAmountSince(@Param("customerId") long customerId,

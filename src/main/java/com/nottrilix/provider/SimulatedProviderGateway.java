@@ -12,9 +12,9 @@ import java.time.temporal.ChronoUnit;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * Fiktivni pruzatelj: "poziv" traje malo (simulirana latencija), a odgovor je deterministican -
- * izveden iz naseg statusa bona (pruzatelj i mi imamo isto stanje jer nema stvarnih dogadjaja iskoristavanja).
- * Iskoristen bon dobije datum iskoristenja i referencu provjere kakvu bi vratio pravi API.
+ * Fictional provider: the "call" takes a moment (simulated latency) and the answer is deterministic -
+ * derived from our own voucher status (the provider and we share the same state because there are no real redemption events).
+ * A redeemed voucher gets a redemption date and a check reference like a real API would return.
  */
 @Component
 public class SimulatedProviderGateway implements ProviderGateway {
@@ -48,14 +48,14 @@ public class SimulatedProviderGateway implements ProviderGateway {
         return new ProviderCheckResult(status, redeemedAt, reference, latencyMs);
     }
 
-    /** Deterministicno: iskoristen 1-72 h nakon prodaje, ovisno o serijskom broju. */
+    /** Deterministic: redeemed 1-72 h after the sale, depending on the serial number. */
     private Instant redeemedAt(Voucher voucher) {
         Instant base = voucher.getSoldAt() != null ? voucher.getSoldAt() : Instant.now(clock);
         int hours = 1 + Math.floorMod(voucher.getSerial().hashCode(), 72);
         return base.plus(hours, ChronoUnit.HOURS);
     }
 
-    /** Npr. STM-CHK-3F9A1C - referenca provjere kod pruzatelja. */
+    /** E.g. STM-CHK-3F9A1C - the check reference at the provider. */
     private static String reference(Voucher voucher) {
         return voucher.getProduct().getSerialPrefix() + "-CHK-"
                 + String.format("%06X", voucher.getSerial().hashCode() & 0xFFFFFF);

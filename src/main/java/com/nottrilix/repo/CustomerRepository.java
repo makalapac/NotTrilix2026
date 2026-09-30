@@ -16,7 +16,7 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
     Optional<Customer> findByEmailIgnoreCase(String email);
 
-    /** Kupac zakljucan u bazi (FOR UPDATE) za promjene walleta i provjeru dnevnog limita bez utrke. */
+    /** Customer locked in the database (FOR UPDATE) for wallet changes and a race-free daily limit check. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from Customer c where c.id = :id")
     Optional<Customer> findByIdForUpdate(@Param("id") long id);

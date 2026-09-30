@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.nottrilix.domain.ConsentType;
 
-/** Prava kupca nad vlastitim podacima (uloga CUSTOMER): privole, pregled, izvoz, brisanje razgovora. */
+/** The customer's rights over their own data (role CUSTOMER): consents, overview, export, conversation erasure. */
 @RestController
 @RequestMapping("/api/shop/privacy")
 @Tag(name = "Privacy", description = "GDPR: privole kupca, pregled i izvoz podataka, brisanje razgovora na zahtjev")

@@ -17,7 +17,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 
-/** Provjera iskoristenosti bona kod pruzatelja usluge - za support (bilo koji bon) i za kupca (samo vlastiti bonovi). */
+/** Checks voucher redemption with the service provider - for support (any voucher) and for the customer (own vouchers only). */
 @Service
 public class VoucherCheckService {
 
@@ -45,7 +45,7 @@ public class VoucherCheckService {
         return check(voucher);
     }
 
-    /** Kupac smije provjeriti samo bon iz vlastite kupnje; tudji bon = kao da ne postoji. */
+    /** A customer may only check a voucher from their own purchase; someone else's voucher = as if it did not exist. */
     @Transactional(readOnly = true)
     public VoucherCheckDto checkForCustomer(long customerId, String serial) {
         Voucher voucher = transactionRepo.findByVoucherSerial(serial)

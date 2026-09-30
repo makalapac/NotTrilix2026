@@ -1,12 +1,12 @@
 package com.nottrilix.domain;
 
 public enum AuditOutcome {
-    /** Izvrseno. */
+    /** Executed. */
     OK,
-    /** Odbilo poslovno pravilo ili podatak ne postoji / nije kupcev. */
+    /** Rejected by a business rule, or the data does not exist / does not belong to the customer. */
     DENIED,
-    /** Radnja je samo predlozena; ceka potvrdu kupca u iducem turnu. */
+    /** The action was only proposed; awaiting the customer's confirmation in the next turn. */
     CONFIRMATION_REQUIRED,
-    /** Neocekivana greska; radnja nije izvrsena. */
+    /** Unexpected error; the action was not executed. */
     ERROR
 }

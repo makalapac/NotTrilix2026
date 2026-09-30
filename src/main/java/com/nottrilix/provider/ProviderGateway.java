@@ -2,9 +2,9 @@ package com.nottrilix.provider;
 
 import com.nottrilix.domain.Voucher;
 
-/** Integracija prema pruzatelju usluge (A1, HT, Steam, PlayStation, Xbox). U Fazi 1 postoji samo simulacija. */
+/** Integration with the service provider (A1, HT, Steam, PlayStation, Xbox). In Phase 1 there is only a simulation. */
 public interface ProviderGateway {
 
-    /** Provjera stanja bona kod pruzatelja (je li aktiviran / iskoristen / blokiran). */
+    /** Checks the voucher state at the provider (activated / redeemed / blocked). */
     ProviderCheckResult checkVoucher(Voucher voucher);
 }

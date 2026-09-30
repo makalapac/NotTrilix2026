@@ -1,10 +1,10 @@
 package com.nottrilix.domain;
 
 public enum SuggestionStatus {
-    /** Model je predlozio; ceka odluku admina. */
+    /** Proposed by the model; awaiting the admin's decision. */
     PROPOSED,
-    /** Admin je odobrio; odlomak je u bazi znanja. */
+    /** Approved by the admin; the section is in the knowledge base. */
     APPROVED,
-    /** Admin je odbio; ne ulazi u bazu znanja. */
+    /** Rejected by the admin; does not enter the knowledge base. */
     REJECTED
 }

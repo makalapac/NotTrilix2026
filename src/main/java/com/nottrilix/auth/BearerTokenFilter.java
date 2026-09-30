@@ -12,8 +12,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 /**
- * {@code Authorization: Bearer <token>} -> prijavljeni korisnik u SecurityContextu (samo za taj zahtjev, bez sesije).
- * Nepoznat/istekao token = anoniman zahtjev; autorizacija po putanjama je u {@code SecurityConfig}.
+ * {@code Authorization: Bearer <token>} -> logged-in user in the SecurityContext (for that request only, no session).
+ * Unknown/expired token = anonymous request; path-based authorization is in {@code SecurityConfig}.
  */
 public class BearerTokenFilter extends OncePerRequestFilter {
 
@@ -34,7 +34,7 @@ public class BearerTokenFilter extends OncePerRequestFilter {
             tokenService.resolve(token).ifPresent(user -> {
                 var authentication = UsernamePasswordAuthenticationToken.authenticated(
                         user, null, NotTrilixAuthenticationProvider.authorities(user));
-                authentication.setDetails(token); // logout zna koji token ponistiti
+                authentication.setDetails(token); // logout knows which token to revoke
                 SecurityContext context = SecurityContextHolder.createEmptyContext();
                 context.setAuthentication(authentication);
                 SecurityContextHolder.setContext(context);

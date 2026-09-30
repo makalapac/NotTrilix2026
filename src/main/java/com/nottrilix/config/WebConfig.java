@@ -7,7 +7,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
 
-    /** Admin frontend je Vite stranica u static/admin/index.html; "/admin" bez datoteke vodi na nju. */
+    /** The admin frontend is a Vite page in static/admin/index.html; "/admin" without a file forwards to it. */
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
         registry.addViewController("/admin").setViewName("forward:/admin/index.html");

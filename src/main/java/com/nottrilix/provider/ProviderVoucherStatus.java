@@ -1,13 +1,13 @@
 package com.nottrilix.provider;
 
-/** Stanje bona kako ga vidi pruzatelj usluge (A1, HT, Steam...). */
+/** Voucher state as seen by the service provider (A1, HT, Steam...). */
 public enum ProviderVoucherStatus {
-    /** Pruzatelj ga jos nije aktivirao (kod nas: nije prodan). */
+    /** Not yet activated by the provider (on our side: not sold). */
     NOT_ACTIVATED,
-    /** Aktiviran, jos nije iskoristen. */
+    /** Activated, not yet redeemed. */
     ACTIVE,
-    /** Iskoristen (s datumom). */
+    /** Redeemed (with a date). */
     REDEEMED,
-    /** Blokiran kod pruzatelja - ne moze se iskoristiti. */
+    /** Blocked at the provider - cannot be redeemed. */
     BLOCKED
 }

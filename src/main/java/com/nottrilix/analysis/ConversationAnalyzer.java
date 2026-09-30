@@ -30,10 +30,10 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Post-analiza razgovora: pseudonimizirani transkript -> model -> strukturirani nalaz (sazetak, kategorija, ishod,
- * raspolozenje, ocjena, rupe u znanju). Back-office posao nad audit tragom; kupac u tome ne sudjeluje.
- * Rupe u znanju postaju prijedlozi za bazu znanja koje admin odobrava (samoucenje s covjekom u petlji).
- * analyze() je jedna transakcija po razgovoru; utihnule razgovore prolazi AnalysisScheduler (poziv kroz proxy).
+ * Conversation post-analysis: pseudonymized transcript -> model -> structured analysis result (summary, category, outcome,
+ * sentiment, score, knowledge gaps). A back-office job over the audit trail; the customer takes no part in it.
+ * Knowledge gaps become knowledge base suggestions that the admin approves (self-learning with a human in the loop).
+ * analyze() is one transaction per conversation; idle conversations are processed by AnalysisScheduler (called through the proxy).
  */
 @Service
 public class ConversationAnalyzer {
@@ -156,7 +156,7 @@ public class ConversationAnalyzer {
         return ConversationService.toDto(analysis);
     }
 
-    /** Rupe u znanju -> prijedlozi za admina; isti prijedlog iz istog razgovora ne udvostrucuje se. */
+    /** Knowledge gaps -> suggestions for the admin; the same suggestion from the same conversation is not duplicated. */
     private int propose(String conversationId, List<KnowledgeSuggestion> proposals) {
         if (proposals == null) {
             return 0;

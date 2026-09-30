@@ -4,7 +4,7 @@ import org.springframework.security.authentication.AbstractAuthenticationToken;
 
 import java.util.List;
 
-/** Zahtjev za prijavu (neautenticiran): domena + login + lozinka. Provjerava ga {@link NotTrilixAuthenticationProvider}. */
+/** A login request (unauthenticated): realm + login + password. Verified by {@link NotTrilixAuthenticationProvider}. */
 public class LoginToken extends AbstractAuthenticationToken {
 
     private final Realm realm;
