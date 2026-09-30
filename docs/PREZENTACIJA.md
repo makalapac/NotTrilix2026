@@ -108,6 +108,95 @@ _Blok se piše kad Faza 6 bude gotova. Ono što već znamo iz istraživanja i pr
 
 ---
 
+## Kod uz svaki blok: što otvoriti i što reći
+
+Načelo: po bloku najviše dva do tri mjesta u kodu, svako stane na jedan ekran (do 25 redaka); ostalo je dijagram na slajdu.
+Brojevi redaka su s grane `phase5` (sve faze u konačnom obliku). Za „kako je izgledalo u toj fazi“ služe grane `phase1`–`phase4`;
+najlakše je unaprijed napraviti worktree po grani i držati ih otvorene u IDE-u:
+
+```powershell
+git worktree add ..\NotTrilix2026-phase3 phase3     # isto za phase1, phase2, phase4
+```
+
+**Opseg po fazama** (slajd „koliko je koda trebalo“, iz `git diff --shortstat`, bez package-lock datoteka):
+
+| Faza | Datoteka promijenjeno | Redaka dodano | Novih `.java` | Napomena |
+|---|---|---|---|---|
+| 1 sustav | 67 | 3.052 | sve | REST + shop + admin + baza |
+| 2 znanje | 34 | 1.504 | 12 | 9 md dokumenata + ingest + pretraga |
+| 3 agent | 54 | 2.981 | 30 | ChatClient, alati, potvrda, audit, chat |
+| 4 mreža | 67 | 2.898 (906 obrisano) | 29 | selidba agenta u `agent\` |
+| 5 glas, analiza, GDPR | 85 | 4.378 | 46 | najveća faza: tri teme |
+
+### Blok 1 (Faza 1): pravila su u kodu
+
+| Trenutak | Datoteka | Što pokazati | Rečenica |
+|---|---|---|---|
+| slajd „pravila u servisima“ | `src/main/java/com/nottrilix/service/ShopService.java:81` (`purchase`), `:150–153` | dnevni limit → `deny("PURCHASE", "DAILY_LIMIT_EXCEEDED", …)`, zaključana zaliha, naplata s walleta, sve u jednoj transakciji | „Ovo je vlasnik istine. Sve što agent kasnije radi prolazi kroz ovu metodu.“ |
+| isti slajd | `service/WalletService.java:85–92` | `INSUFFICIENT_FUNDS`, `debitForPurchase` | „Novac se ne troši u modelu.“ |
+| slajd „uloge“ | `config/SecurityConfig.java:58–63` | `/api/shop/**` CUSTOMER, `/api/admin/**` ADMIN (redak 62 s `/mcp` spomenuti tek u bloku 4) | „Tko što smije određuje sustav, ne razgovor.“ |
+
+Ne otvarati: kontrolere, DTO-e, React.
+
+### Blok 2 (Faza 2): znanje
+
+| Trenutak | Datoteka | Što pokazati | Rečenica |
+|---|---|---|---|
+| slajd „dokumenti pisani za RAG“ | `src/main/resources/kb/02-kupnja-wallet-i-limiti.md` | `##` odjeljci, brojke iz sustava (150 €, 14 dana), svaki odlomak samostalan | „Pisano za čitača koji vidi jedan odlomak.“ |
+| slajd „ingest i pretraga“ | `kb/KbMarkdownParser.java:37` | `split("(?m)^## ")`: odlomak = chunk, jedan redak | |
+| isti slajd | `kb/KnowledgeBaseIngestor.java:93–125` | hash datoteke → preskoči / zamijeni → `vectorStore.add(documents)` | „Spring AI VectorStore u tri retka, idempotentno po hashu.“ |
+| isti slajd | `kb/KnowledgeBaseService.java:37–42` | `SearchRequest` s top-k i pragom | |
+| konfiguracija | `src/main/resources/application.yml:9–17, 77` | embedding model, pgvector, prag 0,35 | „Pružatelj je konfiguracija.“ |
+| baza | `db/migration/V3__vector_store.sql:8` | `vector_store` u istoj bazi kao kupci i kupnje | „Nula nove infrastrukture.“ |
+
+### Blok 3 (Faza 3): agent
+
+| Trenutak | Datoteka | Što pokazati | Rečenica |
+|---|---|---|---|
+| slajd „četiri sastojka“ | `agent/src/main/java/com/nottrilix/agent/AgentConfig.java:83–108` | jedan `ChatClient` bean: system prompt, `MessageChatMemoryAdvisor`, `RetrievalAugmentationAdvisor`, `defaultToolCallbacks` (u Fazi 3 `QuestionAnswerAdvisor` nad vector storeom: grana `phase3`, `AgentConfig.java:59–60`) | „Jedan bean, četiri sastojka.“ |
+| isti slajd | `agent/src/main/resources/agent/system-prompt.txt` | persona Nola, pravila ponašanja; redak 6 kanal VOICE spomenuti tek u bloku 5 | „Prompt kaže kako. Smije li, kaže kod.“ |
+| slajd „`@Tool` u tri retka“ | grana `phase3`: `src/main/java/com/nottrilix/agent/AgentTools.java:136–147` (`getMyWallet(ToolContext ctx)`); danas `src/main/java/com/nottrilix/mcp/SupportMcpTools.java:181–186` | kupac iz `ToolContext` odnosno `McpMeta`, delegacija u postojeći servis | „Toliko koda treba da agent dobije ruku.“ |
+| slajd „war story: izmišljeni id-evi“ | `mcp/SupportMcpTools.java:237–248` (`purchaseVoucher` → `gate.confirmed(…)` → `CONFIRMATION_REQUIRED`), `:306` (`confirmPendingAction` bez parametara), `mcp/ConfirmationGate.java:29–60` (`PendingAction`, potvrda vrijedi samo u idućem turnu) | „Model je izmišljao id-eve. Sad ih ne treba: prijedlog drži server.“ |
+| isti slajd | `agent/…/ReplyStyle.java:13–26`, `mcp/SupportMcpTools.java:67` (`REDEMPTION_DATE_HINT`) | završne fraze filtrirane kodom; datum iskorištenja stiže s uputom uz podatak | „Pravilo koje mora vrijediti uvijek postaje kod.“ |
+| slajd „audit“ | `db/migration/V4__audit_events.sql:4`, `mcp/AuditedToolHandler.java:48–80` | omotač oko alata: ulaz, ishod, trajanje → redak u `audit_events` | „Bez ovoga nema produkcije.“ (demo prati admin tab Audit) |
+
+### Blok 4 (Faza 4): mreža
+
+| Trenutak | Datoteka | Što pokazati | Rečenica |
+|---|---|---|---|
+| slajd „dvije aplikacije“ | `src/main/resources/application.yml:23–30` i `agent/src/main/resources/application.yml` (`spring.ai.mcp.client.streamable-http.connections`) | server `STATELESS` na `/mcp`; klijent = URL | „MCP je konfiguracija; alati su isti.“ |
+| isti slajd | `mcp/McpServerConfig.java:25–28` | `statelessToolSpecifications` + svaki alat omotan `AuditedToolHandler`-om pri registraciji | „Audit se ne može zaobići: nema alata bez omotača.“ |
+| slajd „tko je kupac“ | `agent/…/McpClientConfig.java:43–46`, `agent/…/CustomerToken.java:13–23`, `mcp/McpCall.java:27–36`, `auth/TokenService.java:79` | token kupca u `Authorization` po pozivu (`ScopedValue`); sustav ga čita iz `SecurityContextHolder`; bez kupca `CUSTOMER_REQUIRED`; ključ agenta samo za spajanje | „Identitet putuje kao vjerodajnica, ne kao podatak.“ |
+| slajd „razgovor u `_meta`“ | `agent/…/McpClientConfig.java:51`, `mcp/McpCall.java:58–72` | `ToolContextToMcpMetaConverter` pušta samo `conversationId`, `turn`, `channel`; bez njih `CONVERSATION_REQUIRED` | „Model `_meta` ne vidi.“ |
+| isti slajd | `config/SecurityConfig.java:62` | `/mcp` za CUSTOMER i AGENT | |
+| slajd „nalaz o redoslijedu advisora“ | `agent/…/AgentConfig.java:69, 94–98` | `DocumentRetriever` preko MCP-a; `.order(ToolCallingAdvisor.DEFAULT_ORDER - 50)` | „Jedan redak, dva dohvata manje po turnu.“ |
+| demo | `scripts/mcp_direct.py` | isti `POST /mcp` bez tokena (401), s ključem agenta (`CUSTOMER_REQUIRED`), s tokenom kupca | |
+
+### Blok 5 (Faza 5): glas, razgovor kao zapis, GDPR
+
+| Trenutak | Datoteka | Što pokazati | Rečenica |
+|---|---|---|---|
+| slajd „glas kao kanal“ | `agent/src/main/java/com/nottrilix/agent/VoiceService.java:58–74` | `turn`: `transcribe` → `agent.chat(…, "VOICE")` → `speak`; redci 90 i 99: `stt.call(new AudioTranscriptionPrompt)`, `tts.call(new TextToSpeechPrompt)` | „Glas je omotač; agent isti.“ |
+| isti slajd | `agent/src/main/resources/application.yml:13–37` | STT model + **prompt** (redak 19), ElevenLabs, prekidač `spring.ai.model.audio.speech` | „Pružatelj je konfiguracija, prompt je rječnik.“ |
+| slajd „privola“ | `src/main/java/com/nottrilix/agent/AgentChatService.java:59–61` | `privacy.requireConsent(…)` prije glasa → 403 | |
+| slajd „razgovor kao zapis“ | `service/ConversationService.java:98–120` | transkript iz audit redaka: `TOOL_CALL`, `KB_RETRIEVAL`, `CHAT_TURN` | „Ništa novo ne bilježimo.“ |
+| isti slajd | `privacy/Pseudonymizer.java:27–37`, `analysis/ConversationAnalyzer.java:44` (prompt), `:96–120` (`asText(true)` → `converter.getFormat()` → `converter.convert`), `analysis/ConversationInsight.java:13–25` | pseudonimizacija prije modela; structured output u record | „Nalaz je record, ne prepričavanje.“ |
+| slajd „samoučenje“ | `analysis/ConversationAnalyzer.java:160` (`propose`), `kb/KnowledgeLearningService.java:54–62` (`approve` → `ingestLearned`), `kb/KnowledgeBaseIngestor.java:151` | rupa u znanju → prijedlog → admin → odlomak `nauceno-N` | „Model predlaže, čovjek odobrava.“ |
+| isti slajd | `analysis/AnalysisScheduler.java:38–55` | raspored: utihnuli razgovori, svaki svoja transakcija | |
+| slajd „GDPR u kodu“ | `privacy/PrivacyService.java:82` (privola s verzijom), `:135` (izvoz), `:164–167` (brisanje), `privacy/RetentionJob.java:60–70`, `db/migration/V5__conversations_privacy.sql:54` (`consents`) | privola = redak s verzijom; izvoz = upit; brisanje = transakcija; rok = posao po rasporedu | „Nije teško; teško je ne preskočiti.“ |
+| isti slajd | `src/main/resources/kb/10-privatnost-i-osobni-podaci.md` | agent na „što čuvate o meni“ odgovara iz baze znanja | |
+| preglednik (po volji) | `frontend/src/customer/ChatWidget.tsx:97–122` | `MediaRecorder` → multipart → reprodukcija mp3 | |
+
+### Blok 6 (Faza 6): dopuniti kad bude gotova
+
+Planirano: paket `agent/…/telephony/` (webhook „javi se“, WebSocket handler: frame → VAD → STT → **isti `AgentService`** → TTS → natrag u poziv), servis u sustavu koji pozivatelju nakon provjere izdaje vjerodajnicu za agenta, `run-phase-6.ps1`. Pokazati tri mjesta: webhook, WS handler s pozivom istog agenta, izdavanje vjerodajnice.
+
+### Tehnika
+
+- IDE s fontom ≥ 18, tabovi unaprijed otvoreni po redu blokova (bookmarki), bez skrolanja tijekom pokazivanja.
+- „Što je faza dodala“ = `git diff --stat phase3 phase4` uživo ili tablica gore; worktree po grani za usporedbu jedne datoteke (npr. `AgentTools.java` u `phase3` uz `SupportMcpTools.java` u `phase5`).
+- Ne otvarati: kontrolere, DTO-e, testove, React osim `ChatWidget`; migracije samo kao „jedna tablica po fazi“ (V3 znanje, V4 audit, V5 razgovori i privole).
+
 ## Popis slajdova (radni, ~26)
 
 1. Naslov · 2. Lani / danas (hook) · 3. Teza · 4. Mapa šest faza
