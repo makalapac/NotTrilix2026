@@ -228,3 +228,60 @@ td.num, th.num { text-align: right; }
 .userbox .who { opacity: 0.9; }
 .btn.ghost { background: transparent; border-color: rgba(255, 255, 255, 0.45); color: #fff; }
 .btn.ghost:hover:not(:disabled) { border-color: #fff; background: rgba(255, 255, 255, 0.1); }
+
+/* Faza 5: glas, privatnost, razgovori i analiza, samoučenje */
+.privacy-note { margin-top: 4px; font-size: 11.5px; color: var(--muted); }
+.voice-mark { opacity: 0.8; }
+.replay { align-self: flex-start; margin-top: 2px; padding: 2px 8px; font-size: 12px; color: var(--primary); }
+.chat-input .mic { padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; font-size: 16px; user-select: none; }
+.chat-input .mic.recording { background: #fee2e2; border-color: var(--danger); color: var(--danger); font-size: 13px; font-weight: 600; }
+.consent-box { padding: 10px 14px; border-top: 1px solid var(--line); background: #eff6ff; font-size: 13px; }
+.consent-box p { margin: 6px 0 8px; line-height: 1.45; }
+.consent-box .actions { display: flex; gap: 8px; }
+.voice-error { padding: 6px 14px; font-size: 12.5px; color: var(--danger); background: var(--err-bg); border-top: 1px solid var(--err-line); }
+.modal.privacy { width: min(560px, 100%); }
+.modal.privacy p { line-height: 1.5; font-size: 14px; }
+.consent-list { font-size: 12.5px; margin: 6px 0; }
+.consent-text p { font-size: 13px; }
+.privacy-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; align-items: center; }
+.confirm-erase { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; color: var(--danger); }
+.btn.danger { border-color: var(--err-line); color: var(--danger); background: #fff; }
+.btn.danger:hover { background: var(--err-bg); }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 6px 0 14px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 14px; box-shadow: var(--shadow); }
+.stat-label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; }
+.stat-value { font-size: 16px; font-weight: 600; margin-top: 4px; line-height: 1.4; }
+.stat-hint { font-size: 12px; margin-top: 2px; }
+.badge.status-open { background: #eff6ff; color: #1d4ed8; }
+.badge.status-analyzed { background: #ecfdf5; color: #047857; }
+.badge.status-erased { background: #f3f4f6; color: #374151; }
+.badge.outcome-rijeseno { background: #ecfdf5; color: #047857; }
+.badge.outcome-nerijeseno { background: #fef2f2; color: var(--danger); }
+.badge.outcome-eskalirano { background: #fff7ed; color: #b45309; }
+.badge.outcome-odustao { background: #f3f4f6; color: #374151; }
+.badge.sentiment-pozitivno { background: #ecfdf5; color: #047857; }
+.badge.sentiment-neutralno { background: #f3f4f6; color: #374151; }
+.badge.sentiment-negativno { background: #fef2f2; color: var(--danger); }
+.badge.suggestion-approved { background: #ecfdf5; color: #047857; }
+.badge.suggestion-rejected { background: #f3f4f6; color: #374151; }
+.badge.suggestion-proposed { background: #fff7ed; color: #b45309; }
+tr.selected td { background: #f0fdfa; }
+.detail-panel { margin-top: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 18px; box-shadow: var(--shadow); }
+.detail-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.detail-head h3 { margin: 0; font-size: 16px; }
+.analysis-card { margin: 10px 0 14px; padding: 10px 14px; background: #f8fafc; border: 1px solid var(--line); border-radius: var(--radius); font-size: 14px; }
+.analysis-badges { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin-bottom: 6px; }
+.analysis-card ul { margin: 4px 0 8px; padding-left: 20px; }
+.transcript { display: flex; flex-direction: column; gap: 4px; font-size: 13.5px; }
+.tline { display: grid; grid-template-columns: 28px 64px 1fr; gap: 8px; padding: 4px 6px; border-radius: 6px; }
+.tline .turn { color: var(--muted); font-family: ui-monospace, Consolas, monospace; }
+.tline .role { font-weight: 600; font-size: 12px; }
+.tline.role-kupac { background: #eff6ff; }
+.tline.role-agent { background: #fff; border: 1px solid var(--line); }
+.tline.role-alat, .tline.role-znanje { color: var(--muted); font-size: 12.5px; }
+.suggestions { margin: 4px 0 18px; }
+.suggestions h3 { margin: 0 0 4px; font-size: 16px; }
+.suggestions h3 small { font-weight: 400; color: var(--muted); margin-left: 8px; font-size: 13px; }
+.suggestion label { display: block; font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+.suggestion input, .suggestion textarea { display: block; width: 100%; margin-top: 3px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; color: var(--text); }
+.suggestion .actions { display: flex; gap: 8px; margin-top: 10px; }

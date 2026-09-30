@@ -119,6 +119,20 @@ if (Test-Path $keyFile) {
     Write-Host "OpenAI kljuc: nije pronadjen - baza znanja (RAG) i agent nece biti dostupni" -ForegroundColor Yellow
 }
 
+# 3c) ElevenLabs kljuc (Faza 5: sinteza govora). Bez njega agent govori kroz OpenAI TTS.
+$elevenFile = Join-Path $PSScriptRoot "elevenlabs.key"
+if (Test-Path $elevenFile) {
+    $env:ELEVENLABS_API_KEY = (Get-Content $elevenFile -Raw).Trim()
+    $env:NOTTRILIX_TTS = "elevenlabs"
+    Write-Host "ElevenLabs kljuc: ucitan iz elevenlabs.key (govor: ElevenLabs)"
+} elseif ($env:ELEVENLABS_API_KEY) {
+    $env:NOTTRILIX_TTS = "elevenlabs"
+    Write-Host "ElevenLabs kljuc: iz okoline (govor: ElevenLabs)"
+} else {
+    $env:NOTTRILIX_TTS = "openai"
+    Write-Host "ElevenLabs kljuc: nije pronadjen - govor kroz OpenAI TTS"
+}
+
 # 4) Build
 $mvn = if (Test-Path (Join-Path $PSScriptRoot "mvnw.cmd")) { ".\mvnw.cmd" } else { "mvn" }
 $jar = Join-Path $PSScriptRoot "target\nottrilix-2026.jar"

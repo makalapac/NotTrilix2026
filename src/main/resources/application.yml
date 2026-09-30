@@ -9,8 +9,10 @@ spring:
       embedding:
         options:
           model: text-embedding-3-small
-    model:
-      chat: none                  # Faza 4: sustav vise ne razgovara s LLM-om - to radi zasebna aplikacija agenta
+      chat:
+        options:
+          model: gpt-4o           # Faza 5: back-office analiza razgovora (razgovor s kupcem vodi zasebna aplikacija agenta)
+          temperature: 0.1
     vectorstore:
       pgvector:
         initialize-schema: false  # tablicu vector_store drzi Flyway (V3), ne Spring AI
@@ -43,6 +45,10 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
+  servlet:
+    multipart:
+      max-file-size: 10MB       # glasovna poruka iz preglednika
+      max-request-size: 11MB
   output:
     ansi:
       enabled: always         # boje u konzoli (Windows Terminal / PowerShell); 'never' ako smeta
@@ -74,11 +80,23 @@ nottrilix:
     # Kljuc kojim se aplikacija agenta predstavlja pri spajanju. Demo vrijednost; ista mora biti kod agenta.
     agent-key: ${NOTTRILIX_AGENT_KEY:nottrilix-demo-agent-key}
     confirmation-ttl-minutes: 10  # koliko dugo vrijedi prijedlog kupnje/povrata/blokade koji ceka potvrdu
-  # Aplikacija agenta (Faza 4): shop joj prosljedjuje poruke kupca (POST /api/agent/chat -> agent)
+  # Aplikacija agenta (Faza 4): shop joj prosljedjuje poruke kupca (POST /api/agent/chat i /voice -> agent)
   agent:
     url: ${NOTTRILIX_AGENT_URL:http://localhost:8090}
     connect-timeout-seconds: 3
     read-timeout-seconds: 90      # turn s vise poziva alata moze trajati desetak sekundi
+  # Post-analiza razgovora (Faza 5): utihnuli razgovori -> pseudonimizirani transkript -> model -> nalaz + prijedlozi znanja
+  analysis:
+    enabled: true
+    idle-minutes: 2               # razgovor bez nove poruke toliko minuta smatra se zavrsenim
+    poll-seconds: 60              # koliko cesto raspored trazi utihnule razgovore
+    max-suggestions-per-conversation: 3
+  # Privatnost (GDPR): rokovi cuvanja i verzija teksta privole za glas
+  privacy:
+    conversation-retention-days: 30   # poruke razgovora i veza razgovora s kupcem
+    analysis-retention-days: 365      # nakon toga analize ostaju samo anonimne (statistika)
+    voice-consent-version: "2026-09"  # nova verzija teksta = kupac privolu daje ponovno
+    retention-cron: "0 15 3 * * *"    # jednom dnevno (i pri svakom startu)
 
 logging:
   level:

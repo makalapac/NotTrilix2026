@@ -47,7 +47,8 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
     private static String currentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getPrincipal() instanceof AuthUser user) {
-            return user.realm().name().toLowerCase() + ":" + user.login();
+            // bez e-maila u logu (GDPR: logovi su kratkog vijeka, ali ne trebaju identitet)
+            return user.realm().name().toLowerCase() + "#" + user.id();
         }
         return "anonymous";
     }

@@ -1,6 +1,9 @@
 package com.nottrilix.kb;
 
 import com.nottrilix.api.dto.KbIngestResult;
+import com.nottrilix.domain.KbSuggestion;
+import com.nottrilix.domain.SuggestionStatus;
+import com.nottrilix.repo.KbSuggestionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
@@ -16,11 +19,15 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +36,8 @@ import java.util.Map;
  * Ingest baze znanja: classpath:kb/*.md -> odlomci (KbMarkdownParser) -> embeddinzi -> vector_store (Spring AI VectorStore).
  * Idempotentno: hash datoteke je u metapodacima svakog odlomka; nepromijenjena datoteka se preskace,
  * promijenjena se brise (po izvoru) i ponovno ucitava.
+ * Uz datoteke ucitava i nauceno iz razgovora: odobrene prijedloge (kb_suggestions), svaki kao jedan odlomak
+ * s izvorom "nauceno-<id>", po istom pravilu (hash sadrzaja).
  */
 @Component
 public class KnowledgeBaseIngestor {
@@ -38,15 +47,18 @@ public class KnowledgeBaseIngestor {
 
     private final VectorStore vectorStore;
     private final JdbcTemplate jdbc;
+    private final KbSuggestionRepository suggestions;
     private final KbProperties props;
     private final Clock clock;
     private final boolean available;
     private volatile Instant lastIngest;
 
-    public KnowledgeBaseIngestor(VectorStore vectorStore, JdbcTemplate jdbc, KbProperties props, Clock clock,
+    public KnowledgeBaseIngestor(VectorStore vectorStore, JdbcTemplate jdbc, KbSuggestionRepository suggestions,
+                                 KbProperties props, Clock clock,
                                  @Value("${spring.ai.openai.api-key:not-set}") String openAiApiKey) {
         this.vectorStore = vectorStore;
         this.jdbc = jdbc;
+        this.suggestions = suggestions;
         this.props = props;
         this.clock = clock;
         this.available = openAiApiKey != null && !openAiApiKey.isBlank() && !"not-set".equals(openAiApiKey);
@@ -115,11 +127,64 @@ public class KnowledgeBaseIngestor {
             log.info("KB INGEST {} -> {} odjeljaka ({})", source, documents.size(),
                     storedHash == null ? "novo" : "zamijenjeno");
         }
+        // nauceno iz razgovora (odobreni prijedlozi) - isto pravilo: nepromijenjeno se preskace
+        int learned = 0;
+        for (KbSuggestion suggestion : suggestions.findByStatusOrderByCreatedAtDesc(SuggestionStatus.APPROVED)) {
+            if (ingestLearned(suggestion, force)) {
+                learned++;
+                added++;
+            } else {
+                skipped++;
+            }
+        }
         lastIngest = Instant.now(clock);
         long total = totalChunks();
-        log.info("KB INGEST gotov: {} datoteka, {} novih odjeljaka, {} nepromijenjenih datoteka, {} zamijenjenih, ukupno u bazi {}",
-                files.length, added, skipped, replaced, total);
+        log.info("KB INGEST gotov: {} datoteka, {} novih odjeljaka ({} naučenih), {} nepromijenjenih, {} zamijenjenih, "
+                + "ukupno u bazi {}", files.length, added, learned, skipped, replaced, total);
         return new KbIngestResult(files.length, added, skipped, replaced, total);
+    }
+
+    /**
+     * Odobreni prijedlog kao odlomak baze znanja (izvor "nauceno-<id>"). Vraca true ako je (ponovno) ucitan,
+     * false ako je nepromijenjen pa je preskocen.
+     */
+    public boolean ingestLearned(KbSuggestion suggestion, boolean force) {
+        if (!available) {
+            throw new KnowledgeBaseUnavailableException("Baza znanja nije dostupna: OPENAI_API_KEY nije postavljen");
+        }
+        String source = suggestion.source();
+        String content = "Naučeno iz razgovora › " + suggestion.getQuestion() + "\n\n" + suggestion.getAnswer();
+        String hash = sha256(content);
+        String storedHash = storedFileHash(source);
+        if (!force && hash.equals(storedHash)) {
+            return false;
+        }
+        if (storedHash != null) {
+            vectorStore.delete(new FilterExpressionBuilder().eq("source", source).build());
+        }
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("source", source);
+        metadata.put("title", "Naučeno iz razgovora");
+        metadata.put("category", "nauceno");
+        metadata.put("tags", "nauceno, razgovor, prijedlog");
+        metadata.put("audience", "agent");
+        metadata.put("updated", suggestion.getDecidedAt() == null ? LocalDate.now(clock).toString()
+                : LocalDate.ofInstant(suggestion.getDecidedAt(), clock.getZone()).toString());
+        metadata.put("section", suggestion.getQuestion());
+        metadata.put("chunk_index", 0);
+        metadata.put("file_hash", hash);
+        vectorStore.add(List.of(new Document(content, metadata)));
+        log.info("KB INGEST {} -> 1 odjeljak (naučeno: '{}')", source, suggestion.getQuestion());
+        return true;
+    }
+
+    private static String sha256(String text) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(text.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     public long totalChunks() {

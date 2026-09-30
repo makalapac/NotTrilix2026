@@ -3,6 +3,7 @@ import { api, getToken, isUnauthorized, setToken } from '../shared/api'
 import { LoginPage } from '../shared/LoginPage'
 import { VoucherCheckResult } from '../shared/VoucherCheckResult'
 import { ChatWidget } from './ChatWidget'
+import { PrivacyModal } from './PrivacyModal'
 import type { AuthUser, Brand, CatalogItem, Category, PurchaseResponse, Transaction, VoucherCheck, Wallet } from '../shared/types'
 import {
   CHANNEL,
@@ -104,6 +105,8 @@ function Shop({ user, onLogout, onSessionExpired }: { user: AuthUser; onLogout: 
   const [busy, setBusy] = useState(false)
   const [revealed, setRevealed] = useState<Record<number, boolean>>({})
   const [checks, setChecks] = useState<Record<string, VoucherCheck | 'loading'>>({})
+  const [privacyOpen, setPrivacyOpen] = useState(false)
+  const [voiceConsent, setVoiceConsent] = useState(false) // privola za glas, stanje zna server
 
   const fail = useCallback(
     (e: unknown) => {
@@ -117,11 +120,14 @@ function Shop({ user, onLogout, onSessionExpired }: { user: AuthUser; onLogout: 
   const loadTransactions = useCallback(() => api.myTransactions().then(setTransactions), [])
   const loadWallet = useCallback(() => api.wallet().then(setWallet), [])
 
+  const loadPrivacy = useCallback(() => api.privacy.overview().then((p) => setVoiceConsent(p.voiceConsentGiven)), [])
+
   useEffect(() => {
     loadCatalog().catch(fail)
     loadTransactions().catch(fail)
     loadWallet().catch(fail)
-  }, [loadCatalog, loadTransactions, loadWallet, fail])
+    loadPrivacy().catch(fail)
+  }, [loadCatalog, loadTransactions, loadWallet, loadPrivacy, fail])
 
   async function confirmPurchase() {
     if (!pending || busy) return
@@ -183,7 +189,19 @@ function Shop({ user, onLogout, onSessionExpired }: { user: AuthUser; onLogout: 
 
   return (
     <>
-      <ChatWidget user={user} onStateChanged={reloadAfterAgent} onSessionExpired={onSessionExpired} />
+      <ChatWidget
+        user={user}
+        voiceConsent={voiceConsent}
+        onVoiceConsent={async () => {
+          await api.privacy.consent('VOICE')
+          setVoiceConsent(true)
+        }}
+        onStateChanged={reloadAfterAgent}
+        onSessionExpired={onSessionExpired}
+      />
+      {privacyOpen && (
+        <PrivacyModal onClose={() => setPrivacyOpen(false)} onFail={fail} onConsentChanged={() => loadPrivacy().catch(fail)} />
+      )}
       <header className="topbar">
         <div className="brand">
           NotTrilix <span>shop</span>
@@ -195,6 +213,9 @@ function Shop({ user, onLogout, onSessionExpired }: { user: AuthUser; onLogout: 
           </span>
           <button className="btn ghost" onClick={() => setTopUpOpen(true)}>
             Nadoplati
+          </button>
+          <button className="btn ghost" onClick={() => setPrivacyOpen(true)} title="Moji podaci, privole, izvoz i brisanje">
+            Privatnost
           </button>
           <button className="btn ghost" onClick={onLogout}>
             Odjava

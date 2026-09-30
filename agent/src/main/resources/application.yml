@@ -9,8 +9,32 @@ spring:
         options:
           model: gpt-4o           # model agenta (tool calling + hrvatski)
           temperature: 0.2
+      # Faza 5, glas: prepoznavanje govora (STT) je OpenAI, sinteza (TTS) je ElevenLabs ako je kljuc tu, inace OpenAI
+      audio:
+        transcription:
+          options:
+            model: gpt-4o-mini-transcribe
+            language: hr
+            # Bez prompta model zna ignorirati language i vratiti cirilicu ili poljski; rjecnik domene to rjesava.
+            prompt: >-
+              Razgovor kupca s podrškom NotTrilix na hrvatskom. Pojmovi: HT bon, A1 bon, Steam Wallet, PlayStation Store,
+              Xbox Gift Card, wallet, aktivacijski kod, serijski broj, kupnja, povrat, blokada bona, potvrđujem, odustajem.
+        speech:
+          options:
+            model: gpt-4o-mini-tts
+            voice: nova
+            response-format: mp3
+    elevenlabs:
+      api-key: ${ELEVENLABS_API_KEY:not-set}
+      tts:
+        options:
+          model-id: eleven_multilingual_v2
+          voice-id: ${NOTTRILIX_VOICE_ID:CwhRBWXzGAHq8TQ4Fs17}
+          output-format: mp3_44100_64
     model:
       embedding: none             # agent ne racuna embeddinge: bazu znanja pretrazuje sustav (MCP alat)
+      audio:
+        speech: ${NOTTRILIX_TTS:openai}   # elevenlabs | openai (skripta stavlja elevenlabs kad postoji elevenlabs.key)
     # Agent je MCP klijent sustava: alati i znanje stizu preko mreze (HTTP, bez sesije)
     mcp:
       client:
@@ -31,6 +55,9 @@ server:
   port: 8090
 
 nottrilix:
+  voice:
+    enabled: true
+    max-reply-chars: 600          # dulji odgovor se u govoru rezi (chat i dalje dobiva cijeli tekst)
   agent:
     name: Nola
     max-history-messages: 20      # koliko zadnjih poruka razgovora model vidi

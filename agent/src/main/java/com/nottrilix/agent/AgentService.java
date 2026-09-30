@@ -89,9 +89,8 @@ public class AgentService {
                 : pending + ". Ako kupac sada potvrdi, pozovi confirmPendingAction; ako odbije, pozovi "
                 + "cancelPendingAction.";
 
-        log.info("TURN {} conv={} customer={} ({}) channel={} pending='{}' msg='{}'", turn.turn(),
-                turn.conversationId(), customer.id(), customer.name(), turn.channel(),
-                pending == null ? "-" : pending, message);
+        log.info("TURN {} conv={} customer={} channel={} pending='{}' msg='{}'", turn.turn(),
+                turn.conversationId(), customer.id(), turn.channel(), pending == null ? "-" : pending, message);
         long start = System.nanoTime();
 
         ChatClientResponse response;
@@ -100,7 +99,6 @@ public class AgentService {
                     .system(s -> s.text(systemPrompt)
                             .param("agentName", props.name())
                             .param("customerName", customer.name())
-                            .param("customerEmail", customer.email())
                             .param("channel", turn.channel())
                             .param("today", LocalDate.now(clock).format(TODAY))
                             .param("pendingAction", pendingForPrompt))

@@ -74,7 +74,7 @@ final class AuditedToolHandler implements BiFunction<McpTransportContext, CallTo
 
         AuthUser user = call.user();
         log.info("MCP tools/call {} user={} conv={} turn={} input={} -> {} ({} ms)", tool,
-                user == null ? "anonymous" : user.realm().name().toLowerCase() + ":" + user.login(),
+                user == null ? "anonymous" : user.realm().name().toLowerCase() + "#" + user.id(),
                 call.conversationId(), call.meta().get(McpCall.TURN), input, outcome, ms);
         if (!APPLICATION_TOOLS.contains(tool)) {
             audit.record(new AuditContext(call.conversationId(), user == null ? null : user.id(),

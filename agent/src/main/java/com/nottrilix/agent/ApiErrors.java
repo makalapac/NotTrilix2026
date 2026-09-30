@@ -36,6 +36,13 @@ public class ApiErrors {
         return new ErrorResponse("AGENT_UNAVAILABLE", e.getMessage());
     }
 
+    @ExceptionHandler(VoiceService.VoiceUnavailableException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    public ErrorResponse voiceUnavailable(VoiceService.VoiceUnavailableException e) {
+        log.warn("VOICE UNAVAILABLE - {}", e.getMessage());
+        return new ErrorResponse("VOICE_UNAVAILABLE", e.getMessage());
+    }
+
     @ExceptionHandler(SystemUnavailableException.class)
     @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
     public ErrorResponse systemUnavailable(SystemUnavailableException e) {

@@ -3,6 +3,8 @@ import type { FormEvent } from 'react'
 import { api, getToken, isUnauthorized, setToken } from '../shared/api'
 import { LoginPage } from '../shared/LoginPage'
 import { VoucherCheckResult } from '../shared/VoucherCheckResult'
+import { ConversationsTab } from './ConversationsTab'
+import { SuggestionsPanel } from './SuggestionsPanel'
 import type {
   AuditEvent,
   AuthUser,
@@ -33,7 +35,7 @@ import {
   signedEur,
 } from '../shared/format'
 
-type Tab = 'transactions' | 'customers' | 'stock' | 'tickets' | 'knowledge' | 'audit'
+type Tab = 'transactions' | 'customers' | 'stock' | 'tickets' | 'conversations' | 'knowledge' | 'audit'
 type Notice = { kind: 'ok' | 'err'; text: string } | null
 /** Izvrši akciju; uspjeh/greška ide u banner na vrhu (401 = natrag na prijavu). */
 type Runner = (successText: string, action: () => Promise<unknown>) => Promise<void>
@@ -45,6 +47,7 @@ const TAB_LABEL: Record<Tab, string> = {
   customers: 'Kupci',
   stock: 'Zalihe',
   tickets: 'Podrška',
+  conversations: 'Razgovori',
   knowledge: 'Znanje',
   audit: 'Audit',
 }
@@ -175,6 +178,7 @@ function AdminConsole({
         {tab === 'customers' && <CustomersTab customers={customers} reloadCustomers={loadCustomers} run={run} report={report} />}
         {tab === 'stock' && <StockTab run={run} report={report} />}
         {tab === 'tickets' && <TicketsTab customers={customers} run={run} report={report} />}
+        {tab === 'conversations' && <ConversationsTab run={run} report={report} />}
         {tab === 'knowledge' && <KnowledgeTab run={run} report={report} />}
         {tab === 'audit' && <AuditTab run={run} report={report} />}
       </main>
@@ -186,6 +190,8 @@ const EVENT_TYPE: Record<AuditEvent['eventType'], string> = {
   TOOL_CALL: 'alat',
   KB_RETRIEVAL: 'baza znanja',
   CHAT_TURN: 'razgovor',
+  ANALYSIS: 'analiza',
+  PRIVACY: 'privatnost',
 }
 
 /** Audit trag agenta: što je agent radio, za koga, s kojim ishodom. Klik na razgovor filtrira. */
@@ -355,6 +361,8 @@ function KnowledgeTab({ run, report }: { run: Runner; report: Reporter }) {
           </button>
         </div>
       )}
+
+      <SuggestionsPanel run={run} report={report} onChanged={() => loadStatus().catch(report)} />
 
       <form className="kb-search" onSubmit={submit}>
         <input

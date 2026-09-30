@@ -3,10 +3,10 @@
 Pojednostavljeni „produkcijski“ sustav za prodaju bonova: **jedna Spring Boot aplikacija** (API + dva React frontenda) i **PostgreSQL** baza,
 a oko njega agent podrške kao **druga Spring Boot aplikacija**.
 Ovo je polazna točka za predavanje *From REST API to Voice Agent* (JavaCro 2026) — sve kasnije faze grade oko ovog sustava:
-Faza 1 = postojeći sustav (AS IS) · Faza 2 = baza znanja (RAG) · Faza 3 = agent podrške · Faza 4 = mrežni MCP (sustav je MCP server, agent zasebna aplikacija).
-AI dijelovi su građeni na **Spring AI**.
+Faza 1 = postojeći sustav (AS IS) · Faza 2 = baza znanja (RAG) · Faza 3 = agent podrške · Faza 4 = mrežni MCP (sustav je MCP server, agent zasebna aplikacija) ·
+Faza 5 = glas, post-analiza razgovora sa samoučenjem i GDPR. AI dijelovi su građeni na **Spring AI**.
 
-Status faza i „gdje smo stali“: [PROGRESS.md](PROGRESS.md) · opis po fazama (odluke, verifikacija, zamke): [docs/PHASE1.md](docs/PHASE1.md) · [docs/PHASE2.md](docs/PHASE2.md) · [docs/PHASE3.md](docs/PHASE3.md) · [docs/PHASE4.md](docs/PHASE4.md).
+Status faza i „gdje smo stali“: [PROGRESS.md](PROGRESS.md) · opis po fazama (odluke, verifikacija, zamke): [docs/PHASE1.md](docs/PHASE1.md) · [docs/PHASE2.md](docs/PHASE2.md) · [docs/PHASE3.md](docs/PHASE3.md) · [docs/PHASE4.md](docs/PHASE4.md) · [docs/PHASE5.md](docs/PHASE5.md) · obrada osobnih podataka: [docs/GDPR.md](docs/GDPR.md).
 
 ## Što sustav radi
 
@@ -19,16 +19,19 @@ Status faza i „gdje smo stali“: [PROGRESS.md](PROGRESS.md) · opis po fazama
 - **Baza znanja (Faza 2, Spring AI):** 9 markdown dokumenata podrške (`src/main/resources/kb/`) → pri startu ingest u pgvector (OpenAI embeddinzi) → semantička pretraga za support (admin tab „Znanje“, `GET /api/admin/kb/search?q=…`). Detalji: [docs/PHASE2.md](docs/PHASE2.md).
 - **Agent podrške „Nola“ (Faza 3, Spring AI `ChatClient`):** u shopu gumb „Chat s podrškom“. Agent odgovara iz baze znanja i djeluje kroz alate nad istim servisima (kupnje, wallet, provjera bona, kupnja, povrat, blokada, prijava) — uvijek u ime prijavljenog kupca i uz ista poslovna pravila. Kupnja, povrat i blokada traže **potvrdu kupca** (stanje drži server). Svaki poziv alata, dohvat iz baze znanja i turn razgovora je u **audit tragu** (admin tab „Audit“). Detalji: [docs/PHASE3.md](docs/PHASE3.md).
 - **MCP server (Faza 4):** isti alati dostupni su preko mreže na `POST /mcp` (HTTP bez sesije). Agent je od ove faze **zasebna aplikacija** (`agent\`, port 8090) koja je MCP klijent: nema bazu ni pravila, a u sustav ulazi s tokenom kupca. Kupac se prepoznaje po tokenu, potvrda radnji i audit su na strani sustava, pa vrijede za svakog MCP klijenta. Detalji: [docs/PHASE4.md](docs/PHASE4.md).
+- **Glas (Faza 5):** u chatu gumb s mikrofonom (drži i govori). Snimka ide sustavu i agentu, koji je pretvori u tekst (OpenAI, Spring AI), odgovori istim agentom i odgovor vrati kao govor (ElevenLabs ili OpenAI, Spring AI). Snimka se ne pohranjuje; traži privolu kupca. Detalji: [docs/PHASE5.md](docs/PHASE5.md).
+- **Post-analiza razgovora i samoučenje (Faza 5):** utihnuli razgovori se iz audit traga sastave u transkript, **pseudonimiziraju** i analiziraju modelom (sažetak, tema, ishod, raspoloženje, ocjena agenta, rupe u znanju). Rupe u znanju postaju **prijedlozi za bazu znanja** koje admin odobri (uz ispravke) ili odbije; odobreno odmah ulazi u RAG. Admin tab „Razgovori“ i tab „Znanje“.
+- **GDPR (Faza 5):** privola za glas s verzijom teksta, izvoz svih podataka kupca (JSON), brisanje razgovora na zahtjev, automatska retencija (30 dana poruke, 365 dana anonimne analize), logovi bez e-maila, agent odgovara na pitanja o privatnosti iz baze znanja. Detalji: [docs/GDPR.md](docs/GDPR.md).
 - **Jedan API** (`/api/**`, Swagger na `/swagger-ui.html`) za sve kanale; pristup bearer tokenom, uloge `CUSTOMER` / `ADMIN` (i `AGENT` za MCP).
 
 ```
-   Shop (React) + chat ──┐                        ┌── PostgreSQL 17 (Docker, :5433): podaci, vector_store, audit_events
-                         ├──> sustav :8080 ───────┤    Flyway V1–V4
-   Admin (React) ────────┘    REST API + pravila  ├── OpenAI text-embedding-3-small (baza znanja) kroz Spring AI
-                              MCP server /mcp     └── logovi: konzola + logs/nottrilix-2026.log
-                                 ▲      │ poruka kupca + token
-                  MCP (alati,    │      ▼
-                  baza znanja)   └── agent :8090 ─── OpenAI gpt-4o kroz Spring AI (ChatClient, memorija, RAG)
+   Shop (React) + chat/glas ──┐                     ┌── PostgreSQL 17 (Docker, :5433): podaci, vector_store, audit_events, conversations
+                              ├──> sustav :8080 ────┤    Flyway V1–V5
+   Admin (React) ─────────────┘    REST API + pravila├── OpenAI kroz Spring AI: embeddinzi (baza znanja), gpt-4o (analiza razgovora)
+                                   MCP server /mcp   ├── raspored: analiza utihnulih razgovora, retencija podataka
+                                      ▲      │ poruka ili snimka + token
+                       MCP (alati,    │      ▼
+                       baza znanja)   └── agent :8090 ─── OpenAI gpt-4o (ChatClient), STT gpt-4o-mini-transcribe, TTS ElevenLabs/OpenAI
 ```
 
 ## Pokretanje (jedan potez)
@@ -37,9 +40,11 @@ Status faza i „gdje smo stali“: [PROGRESS.md](PROGRESS.md) · opis po fazama
 .\run-phase-1.ps1     # Faza 1 (radi i bez OpenAI ključa)
 .\run-phase-2.ps1     # Faza 2: isto + baza znanja (traži openai.key ili OPENAI_API_KEY)
 .\run-phase-4.ps1     # Faza 4: sustav (MCP server) + agent (zasebna aplikacija); traži openai.key ili OPENAI_API_KEY
+.\run-phase-5.ps1     # Faza 5: isto + glas (elevenlabs.key je opcionalan), analiza razgovora, GDPR
 ```
 
-`run-phase-1.ps1` i `run-phase-2.ps1` pokreću samo sustav; `run-phase-3.ps1` je na ovoj grani isto što i `run-phase-4.ps1` (agent u istom procesu je na grani `phase3`).
+`run-phase-1.ps1` i `run-phase-2.ps1` pokreću samo sustav; `run-phase-3.ps1`, `run-phase-4.ps1` i `run-phase-5.ps1` na ovoj grani pokreću isto (sustav + agent).
+ElevenLabs ključ: datoteka `elevenlabs.key` (gitignored); bez njega agent govori kroz OpenAI TTS.
 
 Skripta: provjeri/pokrene Docker Desktop → podigne PostgreSQL (`docker compose up --wait`) → nađe JDK 25 → učita `openai.key` ako postoji → `mvn package`
 (uključivo build React frontenda; prvi put skida Node i npm pakete, par minuta) → pokrene aplikaciju u istom prozoru (logovi u konzoli).
@@ -112,6 +117,11 @@ Odgovor prijave je `{ "token": "...", "user": {realm, id, name, login} }`; dalje
 | `GET /api/admin/tickets`, `POST /api/admin/tickets`, `POST /api/admin/tickets/{id}/resolve` | ADMIN | podrška |
 | `GET /api/admin/kb/search?q=&topK=`, `GET /api/admin/kb/status`, `POST /api/admin/kb/ingest?force=` | ADMIN | baza znanja: semantička pretraga, stanje, ponovni ingest (503 `KB_UNAVAILABLE` bez ključa) |
 | `POST /api/agent/chat` `{conversationId?, message}` | CUSTOMER | poruka agentu → `{conversationId, reply, toolCalls, sources, pendingAction, …}`; sustav je prosljeđuje aplikaciji agenta (503 `AGENT_UNAVAILABLE` ako agent ne radi) |
+| `POST /api/agent/voice` (multipart `audio`, `conversationId?`) | CUSTOMER | glasovna poruka → `{transcript, chat, audioBase64, audioMimeType, sttMs, ttsMs, ttsProvider}`; 403 `CONSENT_REQUIRED` bez privole |
+| `GET /api/shop/privacy`, `POST /api/shop/privacy/consent` `{type}`, `DELETE /api/shop/privacy/consent/{type}` | CUSTOMER | pregled podataka i rokova, davanje i povlačenje privole (VOICE) |
+| `GET /api/shop/privacy/export`, `POST /api/shop/privacy/erase-conversations` | CUSTOMER | izvoz svih podataka kupca (JSON) / brisanje razgovora na zahtjev |
+| `GET /api/admin/conversations?limit=`, `GET …/stats`, `GET …/{id}`, `POST …/{id}/analyze`, `POST …/analyze-idle` | ADMIN | razgovori s analizom, statistika, transkript, analiza sada |
+| `GET /api/admin/kb/suggestions?status=`, `POST …/{id}/approve` `{question, answer}`, `POST …/{id}/reject` | ADMIN | prijedlozi za bazu znanja iz razgovora (samoučenje s odobrenjem) |
 | `POST /mcp` (JSON-RPC: `tools/list`, `tools/call`, …) | CUSTOMER, AGENT | MCP server: 14 alata nad servisima; kupac iz tokena, razgovor i turn u `_meta` |
 | `GET /api/admin/audit?conversationId=&customerId=&limit=` | ADMIN | audit trag agenta: pozivi alata, dohvati iz baze znanja, turnovi razgovora |
 
@@ -122,7 +132,8 @@ svaka prijava/odjava i odbijeni pristup (`AUTH` logger: `LOGIN OK`, `LOGIN FAILE
 svaka poslovna operacija (`PURCHASE OK …`, `PURCHASE DENIED reason=OUT_OF_STOCK …`, `WALLET DEBIT/CREDIT/TOPUP …`, `REFUND OK …`, `TICKET …`, `VOUCHER CHECK …`), svaki „poziv“ pružatelju (`PROVIDER` logger) i svaki odbijeni zahtjev.
 Baza znanja: `KB` logger (`KB INGEST …`, `KB SEARCH …`). MCP server: `MCP` logger (`MCP tools/call purchaseVoucher user=customer:… conv=… turn=2 -> CONFIRMATION_REQUIRED`, `CONFIRM PURCHASE 5 … -> ceka potvrdu kupca`)
 i `AUDIT` logger (zrcalo tablice `audit_events`: `TOOL_CALL purchaseVoucher … -> DENIED | INSUFFICIENT_FUNDS: …`).
-Agent piše u istu konzolu s oznakom `[agent ]` (`TURN n conv=… msg='…'`, `TOOL purchaseVoucher … (12 ms preko MCP-a)`, `TURN n … OK 2981 ms, alati=[…], tokeni=…`) i u `logs/nottrilix-agent.log`; retci sustava imaju oznaku `[sustav]`.
+Agent piše u istu konzolu s oznakom `[agent ]` (`TURN n conv=… msg='…'`, `TOOL purchaseVoucher … (12 ms preko MCP-a)`, `TURN n … OK 2981 ms, alati=[…], tokeni=…`, `VOICE STT … / TTS …`) i u `logs/nottrilix-agent.log`; retci sustava imaju oznaku `[sustav]`.
+Faza 5: `ANALYSIS` logger (`ANALYSIS conv=… OK 4 s -> KUPNJA / RIJESENO / …`), `LEARN` (prijedlozi i odobrenja), `PRIVACY` (privola, izvoz, brisanje, retencija), `CONVERSATION`. Identitet u logovima je `customer#2`, ne e-mail.
 SQL ispis: `logging.level.org.hibernate.SQL: DEBUG` u `application.yml`.
 
 ## Razvoj
@@ -130,6 +141,7 @@ SQL ispis: `logging.level.org.hibernate.SQL: DEBUG` u `application.yml`.
 - Sustav: `mvn -DskipTests package` (ili samo `mvn test`: pravila u `ShopServiceTest`, granice MCP-a u `ConfirmationGateTest`, `SupportMcpToolsTest`, `AuditedToolHandlerTest`). Agent: `mvn -f agent\pom.xml package`. Build treba JDK 25 (`JAVA_HOME`). Na Windowsu build ne prolazi dok aplikacija radi (drži jar u `target\`).
 - Proba agenta protiv pokrenutih aplikacija: `python scripts\agent_e2e.py` (scenariji A–H + audit; prije toga `-Reset`, a za hrvatske znakove u konzoli `$env:PYTHONIOENCODING = "utf-8"`).
 - MCP bez agenta: `python scripts\mcp_direct.py` (sirovi JSON-RPC pozivi: bez tokena, s ključem agenta, s tokenom kupca, potvrda kroz dva turna).
+- Faza 5: `python scripts\phase5_e2e.py` (glas s probnom snimkom, privatnost, analiza razgovora, učenje); probna snimka nastaje iz `openai.key` (TTS), ključ se ne ispisuje.
 - Frontend s hot-reloadom: aplikacija upaljena na 8080, pa u `frontend/`: `npm install && npm run dev` → http://localhost:5173 (i `/admin/`), `/api` se proxyja na 8080.
 - Preskoči frontend u Maven buildu: `-Dskip.installnodenpm -Dskip.npm`.
 
@@ -141,21 +153,27 @@ src/main/java/com/nottrilix
   repo/      Spring Data repozitoriji (FOR UPDATE za kupca/bon/transakciju)
   service/   CatalogService, ShopService, WalletService, SupportService, VoucherCheckService  <- poslovna pravila; AuditService
   provider/  ProviderGateway (sučelje prema pružatelju) + SimulatedProviderGateway (fiktivni A1/HT/Steam/...)
-  kb/        baza znanja: KbMarkdownParser (md -> odlomci), KnowledgeBaseIngestor (Spring AI VectorStore, idempotentno), KnowledgeBaseService (pretraga)
+  kb/        baza znanja: KbMarkdownParser (md -> odlomci), KnowledgeBaseIngestor (Spring AI VectorStore, idempotentno; + naučeni odlomci iz kb_suggestions),
+             KnowledgeBaseService (pretraga), KnowledgeLearningService (prijedlozi: odobri/odbij -> ingest)
+  analysis/  post-analiza razgovora: ConversationAnalyzer (pseudonimizirani transkript -> Spring AI structured output -> ConversationInsight),
+             AnalysisScheduler (utihnuli razgovori), AnalysisConfig (ChatClient za analizu)
+  privacy/   GDPR: PrivacyService (privole, izvoz, brisanje), RetentionJob (rok čuvanja), Pseudonymizer, PrivacyProperties
   mcp/       MCP server: SupportMcpTools (@McpTool adapteri nad servisima), McpCall (kupac iz tokena, razgovor iz _meta),
              ConfirmationGate (potvrda radnji), AuditedToolHandler (audit na granici), McpServerConfig, ToolResult
-  agent/     veza prema aplikaciji agenta: AgentClient (HTTP), AgentChatService (prosljeđivanje poruke + audit turna)
+  agent/     veza prema aplikaciji agenta: AgentClient (HTTP, tekst i snimka), AgentChatService (prosljeđivanje + audit turna + okvir razgovora + privola za glas)
   auth/      Realm (CUSTOMER, ADMIN, AGENT), AuthUser, LoginToken, NotTrilixAuthenticationProvider (bcrypt), TokenService, BearerTokenFilter
   api/       kontroleri (Auth, Shop, Customers, Admin, KnowledgeBase, Agent, Audit), dto/ (recordi), ApiExceptionHandler
   config/    SecurityConfig, RulesProperties, AppConfig (Clock, OpenAPI), WebConfig, RequestLoggingFilter
-src/main/resources/db/migration   V1__schema.sql, V2__seed.sql, V3__vector_store.sql (pgvector), V4__audit_events.sql (audit trag agenta)
-src/main/resources/kb/            9 markdown dokumenata baze znanja (pisani za RAG, vidi docs/PHASE2.md)
-frontend/   Vite + React + TypeScript: src/customer (shop + ChatWidget), src/admin (uklj. tabove Znanje i Audit), src/shared (api + token, tipovi, LoginPage, stil)
-scripts/    agent_e2e.py (proba razgovora s agentom), mcp_direct.py (MCP pozivi bez agenta)
+src/main/resources/db/migration   V1__schema.sql, V2__seed.sql, V3__vector_store.sql (pgvector), V4__audit_events.sql (audit trag agenta),
+                                  V5__conversations_privacy.sql (razgovori, analize, prijedlozi za bazu znanja, privole)
+src/main/resources/kb/            10 markdown dokumenata baze znanja (pisani za RAG, vidi docs/PHASE2.md; 10 = privatnost)
+frontend/   Vite + React + TypeScript: src/customer (shop, ChatWidget s glasom i privolom, PrivacyModal), src/admin (tabovi Razgovori, Znanje s prijedlozima, Audit), src/shared
+scripts/    agent_e2e.py (proba razgovora s agentom), mcp_direct.py (MCP pozivi bez agenta), phase5_e2e.py (glas, privatnost, analiza, učenje)
 
 agent/      aplikacija agenta (vlastiti pom.xml, port 8090)
   src/main/java/com/nottrilix/agent
-             AgentConfig (ChatClient, memorija, RAG preko MCP-a), AgentService (turn), AgentController (POST /chat),
+             AgentConfig (ChatClient, memorija, RAG preko MCP-a), AgentService (turn), AgentController (POST /chat, POST /voice),
+             VoiceService (STT -> agent -> TTS, Spring AI TranscriptionModel + TextToSpeechModel),
              McpClientConfig (token kupca po pozivu, _meta, filtar alata), SystemGateway (tko je kupac, što čeka potvrdu, baza znanja),
              TracingToolCallback, CustomerToken, TurnContext, ToolOutcome, ReplyStyle
   src/main/resources/agent/system-prompt.txt (persona i pravila ponašanja agenta; parametri se pune po pozivu)

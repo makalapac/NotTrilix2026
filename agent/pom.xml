@@ -57,6 +57,16 @@
       <groupId>org.springframework.ai</groupId>
       <artifactId>spring-ai-rag</artifactId>
     </dependency>
+    <!-- Faza 5, glas: STT je OpenAI (u starteru iznad), TTS je ElevenLabs kroz Spring AI. Starter model vuce kao
+         optional, pa spring-ai-elevenlabs mora biti naveden izricito da udje u jar. -->
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-starter-model-elevenlabs</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-elevenlabs</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>

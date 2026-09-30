@@ -76,6 +76,50 @@ export const TOOL_LABEL: Record<string, string> = {
   turn: 'Turn razgovora',
 }
 
+/** Faza 5: operacije analize i privatnosti u auditu. */
+Object.assign(TOOL_LABEL, {
+  analyze: 'Analiza razgovora',
+  learn: 'Učenje (baza znanja)',
+  consent: 'Privola',
+  export: 'Izvoz podataka',
+  erase: 'Brisanje razgovora',
+  retention: 'Retencija (rok čuvanja)',
+})
+
+export const ANALYSIS_CATEGORY: Record<string, string> = {
+  KUPNJA: 'Kupnja',
+  POVRAT: 'Povrat',
+  KOD_NE_RADI: 'Kod ne radi',
+  BLOKADA: 'Blokada',
+  INFORMACIJA: 'Informacija',
+  OSTALO: 'Ostalo',
+}
+
+export const ANALYSIS_OUTCOME: Record<string, string> = {
+  RIJESENO: 'Riješeno',
+  NERIJESENO: 'Neriješeno',
+  ESKALIRANO: 'Eskalirano',
+  ODUSTAO: 'Odustao',
+}
+
+export const SENTIMENT: Record<string, string> = {
+  POZITIVNO: 'Pozitivno',
+  NEUTRALNO: 'Neutralno',
+  NEGATIVNO: 'Negativno',
+}
+
+export const CONVERSATION_STATUS: Record<string, string> = {
+  OPEN: 'Otvoren',
+  ANALYZED: 'Analiziran',
+  ERASED: 'Obrisan',
+}
+
+export const SUGGESTION_STATUS: Record<string, string> = {
+  PROPOSED: 'Čeka odluku',
+  APPROVED: 'Odobreno',
+  REJECTED: 'Odbijeno',
+}
+
 export const AGENT_OUTCOME: Record<string, string> = {
   OK: 'izvršeno',
   DENIED: 'odbijeno',

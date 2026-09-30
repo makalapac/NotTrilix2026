@@ -75,7 +75,7 @@ public class SecurityConfig {
 
     private static void forbidden(HttpServletRequest request, HttpServletResponse response) throws IOException {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String who = auth != null && auth.getPrincipal() instanceof AuthUser u ? u.realm() + ":" + u.login() : "anonymous";
+        String who = auth != null && auth.getPrincipal() instanceof AuthUser u ? u.realm() + "#" + u.id() : "anonymous";
         log.warn("AUTH 403 {} {} user={} - nema pravo pristupa", request.getMethod(), request.getRequestURI(), who);
         writeJson(response, HttpServletResponse.SC_FORBIDDEN, "FORBIDDEN", "Nemate pravo pristupa");
     }

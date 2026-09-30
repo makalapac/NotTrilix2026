@@ -1,20 +1,31 @@
 import type {
   AgentChatResponse,
+  Analysis,
   AuditEvent,
   AuthUser,
   Brand,
   CatalogItem,
+  Consent,
+  ConsentType,
+  Conversation,
+  ConversationDetail,
+  ConversationStats,
   Customer,
+  EraseResult,
   KbHit,
   KbIngestResult,
   KbStatus,
+  KbSuggestion,
   LoginResponse,
+  PrivacyOverview,
   PurchaseResponse,
   StockRow,
+  SuggestionStatus,
   Ticket,
   TicketRequest,
   Transaction,
   TransactionStatus,
+  VoiceTurnResponse,
   Voucher,
   VoucherCheck,
   Wallet,
@@ -74,6 +85,20 @@ function post<T>(path: string, payload?: unknown): Promise<T> {
   return request<T>(path, { method: 'POST', body: payload === undefined ? undefined : JSON.stringify(payload) })
 }
 
+/** Multipart (snimka glasa): bez Content-Type zaglavlja, preglednik ga slaže sam. */
+async function postForm<T>(path: string, form: FormData): Promise<T> {
+  const headers: Record<string, string> = { Accept: 'application/json' }
+  const token = getToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+  const res = await fetch(path, { method: 'POST', body: form, headers })
+  const text = await res.text()
+  const body = text ? JSON.parse(text) : null
+  if (!res.ok) {
+    throw new ApiError(res.status, body?.error ?? `HTTP_${res.status}`, body?.message ?? `HTTP ${res.status}`)
+  }
+  return body as T
+}
+
 export interface TransactionFilter {
   status?: TransactionStatus
   brand?: Brand
@@ -98,6 +123,21 @@ export const api = {
   checkVoucher: (serial: string) => request<VoucherCheck>(`/api/shop/vouchers/${encodeURIComponent(serial)}/check`),
   agentChat: (conversationId: string | null, message: string) =>
     post<AgentChatResponse>('/api/agent/chat', { conversationId, message }),
+  agentVoice: (conversationId: string | null, audio: Blob, filename: string) => {
+    const form = new FormData()
+    form.append('audio', audio, filename)
+    if (conversationId) form.append('conversationId', conversationId)
+    return postForm<VoiceTurnResponse>('/api/agent/voice', form)
+  },
+
+  /** GDPR: privole, pregled, izvoz i brisanje podataka prijavljenog kupca. */
+  privacy: {
+    overview: () => request<PrivacyOverview>('/api/shop/privacy'),
+    consent: (type: ConsentType) => post<Consent>('/api/shop/privacy/consent', { type }),
+    withdraw: (type: ConsentType) => request<PrivacyOverview>(`/api/shop/privacy/consent/${type}`, { method: 'DELETE' }),
+    exportData: () => request<unknown>('/api/shop/privacy/export'),
+    eraseConversations: () => post<EraseResult>('/api/shop/privacy/erase-conversations'),
+  },
 
   customers: () => request<Customer[]>('/api/customers'),
 
@@ -133,6 +173,18 @@ export const api = {
         request<KbHit[]>(`/api/admin/kb/search?q=${encodeURIComponent(query)}${topK ? `&topK=${topK}` : ''}`),
       status: () => request<KbStatus>('/api/admin/kb/status'),
       ingest: () => post<KbIngestResult>('/api/admin/kb/ingest?force=true'),
+      suggestions: (status?: SuggestionStatus) =>
+        request<KbSuggestion[]>(`/api/admin/kb/suggestions${status ? `?status=${status}` : ''}`),
+      approveSuggestion: (id: number, question: string, answer: string) =>
+        post<KbSuggestion>(`/api/admin/kb/suggestions/${id}/approve`, { question, answer }),
+      rejectSuggestion: (id: number) => post<KbSuggestion>(`/api/admin/kb/suggestions/${id}/reject`),
+    },
+    conversations: {
+      list: (limit = 100) => request<Conversation[]>(`/api/admin/conversations?limit=${limit}`),
+      stats: () => request<ConversationStats>('/api/admin/conversations/stats'),
+      detail: (id: string) => request<ConversationDetail>(`/api/admin/conversations/${encodeURIComponent(id)}`),
+      analyze: (id: string) => post<Analysis>(`/api/admin/conversations/${encodeURIComponent(id)}/analyze`),
+      analyzeIdle: () => post<string[]>('/api/admin/conversations/analyze-idle'),
     },
   },
 }

@@ -1,6 +1,8 @@
 package com.nottrilix.api;
 
 import com.nottrilix.agent.AgentUnavailableException;
+import com.nottrilix.analysis.AnalysisFailedException;
+import com.nottrilix.privacy.ConsentRequiredException;
 import com.nottrilix.api.dto.ErrorResponse;
 import com.nottrilix.kb.KnowledgeBaseUnavailableException;
 import com.nottrilix.service.BusinessRuleException;
@@ -46,6 +48,20 @@ public class ApiExceptionHandler {
         return new ErrorResponse("AGENT_UNAVAILABLE", e.getMessage());
     }
 
+    @ExceptionHandler(ConsentRequiredException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public ErrorResponse consentRequired(ConsentRequiredException e) {
+        log.warn("CONSENT REQUIRED - {}", e.getMessage());
+        return new ErrorResponse("CONSENT_REQUIRED", e.getMessage());
+    }
+
+    @ExceptionHandler(AnalysisFailedException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    public ErrorResponse analysisFailed(AnalysisFailedException e) {
+        log.warn("ANALYSIS FAILED - {}", e.getMessage());
+        return new ErrorResponse("ANALYSIS_FAILED", e.getMessage());
+    }
+
     @ExceptionHandler(KnowledgeBaseUnavailableException.class)
     @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
     public ErrorResponse knowledgeBaseUnavailable(KnowledgeBaseUnavailableException e) {
@@ -70,7 +86,8 @@ public class ApiExceptionHandler {
         return new ErrorResponse("VALIDATION_ERROR", details);
     }
 
-    @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})
+    @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class,
+            IllegalArgumentException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse badRequest(Exception e) {
         log.warn("BAD REQUEST - {}", e.getMessage());
