@@ -39,6 +39,7 @@ Demo prijave: kupci `ana.anic@example.com` / `ana123` (wallet 115 €), marko.ma
 
 - **Faza 5 zatvorena** na grani `phase5` (2026-09-30): glas je kanal ispred istog agenta, audit trag je postao transkript za analizu i izvoz, samoučenje ide preko odobrenja admina, prava kupca su kod. Pouke za predavanje: [docs/PHASE5.md](docs/PHASE5.md) (tablica na vrhu + poglavlje 11), obrada osobnih podataka: [docs/GDPR.md](docs/GDPR.md).
 - Faza 4 (2026-09-30): pouke u [docs/PHASE4.md](docs/PHASE4.md) (granica koja živi u klijentu nije granica; identitet putuje kao vjerodajnica; audit na strani sustava otkrio ponovljeni RAG dohvat).
+- **Nacrt prezentacije (40 min, blok za Fazu 6 rezerviran):** [docs/PREZENTACIJA.md](docs/PREZENTACIJA.md) — raspodjela vremena, demo beatovi, popis slajdova, rezerve, što još treba do konferencije.
 - Sljedeće: grana `phase6` → telefonija (poziv s mobitela; istraživanje u `../mcp-demo/VOICE_RESEARCH.md` i Infobip bilješke). Otvoreno: pozivatelj nema token kupca — treba ga prepoznati drukčije i agentu dati vjerodajnicu u njegovo ime; glas u stvarnom vremenu (streaming, prekidanje) umjesto push-to-talk.
 - Remote `origin` = `github.com/makalapac/NotTrilix2026`; grane `phase1`, `phase2` i `phase3` su na GitHubu, **`phase4` i `phase5` su zasad samo lokalno** (`git push -u origin phase4`, `git push -u origin phase5`).
 - Baza u Dockeru sadrži i podatke od testiranja → prije vježbe `.\run-phase-5.ps1 -Reset` (svježi seed + ponovni ingest baze znanja, ~10 s; odobreni prijedlozi iz `kb_suggestions` nestaju s bazom).
