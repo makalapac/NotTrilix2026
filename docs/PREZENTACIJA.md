@@ -128,7 +128,34 @@ git worktree add ..\NotTrilix2026-phase3 phase3     # isto za phase1, phase2, ph
 | 4 mreža | 67 | 2.898 (906 obrisano) | 29 | selidba agenta u `agent\` |
 | 5 glas, analiza, GDPR | 85 | 4.378 | 46 | najveća faza: tri teme |
 
+### Spring AI po fazama: što je iz Spring AI-ja, što je naše
+
+Za svaki blok jedna rečenica na slajdu: „Spring AI je dao X, mi smo dodali Y.“ Ovisnosti su u `pom.xml` (sustav) i `agent/pom.xml` (agent), verzija 2.0.0 kroz `spring-ai-bom`.
+
+| Faza | Spring AI dio (klasa / anotacija) | Ovisnost | Gdje u kodu | Što je naše oko toga |
+|---|---|---|---|---|
+| 2 znanje | `EmbeddingModel` → `OpenAiEmbeddingModel` (`spring.ai.openai.embedding.options.model: text-embedding-3-small`); nikad ga ne zovemo izravno, zove ga vector store | `spring-ai-starter-model-openai` | `application.yml:9–11` | — |
+| 2 znanje | `VectorStore` → `PgVectorStore` (`initialize-schema: false`, tablica iz Flyway V3), `Document` (sadržaj + metapodaci `source`, `title`, `file_hash`), `vectorStore.add(...)`, `similaritySearch(SearchRequest…topK…similarityThreshold)`, `FilterExpressionBuilder` za brisanje po izvoru | `spring-ai-starter-vector-store-pgvector` | `kb/KnowledgeBaseIngestor.java:125,176`, `kb/KnowledgeBaseService.java:37–42` | parser markdowna (`##` = odlomak), hash datoteke, admin pretraga |
+| 3 agent | `ChatClient` + autokonfigurirani `ChatClient.Builder` (`gpt-4o`): `.prompt().system(…).user(…).toolContext(…).call().chatClientResponse()`; `PromptTemplate` za system prompt s parametrima | `spring-ai-starter-model-openai` | grana `phase3`: `agent/AgentConfig.java`, `AgentService.java`; danas `agent/…/AgentConfig.java:83–108` | persona i pravila u `system-prompt.txt` |
+| 3 agent | `ChatMemory` = `MessageWindowChatMemory` + `InMemoryChatMemoryRepository`; `MessageChatMemoryAdvisor` (memorija po `conversationId`) | isto | `AgentConfig.java:93` | brojač turnova, `conversationId` = razgovor u shopu |
+| 3 agent | `QuestionAnswerAdvisor` nad `VectorStore` (RAG u jednom advisoru; u Fazi 4 zamijenjen `RetrievalAugmentationAdvisor`-om) | `spring-ai-vector-store-advisor` (samo grana `phase3`) | grana `phase3`: `AgentConfig.java:60` | — |
+| 3 agent | `@Tool` / `@ToolParam` + `ToolCallbacks.from(...)`; `ToolContext` (kupac iz prijave, ne iz modela); `ToolCallback` kao omotač za audit | isto | grana `phase3`: `AgentTools.java:128–147`, `AuditingToolCallback.java` | `ToolResult` (ok / status / message / data), `ConfirmationGate`, audit |
+| 3 agent | `ChatClientResponse` → `ChatResponse.getMetadata().getUsage()` (tokeni po turnu u audit) | isto | `agent/…/AgentService.java` | audit trag |
+| 4 mreža (sustav) | `@McpTool`, `@McpToolParam`, `McpMeta` (kontekst iz `_meta`), `McpTool.McpAnnotations` (`readOnlyHint`, `destructiveHint`), `SyncMcpAnnotationProviders.statelessToolSpecifications(...)`; `spring.ai.mcp.server.protocol: STATELESS`, `streamable-http.mcp-endpoint: /mcp` | `spring-ai-starter-mcp-server-webmvc` (+ MCP Java SDK: `McpStatelessServerFeatures.SyncToolSpecification`, `McpSchema.CallToolRequest/CallToolResult`, `McpTransportContext`) | `mcp/SupportMcpTools.java:156–306`, `mcp/McpServerConfig.java:25–28`, `application.yml:23–30` | `McpCall` (kupac iz Spring Security konteksta + `_meta`), `AuditedToolHandler`, `ConfirmationGate` u sustavu |
+| 4 mreža (agent) | `SyncMcpToolCallbackProvider` (alati sustava kao `ToolCallback`-ovi), `McpClientCustomizer<McpClient.SyncSpec>` i `McpClientCustomizer<HttpClientStreamableHttpTransport.Builder>` (token u zaglavlje po pozivu), `ToolContextToMcpMetaConverter` (`_meta`), `McpToolFilter`, `McpToolNamePrefixGenerator.noPrefix()`; `spring.ai.mcp.client.streamable-http.connections.*` | `spring-ai-starter-mcp-client` (+ SDK `McpSyncClient`, `HttpClientStreamableHttpTransport`) | `agent/…/McpClientConfig.java:36–61`, `agent/…/SystemGateway.java` | `CustomerToken` (`ScopedValue`), `TracingToolCallback` (kvar mreže → jasan ishod za model), `TurnContext` |
+| 4 mreža (agent) | `RetrievalAugmentationAdvisor` + vlastiti `DocumentRetriever` + `ContextualQueryAugmenter` (`allowEmptyContext`), `Query`; `ToolCallingAdvisor.DEFAULT_ORDER` za redoslijed | `spring-ai-rag` | `agent/…/AgentConfig.java:69, 94–98` | dohvat ide kroz MCP alat `searchKnowledgeBase`; nalaz o ponovljenom dohvatu |
+| 5 glas | `TranscriptionModel` → `OpenAiAudioTranscriptionModel`; `AudioTranscriptionPrompt(Resource)`, `AudioTranscriptionResponse`; opcije `spring.ai.openai.audio.transcription.options.{model, language, prompt}` | `spring-ai-starter-model-openai` | `agent/…/VoiceService.java:83–93`, `agent/…/application.yml:14–21` | domenski prompt (rječnik), naziv datoteke = format snimke |
+| 5 glas | `TextToSpeechModel` → `ElevenLabsTextToSpeechModel` ili `OpenAiAudioSpeechModel`, izbor kroz `spring.ai.model.audio.speech`; `TextToSpeechPrompt`, `TextToSpeechResponse`; `stream()` postoji (plan za fluidniji glas) | `spring-ai-starter-model-elevenlabs` (+ OpenAI starter) | `agent/…/VoiceService.java:96–101`, `agent/…/application.yml:22–37` | skraćivanje za govor, privola prije poziva, snimka se ne čuva |
+| 5 analiza | **Structured output**: `BeanOutputConverter<ConversationInsight>` (`getFormat()` u prompt, `convert()` iz odgovora); drugi `ChatClient` bean u sustavu (`analysisChatClient`); `Usage` za tokene analize | `spring-ai-starter-model-openai` (sustav opet ima chat model) | `analysis/ConversationAnalyzer.java:96–120`, `analysis/AnalysisConfig.java`, `analysis/ConversationInsight.java` | pseudonimizirani transkript, raspored, prijedlozi za bazu znanja |
+| 5 učenje | isti `VectorStore.add(Document)` kao u Fazi 2, metapodatak `source = nauceno-N` | pgvector starter | `kb/KnowledgeBaseIngestor.java:151–176` | odobravanje s ispravkom, ponovni ingest pri resetu |
+| 6 telefon (plan) | ništa novo iz Spring AI-ja: isti `ChatClient`, `TextToSpeechModel.stream()`; WebSocket, VAD i telefonija su obična Java (Spring WebSocket) | — | `agent/…/telephony/` | „Gdje apstrakcija ne seže, obična Java.“ |
+
+**Za zaključni slajd.** Spring AI je dao: `ChatClient` s advisorima (memorija, RAG), alate (`@Tool`, `ToolCallback`, `ToolContext`), MCP server (`@McpTool`) i MCP klijent (`McpClientCustomizer`, `SyncMcpToolCallbackProvider`), `EmbeddingModel` + `VectorStore`, `TranscriptionModel` + `TextToSpeechModel`, structured output (`BeanOutputConverter`).
+Naše je: poslovna pravila, brana potvrde, audit, identitet kroz token, transkript iz audita, pseudonimizacija, GDPR, samoučenje s odobrenjem. Dva stupca na jednom slajdu.
+
 ### Blok 1 (Faza 1): pravila su u kodu
+
+_Spring AI: ništa. Namjerno: prvo sustav s pravilima, bez ijednog AI dijela._
 
 | Trenutak | Datoteka | Što pokazati | Rečenica |
 |---|---|---|---|
@@ -139,6 +166,8 @@ git worktree add ..\NotTrilix2026-phase3 phase3     # isto za phase1, phase2, ph
 Ne otvarati: kontrolere, DTO-e, React.
 
 ### Blok 2 (Faza 2): znanje
+
+_Spring AI: `EmbeddingModel` (OpenAI) + `VectorStore` (pgvector), `Document`, `SearchRequest`; starteri `spring-ai-starter-model-openai`, `spring-ai-starter-vector-store-pgvector`._
 
 | Trenutak | Datoteka | Što pokazati | Rečenica |
 |---|---|---|---|
@@ -151,6 +180,8 @@ Ne otvarati: kontrolere, DTO-e, React.
 
 ### Blok 3 (Faza 3): agent
 
+_Spring AI: `ChatClient`, `ChatMemory` + `MessageChatMemoryAdvisor`, `QuestionAnswerAdvisor` (RAG), `@Tool` + `ToolContext` + `ToolCallback`, `Usage`._
+
 | Trenutak | Datoteka | Što pokazati | Rečenica |
 |---|---|---|---|
 | slajd „četiri sastojka“ | `agent/src/main/java/com/nottrilix/agent/AgentConfig.java:83–108` | jedan `ChatClient` bean: system prompt, `MessageChatMemoryAdvisor`, `RetrievalAugmentationAdvisor`, `defaultToolCallbacks` (u Fazi 3 `QuestionAnswerAdvisor` nad vector storeom: grana `phase3`, `AgentConfig.java:59–60`) | „Jedan bean, četiri sastojka.“ |
@@ -161,6 +192,8 @@ Ne otvarati: kontrolere, DTO-e, React.
 | slajd „audit“ | `db/migration/V4__audit_events.sql:4`, `mcp/AuditedToolHandler.java:48–80` | omotač oko alata: ulaz, ishod, trajanje → redak u `audit_events` | „Bez ovoga nema produkcije.“ (demo prati admin tab Audit) |
 
 ### Blok 4 (Faza 4): mreža
+
+_Spring AI: MCP server (`@McpTool`, `McpMeta`, `SyncMcpAnnotationProviders`, starter `mcp-server-webmvc`), MCP klijent (`SyncMcpToolCallbackProvider`, `McpClientCustomizer`, `ToolContextToMcpMetaConverter`, `McpToolFilter`, starter `mcp-client`), `spring-ai-rag` (`RetrievalAugmentationAdvisor`, `DocumentRetriever`), `ToolCallingAdvisor.DEFAULT_ORDER`._
 
 | Trenutak | Datoteka | Što pokazati | Rečenica |
 |---|---|---|---|
@@ -173,6 +206,8 @@ Ne otvarati: kontrolere, DTO-e, React.
 | demo | `scripts/mcp_direct.py` | isti `POST /mcp` bez tokena (401), s ključem agenta (`CUSTOMER_REQUIRED`), s tokenom kupca | |
 
 ### Blok 5 (Faza 5): glas, razgovor kao zapis, GDPR
+
+_Spring AI: `TranscriptionModel` (OpenAI STT), `TextToSpeechModel` (ElevenLabs / OpenAI, izbor `spring.ai.model.audio.speech`), structured output `BeanOutputConverter`, drugi `ChatClient` za analizu, isti `VectorStore` za naučene odlomke. GDPR dio je bez Spring AI-ja: JPA, raspored, regex._
 
 | Trenutak | Datoteka | Što pokazati | Rečenica |
 |---|---|---|---|
@@ -188,6 +223,8 @@ Ne otvarati: kontrolere, DTO-e, React.
 | preglednik (po volji) | `frontend/src/customer/ChatWidget.tsx:97–122` | `MediaRecorder` → multipart → reprodukcija mp3 | |
 
 ### Blok 6 (Faza 6): dopuniti kad bude gotova
+
+_Spring AI: ništa novo; telefonija je obična Java oko istog agenta._
 
 Planirano: paket `agent/…/telephony/` (webhook „javi se“, WebSocket handler: frame → VAD → STT → **isti `AgentService`** → TTS → natrag u poziv), servis u sustavu koji pozivatelju nakon provjere izdaje vjerodajnicu za agenta, `run-phase-6.ps1`. Pokazati tri mjesta: webhook, WS handler s pozivom istog agenta, izdavanje vjerodajnice.
 
