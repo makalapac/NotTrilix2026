@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { api, isUnauthorized } from '../shared/api'
+import { voiceFillerUrl, voiceStream } from '../shared/voiceApi'
 import type { AgentChatResponse, AuthUser } from '../shared/types'
 import { AGENT_OUTCOME, TOOL_LABEL, errorMessage } from '../shared/format'
+import { VoicePlayer } from './voicePlayer'
+import { VoiceRecorder, extensionOf } from './voiceRecorder'
 
 interface ChatMessage {
   role: 'user' | 'agent' | 'error'
@@ -14,6 +17,9 @@ interface ChatMessage {
 }
 
 const SUGGESTIONS = ['Koliko imam na walletu?', 'Moj kod ne radi', 'Mogu li vratiti zadnji bon?', 'Što čuvate o meni?']
+const LISTENING_PLACEHOLDER = '🎤 …'
+/** How long Nola stays silent after the transcript before she bridges the wait with "Samo trenutak." */
+const FILLER_AFTER_MS = 900
 
 /** Voice consent text; the version must match nottrilix.privacy.voice-consent-version in the system. */
 export const VOICE_CONSENT_TEXT =
@@ -21,22 +27,11 @@ export const VOICE_CONSENT_TEXT =
   'čuva se samo transkript, kao i poruke u chatu, 30 dana. Glas se ne koristi za prepoznavanje identiteta. ' +
   'Privolu možete povući u odjeljku Privatnost.'
 
-function pickMimeType(): string {
-  const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4']
-  return candidates.find((t) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(t)) ?? ''
-}
-
-function extensionOf(mimeType: string): string {
-  if (mimeType.includes('webm')) return 'webm'
-  if (mimeType.includes('ogg')) return 'ogg'
-  if (mimeType.includes('mp4')) return 'mp4'
-  return 'webm'
-}
-
 /**
  * Chat with the support agent, by text or voice. The agent acts on behalf of the logged-in customer; under every reply you
- * can see what it did (tools) and what it relied on (knowledge base sections). Voice: hold the button and speak; the recording
- * goes to the system, which turns it into text and returns the reply as speech. The first time it asks for the customer's consent (GDPR).
+ * can see what it did (tools) and what it relied on (knowledge base sections). Voice: click the microphone and speak; the
+ * recording stops by itself after a pause, the transcript shows up as soon as it is known, and Nola's reply is played while
+ * it is still being synthesized. Clicking the microphone while she speaks interrupts her. The first time it asks for consent (GDPR).
  */
 export function ChatWidget({
   user,
@@ -57,16 +52,32 @@ export function ChatWidget({
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [recording, setRecording] = useState(false)
+  const [level, setLevel] = useState(0)
+  const [speaking, setSpeaking] = useState(false)
   const [askConsent, setAskConsent] = useState(false)
   const [voiceError, setVoiceError] = useState<string | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
-  const recorderRef = useRef<MediaRecorder | null>(null)
-  const chunksRef = useRef<Blob[]>([])
+  const recorderRef = useRef(new VoiceRecorder())
+  const playerRef = useRef(new VoicePlayer())
+  const fillerRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
     const list = listRef.current
     if (list) list.scrollTop = list.scrollHeight
   }, [messages, busy, open])
+
+  // Nola's bridging phrase is fetched once, so it can start without any delay
+  useEffect(() => {
+    if (!voiceConsent || fillerRef.current) return
+    voiceFillerUrl().then((url) => {
+      if (url) fillerRef.current = new Audio(url)
+    })
+  }, [voiceConsent])
+
+  useEffect(() => {
+    const player = playerRef.current
+    return () => player.stop()
+  }, [])
 
   function handleResponse(response: AgentChatResponse, extra: Partial<ChatMessage> = {}) {
     setConversationId(response.conversationId)
@@ -82,6 +93,7 @@ export function ChatWidget({
   async function send(message: string) {
     const trimmed = message.trim()
     if (!trimmed || busy) return
+    stopSpeaking()
     setMessages((m) => [...m, { role: 'user', text: trimmed }])
     setText('')
     setBusy(true)
@@ -94,66 +106,114 @@ export function ChatWidget({
     }
   }
 
+  function stopSpeaking() {
+    playerRef.current.stop()
+    const filler = fillerRef.current
+    if (filler) {
+      filler.pause()
+      filler.currentTime = 0
+    }
+    setSpeaking(false)
+  }
+
+  /** Attaches the finished mp3 to the last agent message, for the ▶ button. */
+  function attachAudio(blob: Blob) {
+    const url = URL.createObjectURL(blob)
+    setMessages((m) => {
+      const copy = [...m]
+      for (let i = copy.length - 1; i >= 0; i--) {
+        if (copy[i].role === 'agent') {
+          copy[i] = { ...copy[i], audioUrl: url }
+          break
+        }
+      }
+      return copy
+    })
+  }
+
   async function sendVoice(blob: Blob, mimeType: string) {
     setBusy(true)
-    setMessages((m) => [...m, { role: 'user', text: '🎤 …', voice: true }])
+    setMessages((m) => [...m, { role: 'user', text: LISTENING_PLACEHOLDER, voice: true }])
+    let fillerTimer: number | undefined
+    let audioStarted = false
     try {
-      const turn = await api.agentVoice(conversationId, blob, `speech.${extensionOf(mimeType)}`)
-      // the transcript replaces the temporary "…" in the customer's message
-      setMessages((m) => {
-        const copy = [...m]
-        const last = copy.length - 1
-        if (last >= 0 && copy[last].role === 'user' && copy[last].voice) copy[last] = { ...copy[last], text: turn.transcript }
-        return copy
-      })
-      const audioUrl = `data:${turn.audioMimeType};base64,${turn.audioBase64}`
-      handleResponse(turn.chat, { voice: true, audioUrl })
-      new Audio(audioUrl).play().catch(() => {
-        /* autoplay may be blocked; the ▶ button remains */
+      await voiceStream(conversationId, blob, `speech.${extensionOf(mimeType)}`, {
+        onTranscript: (transcript) => {
+          setMessages((m) => {
+            const copy = [...m]
+            const last = copy.length - 1
+            if (last >= 0 && copy[last].role === 'user' && copy[last].voice) copy[last] = { ...copy[last], text: transcript }
+            return copy
+          })
+          // if the reply takes a while, Nola says "Samo trenutak." instead of staying silent
+          fillerTimer = window.setTimeout(() => {
+            if (!audioStarted) fillerRef.current?.play().catch(() => undefined)
+          }, FILLER_AFTER_MS)
+        },
+        onChat: (chat) => {
+          handleResponse(chat, { voice: true })
+          setBusy(false)
+        },
+        onAudio: async (reader, initial, mime) => {
+          setSpeaking(true)
+          const full = await playerRef.current.play(
+            reader,
+            initial,
+            mime,
+            () => {
+              audioStarted = true
+              window.clearTimeout(fillerTimer)
+              const filler = fillerRef.current
+              if (filler) {
+                filler.pause()
+                filler.currentTime = 0
+              }
+            },
+            () => setSpeaking(false),
+          )
+          attachAudio(full)
+        },
       })
     } catch (e) {
-      setMessages((m) => m.filter((x) => !(x.role === 'user' && x.voice && x.text === '🎤 …')))
+      setMessages((m) => m.filter((x) => !(x.role === 'user' && x.voice && x.text === LISTENING_PLACEHOLDER)))
       handleError(e)
+      setSpeaking(false)
     } finally {
+      window.clearTimeout(fillerTimer)
       setBusy(false)
     }
   }
 
-  async function startRecording() {
-    if (busy || recording) return
+  /** One click: start listening (and interrupt Nola if she is speaking); a second click ends the utterance early. */
+  async function toggleRecording() {
+    if (recording) {
+      recorderRef.current.stop()
+      return
+    }
+    if (busy) return
     if (!voiceConsent) {
       setAskConsent(true)
       return
     }
     setVoiceError(null)
+    stopSpeaking()
+    setRecording(true)
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const mimeType = pickMimeType()
-      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream)
-      chunksRef.current = []
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data)
+      const utterance = await recorderRef.current.record({ onLevel: setLevel })
+      setRecording(false)
+      setLevel(0)
+      if (utterance.reason === 'no-speech') {
+        setVoiceError('Nisam čula ništa. Kliknite 🎤 i govorite.')
+      } else if (utterance.blob.size < 2000) {
+        setVoiceError('Snimka je prekratka. Kliknite 🎤 i govorite.')
+      } else {
+        await sendVoice(utterance.blob, utterance.mimeType)
       }
-      recorder.onstop = () => {
-        stream.getTracks().forEach((t) => t.stop())
-        const type = recorder.mimeType || mimeType || 'audio/webm'
-        const blob = new Blob(chunksRef.current, { type })
-        if (blob.size > 2000) sendVoice(blob, type)
-        else setVoiceError('Snimka je prekratka. Držite gumb dok govorite.')
-      }
-      recorderRef.current = recorder
-      recorder.start()
-      setRecording(true)
     } catch (e) {
+      setRecording(false)
+      setLevel(0)
       setVoiceError(`Mikrofon nije dostupan: ${errorMessage(e)}`)
     }
-  }
-
-  function stopRecording() {
-    const recorder = recorderRef.current
-    if (recorder && recorder.state !== 'inactive') recorder.stop()
-    recorderRef.current = null
-    setRecording(false)
   }
 
   async function acceptConsent() {
@@ -166,6 +226,7 @@ export function ChatWidget({
   }
 
   function newConversation() {
+    stopSpeaking()
     setConversationId(null)
     setMessages([])
   }
@@ -186,6 +247,14 @@ export function ChatWidget({
       </button>
     )
   }
+
+  const micTitle = recording
+    ? 'Slušam… kliknite za kraj'
+    : speaking
+      ? 'Prekinite Nolu i govorite'
+      : voiceConsent
+        ? 'Kliknite i govorite; snimanje staje kad zašutite'
+        : 'Glasovna poruka (traži privolu)'
 
   return (
     <aside className="chat-panel" aria-label="Chat s podrškom">
@@ -229,7 +298,13 @@ export function ChatWidget({
               {m.text}
             </div>
             {m.audioUrl && (
-              <button className="btn ghost replay" onClick={() => new Audio(m.audioUrl).play().catch(() => undefined)}>
+              <button
+                className="btn ghost replay"
+                onClick={() => {
+                  stopSpeaking()
+                  new Audio(m.audioUrl).play().catch(() => undefined)
+                }}
+              >
                 ▶ ponovi
               </button>
             )}
@@ -275,26 +350,17 @@ export function ChatWidget({
       <form className="chat-input" onSubmit={submit}>
         <button
           type="button"
-          className={`btn mic ${recording ? 'recording' : ''}`}
-          title={voiceConsent ? 'Držite i govorite' : 'Glasovna poruka (traži privolu)'}
-          disabled={busy}
-          onMouseDown={startRecording}
-          onMouseUp={stopRecording}
-          onMouseLeave={() => recording && stopRecording()}
-          onTouchStart={(e) => {
-            e.preventDefault()
-            startRecording()
-          }}
-          onTouchEnd={(e) => {
-            e.preventDefault()
-            stopRecording()
-          }}
+          className={`btn mic ${recording ? 'recording' : ''} ${speaking ? 'speaking' : ''}`}
+          title={micTitle}
+          disabled={busy && !recording}
+          onClick={toggleRecording}
+          style={recording ? { boxShadow: `0 0 0 ${Math.min(10, Math.round(level * 80))}px rgba(220, 38, 38, 0.25)` } : undefined}
         >
-          {recording ? '● snimam' : '🎤'}
+          {recording ? '● slušam' : speaking ? '🔊' : '🎤'}
         </button>
         <input
           value={text}
-          placeholder={recording ? 'Govorite…' : 'Napišite poruku ili držite 🎤 i govorite'}
+          placeholder={recording ? 'Govorite… snimanje staje kad zašutite' : 'Napišite poruku ili kliknite 🎤 i govorite'}
           maxLength={2000}
           onChange={(e) => setText(e.target.value)}
           autoFocus

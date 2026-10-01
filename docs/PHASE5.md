@@ -99,6 +99,45 @@ byte[] mp3 = tts.call(new TextToSpeechPrompt(spoken)).getResult().getOutput();  
   („Да, потврђујем.“, „Da, potwierdzuję.“, „Kúpi mi HT bón od desať eur.“). S kratkim promptom na hrvatskom koji nabraja pojmove domene (brendovi, „wallet“, „potvrđujem“)
   transkript je bio točan na svim uzorcima (tri glasa, tri rečenice); `whisper-1` je bio otporniji i bez prompta, ali je brendove pisao „HT-BON“. Prompt je rječnik call centra: ono što
   bi novi agent dobio prvi dan.
+
+### Glas v2: prirodniji i fluidniji (2026-10-02)
+
+Nakon prve probe Nola je govorila glasom „Roger“ (američki muški premade glas), a svaki glasovni turn čekao je cijelu sintezu prije prvog zvuka. Promjene:
+
+| Što | Kako | Učinak |
+|---|---|---|
+| Glas i model | Voice Library glas **Maja** (hrvatski; library glasovi preko API-ja traže plaćeni ElevenLabs plan, Starter) + `eleven_v4_turbo` + `language_code: hr`; promjena kroz `NOTTRILIX_VOICE_ID` i `NOTTRILIX_TTS_MODEL` | prirodan hrvatski; prvi TTS chunk 0,2–0,4 s |
+| Tekst za govor | `SpeechText`: iznosi riječima („10 €“ → „deset eura“, „12,50 €“ → „dvanaest eura i pedeset centi“), `->` → „na“, `%` → „posto“, crtice u serijskim brojevima → pauze. ElevenLabs nema normalizaciju teksta za hrvatski (`language text normalization is not supported for 'hr'`), pa je to naš kod | brojke i simboli se više ne čitaju po engleski |
+| Streaming | `POST /api/agent/voice/stream`: JSON redci `transcript` → `chat` → `audio`, pa mp3 bajtovi kako ih TTS proizvodi (Spring AI `TextToSpeechModel.stream()`); sustav prosljeđuje i bilježi turn kad stigne odgovor; preglednik svira kroz MediaSource od prvog chunka (`voicePlayer.ts`) | transkript na ekranu nakon ~0,5 s; prvi zvuk ~0,2 s nakon odgovora umjesto nakon cijele sinteze |
+| „Samo trenutak.“ | `GET /api/agent/voice/filler`: fraza sintetizirana jednom i keširana; preglednik je pusti ako odgovor ne stigne 0,9 s nakon transkripta | tišina dok model radi je kraća i prirodnija |
+| Snimanje | klik umjesto držanja gumba; `voiceRecorder.ts` s detekcijom tišine (RMS; 0,9 s pauze nakon govora, 6 s bez govora, 20 s najviše) | kupac govori i stane, ništa ne drži |
+| Prekid | klik na mikrofon dok Nola govori zaustavlja reprodukciju i počinje slušati | razgovor, ne izmjena poruka |
+
+Protokol streama je isti iz agenta prema sustavu i iz sustava prema pregledniku:
+
+```
+{"type":"transcript","transcript":"Da, potvrđujem.","sttMs":486}
+{"type":"chat","chat":{ …AgentChatResponse… },"ttsProvider":"ElevenLabs","spoken":"Kupnja HT bona od deset eura …"}
+{"type":"audio","mimeType":"audio/mpeg"}
+<mp3 bajtovi do kraja>
+```
+
+Greška nakon početka odgovora putuje kao `{"type":"error", …}` redak, jer je HTTP status već poslan. Stari `POST /api/agent/voice` (JSON s base64 mp3) ostaje za skripte.
+
+Dvije zamke iz izgradnje:
+- Spring MVC `StreamingResponseBody` pisao je u 8 KB međuspremnik odgovora, a `flush()` ga nije praznio: događaji su stizali tek s prvih 8 KB zvuka (vidjelo se tek mjerenjem chunkova na klijentu). Rješenje: pisanje izravno u `HttpServletResponse` na dretvi zahtjeva uz `flushBuffer()` nakon svakog događaja (`flushing(response)` u oba kontrolera).
+- Isti asinkroni put rušio je stream u sustavu: ASYNC dispatch koji završava `StreamingResponseBody` nema bearer autentikaciju (`OncePerRequestFilter` preskače async dispatch), Spring Security ga odbije i veza pukne bez završnog chunka. Sinkrono pisanje uklanja i to.
+
+Mjerenja (`scripts\phase5_e2e.py voice`, drugi turn kroz stream; preglednik Chromium kroz MediaSource):
+
+| Točka | Vrijeme od slanja snimke |
+|---|---|
+| transkript na ekranu | 0,45–0,49 s |
+| odgovor (tekst) | 1,5–2,5 s |
+| prvi zvuk | 1,6–2,7 s (0,15–0,2 s nakon odgovora) |
+| kraj govora | 1,9–3,8 s |
+
+Prije toga prvi zvuk je dolazio nakon 4,7–8,3 s (odgovor + cijela sinteza + prijenos). Sljedeći korak, ako zatreba: rečenica po rečenica u TTS dok model još piše (prvi zvuk prije kraja odgovora).
 - Odgovor dulji od `max-reply-chars` se za govor skrati na granici riječi (kupac cijeli tekst vidi u chatu); prompt za kanal `VOICE` traži jednu do dvije rečenice.
 - Odgovor: `{transcript, chat, audioBase64, audioMimeType, sttMs, ttsMs, ttsProvider}`; preglednik prikaže transkript i tekst, mp3 odsvira odmah (gumb za ponovno slušanje).
 - Preglednik: gumb s mikrofonom radi kao *push-to-talk* (drži i govori); prije prvog snimanja kupac vidi tekst privole i potvrđuje je (`POST /api/shop/privacy/consent`).
@@ -274,7 +313,8 @@ glasovni put je pokriven skriptom kroz isti endpoint i istu multipart poruku koj
   a analiza je taj razgovor točno ocijenila kao `KUPNJA / NERIJESENO`, ocjena 3. Post-analiza je uhvatila kvar kanala prije nego što bismo ga mi primijetili.
 - Probno pitanje za učenje: „studentski popust“ baza znanja već pokriva (cijena = nominalna vrijednost), pa rupe nije bilo; R1 račun je stvarna rupa.
 
-**Brojke**: STT 0,7–1,3 s, TTS ElevenLabs 1,1–3,2 s za jednu do dvije rečenice (42–95 KB mp3), analiza 1,7–8 s i oko 1.450 ulaznih tokena za razgovor od dva turna; glasovni turn ukupno 4,7–8,3 s (tekstualni 1–5 s).
+**Brojke**: STT 0,5–1,3 s, TTS ElevenLabs 1,1–3,2 s za jednu do dvije rečenice (42–95 KB mp3), analiza 1,7–8 s i oko 1.450 ulaznih tokena za razgovor od dva turna; glasovni turn ukupno 4,7–8,3 s (tekstualni 1–5 s).
+Glas v2 (streaming, poglavlje 3): transkript 0,5 s, prvi zvuk 1,6–2,7 s od slanja snimke.
 
 ## 11. Pouke
 
@@ -287,10 +327,11 @@ glasovni put je pokriven skriptom kroz isti endpoint i istu multipart poruku koj
 | Samoučenje bez čovjeka je rizik | Model bi bez provjere „naučio“ vlastitu pogrešku ili izmišljeno pravilo; odobravanje s ispravkom čuva istinitost baze znanja. |
 | GDPR je najjednostavniji kad je kod | Rok čuvanja je posao po rasporedu, izvoz je upit, brisanje je transakcija, privola je redak s verzijom. Ništa od toga nije teško; teško je to ne preskočiti. |
 | Pseudonimizacija pravilima ima granice | Kosi padeži hrvatskih imena prolaze regexu; produkcija = NER ili manje podataka prema modelu. |
+| Streaming nije stream dok ga netko ne flusha | 8 KB međuspremnik odgovora i `flush()` koji ga ne prazni: mjeriti na klijentu po chunkovima, ne vjerovati logu servera. Glas koji „radi“ i glas koji je fluidan razlikuju se u jednom `flushBuffer()`. |
 
 ## 12. Poznata ograničenja
 
-- **Push-to-talk, ne razgovor u stvarnom vremenu**: kupac govori, čeka, sluša (turn traje STT + model + TTS). Za telefonski razgovor treba streaming s prekidanjem (Faza 6).
+- **Turn po turn, ne razgovor u stvarnom vremenu**: kupac govori, stane, sluša (STT + model + prvi zvuk 1,6–2,7 s); prekid Nole je klik, ne govor. Telefon traži streaming zvuka u oba smjera s prekidanjem govorom (Faza 6).
 - **Privola je po vrsti obrade i verziji teksta**, ne po izvršitelju; promjena pružatelja TTS-a traži novu verziju teksta.
 - **Pseudonimizacija je regex** (vidi pouke); model za analizu i dalje vidi sadržaj razgovora (kupnje, iznosi).
 - **Retencija analiza čita sve nalaze** (`findAll`) — za demo dovoljno, za produkciju upit po datumu.

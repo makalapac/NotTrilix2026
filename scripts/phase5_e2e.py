@@ -106,6 +106,44 @@ def voice_turn(token, conversation_id, audio, filename="speech.mp3", mime="audio
     return http("POST", "/api/agent/voice", token=token, raw=body, content_type=ctype)
 
 
+def voice_turn_stream(token, conversation_id, audio, filename="speech.mp3", mime="audio/mpeg"):
+    """Streaming variant: JSON event lines, then mp3 bytes. Returns (events, audio_bytes, timings in ms)."""
+    fields = {}
+    if conversation_id:
+        fields["conversationId"] = conversation_id
+    body, ctype = multipart(fields, "audio", filename, audio, mime)
+    req = urllib.request.Request(BASE + "/api/agent/voice/stream", data=body, method="POST",
+                                 headers={"Authorization": "Bearer " + token, "Content-Type": ctype})
+    t0 = time.time()
+    events, timings, audio_bytes = [], {}, b""
+    with urllib.request.urlopen(req, timeout=180) as res:
+        pending = b""
+        header_done = False
+        while True:
+            chunk = res.read1(4096)  # read1: returns what has arrived, so event lines are not merged with the audio
+            if not chunk:
+                break
+            if header_done:
+                if not audio_bytes:
+                    timings["firstAudio"] = int((time.time() - t0) * 1000)
+                audio_bytes += chunk
+                continue
+            pending += chunk
+            while not header_done and b"\n" in pending:
+                line, pending = pending.split(b"\n", 1)
+                event = json.loads(line.decode("utf-8"))
+                events.append(event)
+                timings[event["type"]] = int((time.time() - t0) * 1000)
+                if event["type"] in ("audio", "error"):
+                    header_done = True
+                    if event["type"] == "audio" and pending:
+                        timings["firstAudio"] = int((time.time() - t0) * 1000)
+                        audio_bytes += pending
+                    pending = b""
+    timings["total"] = int((time.time() - t0) * 1000)
+    return events, audio_bytes, timings
+
+
 def voice():
     title("GLAS: privola, pa dvije glasovne poruke (kupnja uz potvrdu)")
     marko = login("marko.maric@example.com", "marko123")
@@ -135,12 +173,19 @@ def voice():
     print("   govor spremljen u logs/nola-odgovor.mp3 (za slusanje)")
 
     audio2 = synthesize("Da, potvrđujem.")
-    status, body = voice_turn(marko, cid, audio2)
-    if status != 200:
-        print("glas 2 -> HTTP %s %s" % (status, body))
-        return
-    print("KUPAC (glas -> tekst, STT %d ms): %s" % (body["sttMs"], body["transcript"]))
-    show_chat("NOLA", body["chat"])
+    print("drugi turn preko streaminga (/api/agent/voice/stream)...")
+    events, audio_bytes, t = voice_turn_stream(marko, cid, audio2)
+    by_type = {e["type"]: e for e in events}
+    if "error" in by_type:
+        print("glas 2 (stream) -> greska %s: %s" % (by_type["error"].get("error"), by_type["error"].get("message")))
+        return cid
+    print("KUPAC (glas -> tekst, transkript nakon %d ms): %s" % (t.get("transcript", -1), by_type["transcript"]["transcript"]))
+    show_chat("NOLA (odgovor nakon %d ms, prvi zvuk nakon %d ms, cijeli govor %d ms, %d B mp3, izgovoreno: '%s')" % (
+        t.get("chat", -1), t.get("firstAudio", -1), t.get("total", -1), len(audio_bytes),
+        by_type["chat"].get("spoken", "")[:80]), by_type["chat"]["chat"])
+    with open(os.path.join(HERE, "..", "logs", "nola-odgovor-stream.mp3"), "wb") as f:
+        f.write(audio_bytes)
+    print("   govor spremljen u logs/nola-odgovor-stream.mp3")
     return cid
 
 

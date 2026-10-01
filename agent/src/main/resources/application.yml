@@ -28,8 +28,9 @@ spring:
       api-key: ${ELEVENLABS_API_KEY:not-set}
       tts:
         options:
-          model-id: eleven_multilingual_v2
-          voice-id: ${NOTTRILIX_VOICE_ID:CwhRBWXzGAHq8TQ4Fs17}
+          model-id: ${NOTTRILIX_TTS_MODEL:eleven_v4_turbo}      # Croatian, low latency (first chunk ~0.4 s); eleven_flash_v2_5 is the faster fallback
+          voice-id: ${NOTTRILIX_VOICE_ID:0jvpZ98RZwx5FBOSZAc3}  # "Maja" from the Voice Library (Croatian); library voices need a paid plan
+          language-code: hr
           output-format: mp3_44100_64
     model:
       embedding: none             # no embeddings in the agent: the system searches the knowledge base (MCP tool)
@@ -54,10 +55,15 @@ spring:
 server:
   port: 8090
 
+spring.servlet.multipart:
+  max-file-size: 10MB             # the recording forwarded by the system
+  max-request-size: 11MB
+
 nottrilix:
   voice:
     enabled: true
     max-reply-chars: 600          # a longer reply is cut for speech (chat still gets the full text)
+    filler-text: "Samo trenutak."  # what Nola says while the agent is still thinking (synthesized once)
   agent:
     name: Nola
     max-history-messages: 20      # how many recent conversation messages the model sees

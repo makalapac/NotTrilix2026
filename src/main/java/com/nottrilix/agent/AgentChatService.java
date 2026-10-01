@@ -15,6 +15,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.io.OutputStream;
+
 /**
  * The customer's conversation with the agent, as seen from the system: the message (text or voice) goes to the agent application,
  * the reply back to the customer, and the turn is recorded in the audit trail and the conversation record (for analysis and customer rights).
@@ -70,6 +73,46 @@ public class AgentChatService {
             recordFailure(customer, CHANNEL_VOICE, conversationId, "(glasovna poruka)", e, System.nanoTime() - start);
             throw e;
         }
+    }
+
+    /** Consent is checked before the streaming response starts, so a refusal is still an ordinary 403. */
+    public void requireVoiceConsent(AuthUser customer) {
+        privacy.requireConsent(customer.id(), ConsentType.VOICE);
+    }
+
+    /**
+     * Voice with streaming: the agent's events (transcript, reply) and the speech bytes pass through to the browser as
+     * they arrive; the turn is recorded the moment the reply is known. The caller has already checked the consent.
+     */
+    public void voiceStream(AuthUser customer, String authorization, String conversationId, byte[] audio,
+                            String filename, String contentType, OutputStream out) throws IOException {
+        log.info("VOICE -> agent (stream) customer={} conv={} audio={} B ({})", customer.id(),
+                conversationId == null ? "(novi)" : conversationId, audio.length, contentType);
+        long start = System.nanoTime();
+        String[] transcript = {"(glasovna poruka)"};
+        agent.voiceStream(authorization, conversationId, audio, filename, contentType, out,
+                new AgentClient.VoiceStreamListener() {
+                    @Override
+                    public void transcript(String text, long sttMs) {
+                        transcript[0] = text;
+                    }
+
+                    @Override
+                    public void chat(AgentChatResponse response, String ttsProvider) {
+                        recordTurn(customer, CHANNEL_VOICE, transcript[0], response, System.nanoTime() - start);
+                    }
+
+                    @Override
+                    public void error(String error, String message) {
+                        recordFailure(customer, CHANNEL_VOICE, conversationId, transcript[0],
+                                new AgentUnavailableException(message), System.nanoTime() - start);
+                    }
+                });
+    }
+
+    /** Nola's bridging phrase as mp3 (the agent synthesizes it once). */
+    public byte[] voiceFiller() {
+        return agent.voiceFiller();
     }
 
     private void recordTurn(AuthUser customer, String channel, String message, AgentChatResponse response,
