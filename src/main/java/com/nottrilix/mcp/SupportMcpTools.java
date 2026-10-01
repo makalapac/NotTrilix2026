@@ -204,7 +204,8 @@ public class SupportMcpTools {
             annotations = @McpAnnotations(title = "Provjera bona kod pružatelja", readOnlyHint = true,
                     destructiveHint = false, idempotentHint = true, openWorldHint = true))
     public ToolResult checkVoucherAtProvider(
-            @McpToolParam(description = "Serijski broj bona, npr. STM-25-003") String voucherSerial, McpMeta meta) {
+            @McpToolParam(description = "Serijski broj bona, npr. STM-25-003; smije biti i bez crtica ili s razmacima, "
+                    + "kako ga kupac kaže (STM25003)") String voucherSerial, McpMeta meta) {
         return guarded(() -> {
             long customerId = call(meta).customerId();
             VoucherCheckDto check = voucherCheckService.checkForCustomer(customerId, normalize(voucherSerial));
@@ -287,7 +288,8 @@ public class SupportMcpTools {
             annotations = @McpAnnotations(title = "Blokada bona (prijedlog)", readOnlyHint = false,
                     destructiveHint = false, idempotentHint = true, openWorldHint = false))
     public ToolResult blockVoucher(
-            @McpToolParam(description = "Serijski broj bona, npr. STM-25-003") String voucherSerial, McpMeta meta) {
+            @McpToolParam(description = "Serijski broj bona, npr. STM-25-003; smije biti i bez crtica ili s razmacima, "
+                    + "kako ga kupac kaže (STM25003)") String voucherSerial, McpMeta meta) {
         String serial = normalize(voucherSerial);
         return guarded(() -> {
             McpCall call = call(meta);

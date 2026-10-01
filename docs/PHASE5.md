@@ -112,6 +112,7 @@ Nakon prve probe Nola je govorila glasom „Roger“ (američki muški premade g
 | „Samo trenutak.“ | `GET /api/agent/voice/filler`: fraza sintetizirana jednom i keširana; preglednik je pusti ako odgovor ne stigne 0,9 s nakon transkripta | tišina dok model radi je kraća i prirodnija |
 | Snimanje | klik umjesto držanja gumba; `voiceRecorder.ts` s detekcijom tišine (RMS; 0,9 s pauze nakon govora, 6 s bez govora, 20 s najviše) | kupac govori i stane, ništa ne drži |
 | Prekid | klik na mikrofon dok Nola govori zaustavlja reprodukciju i počinje slušati | razgovor, ne izmjena poruka |
+| Serijski broj bez crtica | kupac kaže „STM pedeset nula nula dva“, STT napiše `STM50002`; sustav uspoređuje serijske brojeve u sažetom obliku (`VoucherSerial.compact`: samo slova i znamenke, velika slova) u repozitoriju, pa `STM50002`, `stm 50 002` i `STM-50-002` nalaze isti bon; kupcu se vraća pohranjeni oblik | glasom izgovoren bon se pronađe; vrijedi i za chat i REST |
 
 Protokol streama je isti iz agenta prema sustavu i iz sustava prema pregledniku:
 

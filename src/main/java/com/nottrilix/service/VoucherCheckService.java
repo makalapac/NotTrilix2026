@@ -40,7 +40,7 @@ public class VoucherCheckService {
 
     @Transactional(readOnly = true)
     public VoucherCheckDto checkForSupport(String serial) {
-        Voucher voucher = voucherRepo.findBySerial(serial)
+        Voucher voucher = voucherRepo.findBySerialCompact(VoucherSerial.compact(serial))
                 .orElseThrow(() -> new NotFoundException("Bon " + serial + " ne postoji"));
         return check(voucher);
     }
@@ -48,7 +48,7 @@ public class VoucherCheckService {
     /** A customer may only check a voucher from their own purchase; someone else's voucher = as if it did not exist. */
     @Transactional(readOnly = true)
     public VoucherCheckDto checkForCustomer(long customerId, String serial) {
-        Voucher voucher = transactionRepo.findByVoucherSerial(serial)
+        Voucher voucher = transactionRepo.findByVoucherSerialCompact(VoucherSerial.compact(serial))
                 .filter(t -> t.getCustomer().getId().equals(customerId))
                 .map(Transaction::getVoucher)
                 .orElseThrow(() -> new NotFoundException("Bon " + serial + " nije pronađen među vašim kupnjama"));

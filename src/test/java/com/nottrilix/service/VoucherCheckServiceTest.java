@@ -58,7 +58,7 @@ class VoucherCheckServiceTest {
         Voucher voucher = new Voucher(steam25, "STM-25-001", "123456789012");
         voucher.markSold(clock.instant());
         Transaction tx = new Transaction(ana, steam25, voucher, Channel.WEB, clock.instant());
-        when(transactionRepo.findByVoucherSerial("STM-25-001")).thenReturn(Optional.of(tx));
+        when(transactionRepo.findByVoucherSerialCompact("STM25001")).thenReturn(Optional.of(tx));
         when(provider.checkVoucher(voucher)).thenReturn(new ProviderCheckResult(
                 ProviderVoucherStatus.REDEEMED, Instant.parse("2026-10-12T15:30:00Z"), "STM-CHK-ABC123", 210));
 
@@ -76,7 +76,7 @@ class VoucherCheckServiceTest {
         Customer marko = customerWithId(2L);
         Voucher voucher = new Voucher(steam25, "STM-25-001", "123456789012");
         Transaction tx = new Transaction(marko, steam25, voucher, Channel.WEB, clock.instant());
-        when(transactionRepo.findByVoucherSerial("STM-25-001")).thenReturn(Optional.of(tx));
+        when(transactionRepo.findByVoucherSerialCompact("STM25001")).thenReturn(Optional.of(tx));
 
         assertThatThrownBy(() -> service().checkForCustomer(1L, "STM-25-001"))
                 .isInstanceOf(NotFoundException.class)
@@ -86,7 +86,7 @@ class VoucherCheckServiceTest {
 
     @Test
     void supportGetsNotFoundForUnknownSerial() {
-        when(voucherRepo.findBySerial("NOPE-1")).thenReturn(Optional.empty());
+        when(voucherRepo.findBySerialCompact("NOPE1")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service().checkForSupport("NOPE-1"))
                 .isInstanceOf(NotFoundException.class);

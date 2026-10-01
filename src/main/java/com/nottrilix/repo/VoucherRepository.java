@@ -7,6 +7,8 @@ import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -17,7 +19,9 @@ public interface VoucherRepository extends JpaRepository<Voucher, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<Voucher> findFirstByProductAndStatusOrderByIdAsc(Product product, VoucherStatus status);
 
-    Optional<Voucher> findBySerial(String serial);
+    /** Voucher by serial in compact form ("STM25003" finds "STM-25-003"; see VoucherSerial). */
+    @Query("select v from Voucher v where replace(upper(v.serial), '-', '') = :compact")
+    Optional<Voucher> findBySerialCompact(@Param("compact") String compact);
 
     /** Whether the product has at least one voucher in the given status (e.g. whether it is available for purchase). */
     boolean existsByProductAndStatus(Product product, VoucherStatus status);

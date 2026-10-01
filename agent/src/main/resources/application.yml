@@ -18,7 +18,8 @@ spring:
             # Without a prompt the model can ignore language and return Cyrillic or Polish; domain vocabulary fixes it.
             prompt: >-
               Razgovor kupca s podrškom NotTrilix na hrvatskom. Pojmovi: HT bon, A1 bon, Steam Wallet, PlayStation Store,
-              Xbox Gift Card, wallet, aktivacijski kod, serijski broj, kupnja, povrat, blokada bona, potvrđujem, odustajem.
+              Xbox Gift Card, wallet, aktivacijski kod, serijski broj bona kao STM-25-003 ili HT-10-001, kupnja, povrat,
+              blokada bona, potvrđujem, odustajem.
         speech:
           options:
             model: gpt-4o-mini-tts

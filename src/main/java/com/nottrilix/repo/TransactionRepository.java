@@ -36,7 +36,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     Optional<Transaction> findByIdForUpdate(@Param("id") long id);
 
     /** The purchase in which the voucher was sold (a voucher is in at most one transaction). */
-    Optional<Transaction> findByVoucherSerial(String serial);
+    /** The purchase of a voucher by serial in compact form ("STM25003" finds "STM-25-003"; see VoucherSerial). */
+    @Query("select t from Transaction t where replace(upper(t.voucher.serial), '-', '') = :compact")
+    Optional<Transaction> findByVoucherSerialCompact(@Param("compact") String compact);
 
     /** Sum of the customer's purchases in the given status since the given instant (daily limit). Empty if there are none. */
     @Query("select sum(t.amountEur) from Transaction t "

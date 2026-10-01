@@ -159,7 +159,7 @@ public class SupportService {
     /** Voucher block (complaint, suspected abuse). A redeemed or already blocked voucher is left untouched. */
     @Transactional
     public VoucherDto blockVoucher(String serial) {
-        Voucher voucher = voucherRepo.findBySerial(serial)
+        Voucher voucher = voucherRepo.findBySerialCompact(VoucherSerial.compact(serial))
                 .orElseThrow(() -> new NotFoundException("Bon " + serial + " ne postoji"));
         return doBlock(voucher);
     }
@@ -199,7 +199,7 @@ public class SupportService {
     }
 
     private Voucher ownVoucher(long customerId, String serial) {
-        return transactionRepo.findByVoucherSerial(serial)
+        return transactionRepo.findByVoucherSerialCompact(VoucherSerial.compact(serial))
                 .filter(t -> t.getCustomer().getId().equals(customerId))
                 .map(Transaction::getVoucher)
                 .orElseThrow(() -> new NotFoundException("Bon " + serial + " nije pronađen među vašim kupnjama"));
