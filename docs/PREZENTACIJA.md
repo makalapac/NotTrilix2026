@@ -2,6 +2,8 @@
 
 _Nacrt **v2: 2026-10-02** (v1: 2026-09-30) · slot **40 min** (plan: 35 min izlaganje + 5 min pitanja) · stanje koda: Faze 1–5 gotove (grana `phase5`), Faza 6 (telefon, Infobip) **u izradi na grani `phase6`**._
 
+> **Jezik.** Predavanje je **na engleskom** (slajdovi i bilješke za govornika u decku su engleski). Demo aplikacija govori hrvatski (Nola, UI, baza znanja), pa se ono što se u demou tipka ili izgovara na slajdovima navodi na hrvatskom s prijevodom u zagradi. Ovaj nacrt ostaje na hrvatskom kao interni radni dokument.
+
 > **Narativ.** Na početku jasno kažem dvije stvari: (1) sustav je **namjerno pojednostavljen** radi demo efekta, ali ono što agent dira (pravila, prijava, transakcije, audit) nije; (2) cilj predavanja je **proći kroz faze izgradnje agentske aplikacije** oko postojećeg Java sustava: znanje i kontekst (RAG) → chatbot → alati i agentske mogućnosti → MCP → glas → telefon. Svaka faza ima jedno pitanje, jedan demo i jednu pouku, a agent između faza ostaje isti: **tekst unutra, tekst van**. Publika bi trebala otići s uvjerenjem da isti put može proći i sa svojim sustavom.
 
 ## Raspodjela vremena
@@ -321,6 +323,8 @@ Ne otvarati: `PcmUtil`, `CallRegistry`, `PhoneGateway`, DTO-e, Infobip JSON.
 
 Prije izlaska: `-Reset` briše i odobrene naučene odlomke; ako demo 6b treba već naučen odlomak, pripremiti ga nakon reseta.
 
+**Rezervni videi** (ako zakaže mreža, mikrofon ili API): `demo-video/out/01-faza1-sustav.mp4` … `05b-faza5-analiza-gdpr.mp4` i `00-sve-faze.mp4` (sve faze s naslovnim karticama, 6,5 min). Snimljeno automatski protiv stvarnog sustava (Playwright), s kursorom i natpisima; glas ima Nolin zvuk. VLC na cijelom ekranu, razmak za pauzu.
+
 ## Što još treba napraviti do konferencije (11.–14. 10.)
 
 **Kod**
@@ -333,6 +337,6 @@ Prije izlaska: `-Reset` briše i odobrene naučene odlomke; ako demo 6b treba ve
 - [ ] Mikrofon i zvuk dvorane: kako publika čuje mobitel (zvučnik uz mikrofon ili ulaz u mikser).
 
 **Deck i proba**
-- [ ] Deck iz ovog nacrta (lanjski `../mcp-demo/presentation/build_pptx.py` kao predložak); dijagrami iz `docs/PHASE3–5.md` i arhitektura iz bloka 7; slajd „pojednostavljeno namjerno“.
-- [ ] Snimke demo beatova (video) kao rezerva, posebno poziv.
+- [x] Deck v1 (2026-10-02, engleski od 2026-10-03): `presentation/build_pptx.py` → `presentation/NotTrilix-JavaCro2026.pptx` (31 slajd, bilješke za govornika iz ovog nacrta; `python presentation/build_pptx.py` za regeneraciju). Otvoreno: QR kod na zadnjem slajdu, mjerenja za telefon, stvarni redci audita umjesto ilustrativnih na slajdu 18.
+- [x] Snimke demo beatova za faze 1–5 (2026-10-03): `demo-video/out/` (po fazama + `00-sve-faze.mp4`, 1280×720, glas sa zvukom); ponovno snimanje po `demo-video/README.md`. Ostaje snimka poziva (Faza 6) kad bude živ.
 - [ ] Generalna proba s mjerenjem vremena: cilj 33 min bez pitanja, 3 min rezerve za demo koji zapne; označiti što se krati prvo (blok 6 drugi dio, pa blok 2).

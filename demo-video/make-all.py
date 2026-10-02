@@ -1,11 +1,15 @@
 # -*- coding: utf-8 -*-
-"""One video for the whole talk: a title card before every phase clip, clips concatenated (ffmpeg). Output: out/00-sve-faze.mp4."""
+"""One video for the whole talk: a title card before every phase clip, clips concatenated (ffmpeg). Output: out/00-sve-faze.mp4.
+Title cards are drawn with Pillow (ffmpeg's drawtext needs fragile path escaping on Windows)."""
 import os
 import subprocess
 
+from PIL import Image, ImageDraw, ImageFont
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "out")
-FONT = "C\\:/Windows/Fonts/segoeuib.ttf"
+FONT_BOLD = r"C:\Windows\Fonts\segoeuib.ttf"
+FONT_REGULAR = r"C:\Windows\Fonts\segoeui.ttf"
 CLIPS = [
     ("01-faza1-sustav.mp4", "Faza 1", "Postojeći sustav: shop, wallet, pravila u kodu"),
     ("02-faza2-znanje.mp4", "Faza 2", "Baza znanja za RAG (Spring AI + pgvector)"),
@@ -21,11 +25,25 @@ def run(args):
 
 
 def title_card(path, title, subtitle):
-    text = "drawtext=fontfile=%s:text='%s':fontcolor=white:fontsize=72:x=(w-text_w)/2:y=(h-text_h)/2-50," \
-           "drawtext=fontfile=%s:text='%s':fontcolor=0xB9C6FF:fontsize=34:x=(w-text_w)/2:y=(h-text_h)/2+50" % (
-               FONT, title.replace("'", "\\'"), FONT, subtitle.replace("'", "\\'").replace(":", "\\:"))
-    run(["-f", "lavfi", "-i", "color=c=0x0f172a:s=1280x720:d=3:r=25", "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
-         "-vf", text, "-t", "3", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", path])
+    """A 3 s card: dark background, phase title, one-line subtitle, small footer. PNG first, then a looped video."""
+    img = Image.new("RGB", (1280, 720), (15, 23, 42))
+    draw = ImageDraw.Draw(img)
+    big = ImageFont.truetype(FONT_BOLD, 76)
+    small = ImageFont.truetype(FONT_REGULAR, 34)
+    tiny = ImageFont.truetype(FONT_REGULAR, 22)
+
+    def centered(text, font, y, fill):
+        left, top, right, bottom = draw.textbbox((0, 0), text, font=font)
+        draw.text(((1280 - (right - left)) / 2 - left, y - top), text, font=font, fill=fill)
+
+    centered(title, big, 270, (255, 255, 255))
+    draw.line([(540, 380), (740, 380)], fill=(99, 125, 255), width=4)
+    centered(subtitle, small, 410, (185, 198, 255))
+    centered("NotTrilix · JavaCro 2026 · From REST API to Voice Agent", tiny, 650, (120, 134, 170))
+    png = path[:-4] + ".png"
+    img.save(png)
+    run(["-loop", "1", "-framerate", "25", "-i", png, "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
+         "-t", "3", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", path])
 
 
 def with_audio(src, dst):

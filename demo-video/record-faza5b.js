@@ -63,6 +63,7 @@ const { start, loginShop, loginAdmin, adminTab, openChat, chat } = require('./li
   await demo.click('.msg.agent details.activity summary >> nth=-1', 3500);
 
   await demo.caption('Prava kupca (GDPR)', 'izvoz svih podataka, privola, brisanje razgovora; retencija 30 / 365 dana po rasporedu');
+  await demo.click('.chat-header button:has-text("Zatvori")', 800); // the chat panel covers the header button
   await demo.click('button[title="Moji podaci, privole, izvoz i brisanje"]', 1500);
   await page.waitForSelector('.modal.privacy');
   await demo.pause(4000);

@@ -5,13 +5,13 @@ s vidljivim kursorom i natpisima koji govore što se gleda. Ako na pozornici zak
 
 | Datoteka (`out/`) | Trajanje | Što se vidi |
 |---|---|---|
-| `01-faza1-sustav.mp4` | ~1 min | Ivana kupuje HT bon s walleta uz potvrdu, kod skriven do klika, Steam 50 € odbijen pravilom; admin: transakcije, zaliha, prijave |
-| `02-faza2-znanje.mp4` | ~0,5 min | admin tab Znanje: 85 odlomaka, semantička pretraga s ocjenama, isto pitanje drugim riječima |
-| `03-faza3-agent.mp4` | ~1,5 min | Marko i Nola: wallet, kod ne radi, kupnja uz potvrdu (gumbi), alati i izvori ispod odgovora, admin Audit |
-| `04-faza4-mcp.mp4` | ~1,5 min | konzola: jedan potvrđeni turn s obje strane mreže (`[sustav]` / `[agent ]`), pa MCP pozivi bez agenta |
-| `05a-faza5-glas.mp4` | ~1,5 min | Ana govori (snimka kroz lažni mikrofon), privola, transkript, odgovor sa streamingom; **Nolin govor je u zvuku videa** |
-| `05b-faza5-analiza-gdpr.mp4` | ~3 min | pitanje bez odgovora u bazi znanja, analiza razgovora, odobrenje prijedloga, agent odgovara iz naučenog, izvoz i brisanje |
-| `00-sve-faze.mp4` | ~9 min | sve gore, s naslovnom karticom prije svake faze |
+| `01-faza1-sustav.mp4` | 38 s | Ivana kupuje HT bon s walleta uz potvrdu, kod skriven do klika, Steam 50 € odbijen pravilom; admin: transakcije, zaliha, prijave |
+| `02-faza2-znanje.mp4` | 32 s | admin tab Znanje: 85 odlomaka, semantička pretraga s ocjenama, isto pitanje drugim riječima |
+| `03-faza3-agent.mp4` | 68 s | Marko i Nola: wallet, kod ne radi, kupnja uz potvrdu (gumbi), alati i izvori ispod odgovora, admin Audit |
+| `04-faza4-mcp.mp4` | 48 s | konzola: jedan potvrđeni turn s obje strane mreže (`[sustav]` / `[agent ]`), pa MCP pozivi bez agenta |
+| `05a-faza5-glas.mp4` | 56 s | Ana govori (snimka kroz lažni mikrofon), privola, transkript, odgovor sa streamingom; **Nolin govor je u zvuku videa** |
+| `05b-faza5-analiza-gdpr.mp4` | 2 min | pitanje bez odgovora u bazi znanja, analiza razgovora, odobrenje prijedloga, agent odgovara iz naučenog, izvoz i brisanje |
+| `00-sve-faze.mp4` | 6,5 min | sve gore, s naslovnom karticom (3 s) prije svake faze |
 
 Reprodukcija: bilo koji player (VLC, Windows Media Player), 1280×720, H.264. Na pozornici: VLC na cijelom ekranu, razmak za pauzu.
 
@@ -33,6 +33,7 @@ Mape `out/`, `samples/` i `node_modules/` nisu u gitu.
 
 ## Kako je snimljeno
 
+- `make-all.py`: naslovne kartice crta Pillow (PNG → 3 s videa), jer ffmpeg `drawtext` na Windowsu traži nezgodno escapanje putanje fonta.
 - `lib.js`: Chromium u Playwrightu s `recordVideo` 1280×720; skripta u stranicu ubaci kursor, klik-efekt i traku s natpisom, tipka sporo i čeka stvarne odgovore agenta.
 - Glas (5a): Chromium opcija `--use-file-for-fake-audio-capture` pušta WAV kao mikrofon, pa prolaze pravi STT, agent i TTS; zvuk odgovora se uzme iz streama (`/api/agent/voice/stream`) i naknadno umiksa u video na trenutak kad je krenuo.
 - Faza 4 (`terminal.html`): nema što kliknuti, pa se stvarne linije loga (iz `docs/PHASE4.md` i žive `scripts/mcp_direct.py`) ispisuju kao u konzoli.
