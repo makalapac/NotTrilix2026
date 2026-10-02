@@ -1,114 +1,162 @@
 # From REST API to Voice Agent — nacrt prezentacije (JavaCro 2026)
 
-_Nacrt: **2026-09-30** · slot **40 min** (plan: 35 min izlaganje + 5 min pitanja) · stanje koda: Faze 1–5 gotove (grana `phase5`), Faza 6 (telefon, Infobip) rezervirana._
+_Nacrt **v2: 2026-10-02** (v1: 2026-09-30) · slot **40 min** (plan: 35 min izlaganje + 5 min pitanja) · stanje koda: Faze 1–5 gotove (grana `phase5`), Faza 6 (telefon, Infobip) **u izradi na grani `phase6`**._
 
-> **Narativ:** polazište je postojeći Java sustav s poslovnim pravilima. Na njega se, fazu po fazu, dodaje agent: prvo znanje, pa ruke (alati), pa mreža, pa glas, pa telefon. Svaka faza ima jedno pitanje i jednu pouku, a agent između faza ostaje isti: **tekst unutra, tekst van**. Publika bi trebala otići s uvjerenjem da se to može i s njihovim sustavom.
+> **Narativ.** Na početku jasno kažem dvije stvari: (1) sustav je **namjerno pojednostavljen** radi demo efekta, ali ono što agent dira (pravila, prijava, transakcije, audit) nije; (2) cilj predavanja je **proći kroz faze izgradnje agentske aplikacije** oko postojećeg Java sustava: znanje i kontekst (RAG) → chatbot → alati i agentske mogućnosti → MCP → glas → telefon. Svaka faza ima jedno pitanje, jedan demo i jednu pouku, a agent između faza ostaje isti: **tekst unutra, tekst van**. Publika bi trebala otići s uvjerenjem da isti put može proći i sa svojim sustavom.
 
 ## Raspodjela vremena
 
-| # | Blok | min | Demo | Ključna rečenica |
-|---|---|---|---|---|
-| 0 | Hook, teza, mapa | 2 | — | „Lani sam pisao MCP servere. Danas ćemo sustav nazvati.“ |
-| 1 | Polazište: sustav koji već imamo (Faza 1) | 3 | 30 s | „Sustav ima stav: pravila su u kodu, ne u modelu.“ |
-| 2 | Znanje: baza znanja za RAG (Faza 2) | 3 | 30 s | „Dokumente pišemo za čitača koji čita odlomak po odlomak.“ |
-| 3 | Agent: mozak i ruke (Faza 3) | 7 | 2 min | „Prompt nije jamstvo. Kod jest.“ |
-| 4 | Mreža: sustav kao MCP server (Faza 4) | 5 | 1 min | „Granica koja živi u klijentu nije granica.“ |
-| 5 | Glas i što ostaje iza razgovora (Faza 5) | 7 | 2,5 min | „Glas nije novi agent. Razgovor je zapis.“ |
-| 6 | Telefon: poziv s mobitela (Faza 6, Infobip) | 6 | 2 min | „Telefonija je cijev za zvuk. Problem je tko zove.“ |
-| 7 | Zaključak | 2 | — | „Pet faza, nula promjena mozga.“ |
-| — | Pitanja | 5 | — | |
+| # | Blok | Faza u repou | min | Demo | Ključna rečenica |
+|---|---|---|---|---|---|
+| 0 | Uvod: hook, teza, **okvir „pojednostavljeno namjerno“**, mapa faza | — | 3 | — | „Pojednostavio sam sve oko agenta. Ništa u agentu.“ |
+| 1 | Polazište: sustav koji već imamo | 1 | 2,5 | 30 s | „Sustav ima stav: pravila su u kodu, ne u modelu.“ |
+| 2 | Znanje i kontekst: baza znanja za RAG | 2 | 3 | 30 s | „Dokumente pišemo za čitača koji vidi jedan odlomak.“ |
+| 3 | Chatbot: model + prompt + memorija + znanje | 3 (bez alata) | 3,5 | 1 min | „Chatbot zna politiku. Ne zna kupca.“ |
+| 4 | Alati i agentske mogućnosti ⭐ | 3 | 6 | 2 min | „Prompt nije jamstvo. Kod jest.“ |
+| 5 | MCP: sustav kao MCP server, agent kao zasebna aplikacija | 4 | 4,5 | 1 min | „Granica koja živi u klijentu nije granica.“ |
+| 6 | Glas, i što ostaje iza razgovora | 5 | 6 | 2 min | „Glas nije novi agent. Razgovor je zapis.“ |
+| 7 | Telefon: poziv s mobitela (Infobip) | 6 | 5 | 2 min | „Telefonija je cijev za zvuk. Pravi problem je tko zove.“ |
+| 8 | Zaključak | — | 2 | — | „Od chatbota do telefona: isti mozak.“ |
+| — | Pitanja | | 5 | | |
 
-Ako organizator računa 40 min bez pitanja: blok 3 i 5 dobivaju po 2 min (više uživo, manje slajdova), blok 6 još 1 min.
+Zbroj izlaganja: 35,5 min. Ako organizator računa 40 min bez pitanja: blok 4 i 6 dobivaju po 1,5 min (više uživo), blok 7 još 1 min. Ako demo zapne, prvo se krati drugi dio bloka 6 (analiza, GDPR → jedan slajd), pa blok 2.
 
 ---
 
-## 0. Hook, teza, mapa (2 min)
+## 0. Uvod: hook, teza, okvir, mapa (3 min)
 
 - **Hook:** „Lani sam vam pokazao kako napisati vlastiti MCP server. Danas ću vam pokazati što se dogodi kad ga stavite ispred stvarnog sustava, pa ga nazovete telefonom.“
-- **Teza:** agent je koristan tek kad je spojen na stvarni sustav, ograničen pravilima i auditabilan. Ovo nije chatbot demo.
-- **Mapa (slajd):** šest faza kao stepenice: sustav → znanje → agent → mreža → glas → telefon. Ista slika se vraća na kraju svakog bloka s jednom stepenicom više.
+- **Teza (slajd):** agent je koristan tek kad je spojen na stvarni sustav, ograničen pravilima i auditabilan. Ovo nije chatbot demo. Chatbot je tek jedna stepenica.
+- **Okvir „pojednostavljeno namjerno“ (slajd, dva stupca):** ovo je **pojednostavljena verzija** sustava, da bi demo stao u 40 minuta i da bi se svaki korak vidio na ekranu.
+
+  | Pojednostavljeno (oko agenta) | Nije pojednostavljeno (ono što agent dira) |
+  |---|---|
+  | jedna Spring Boot aplikacija nosi API, shop i admin | poslovna pravila u servisnom sloju, jedna istina za sve kanale |
+  | wallet umjesto kartice i pravog PSP-a (nadoplata je simulirana) | prijava, uloge, bearer token; kupac radi samo sa svojim podacima |
+  | pružatelj (A1, HT, Steam…) je simuliran iza sučelja | transakcije i zaključavanje u bazi (dva kupca ne dobiju isti bon) |
+  | 8 bonova po proizvodu, 3 kupca u seedu | audit trag svakog poziva alata i svakog turna |
+  | tokeni u memoriji, bez HTTPS-a na pozornici | privola, izvoz, brisanje, retencija (GDPR) |
+
+  Rečenica: „Sve što je pojednostavljeno je *oko* agenta. Ništa što je pojednostavljeno nije *u* agentu. Vaš sustav je veći, ali su koraci isti.“
+- **Mapa faza izgradnje (slajd, stepenice):** polazište je sustav koji već imamo; na njega dolazi **znanje i kontekst (RAG)** → **chatbot** → **alati i agentske mogućnosti** → **MCP** → **glas** → **telefon**. Ista slika se vraća na kraju svakog bloka s jednom stepenicom više. Svaka stepenica = jedno pitanje + jedna pouka.
 - **Tehnološki podnožak (jedna linija, bez priče):** Java 25 · Spring Boot 4.1 · Spring AI 2.0 · PostgreSQL 17 + pgvector · OpenAI · ElevenLabs · Infobip.
 
-## 1. Polazište: sustav koji već imamo (3 min)
+## 1. Polazište: sustav koji već imamo (2,5 min)
 
 - **NotTrilix**: mala firma koja prodaje bonove (A1, HT, Steam, PlayStation, Xbox). Kupac ima wallet, kupuje bon, dobiva kod. Podrška rješava „kod ne radi“, povrate, blokade.
-- **Ovo je danost, ne tema:** jedan Spring Boot (REST API + shop + admin), Postgres, Flyway, prijava s ulogama. Kao svaki vaš sustav, samo manji.
+- **Ovo je danost, ne tema:** REST API + shop + admin, Postgres, Flyway, prijava s ulogama. Kao svaki vaš sustav, samo manji (vidi okvir iz uvoda).
 - **Pravila su u servisnom sloju** i to je najvažniji slajd cijele prezentacije: dnevni limit 150 €, povrat unutar 14 dana i samo ako bon nije iskorišten, kupac ne vidi zalihu, puni kod vidi samo vlasnik. Sve što agent kasnije radi prolazi kroz ta ista pravila.
 - **Demo (30 s):** shop: kupnja s walleta uz potvrdu; admin: transakcije. „Sustav radi i ima stav.“
 - **Pouka:** agent oko postojećeg sustava, ne novi sustav oko agenta.
 
-## 2. Znanje: baza znanja za RAG (3 min)
+## 2. Znanje i kontekst: baza znanja za RAG (3 min)
 
-- Call-centar zna politike: 10 kratkih markdown dokumenata (kupnja i limiti, iskorištavanje po pružatelju, kad kod ne radi, povrat, sigurnost, radno vrijeme, česta pitanja, rječnik, privatnost).
-- **Napisani za RAG:** `##` odjeljak = jedan odlomak, brojke u tekstu su pravila sustava, svaki odlomak razumljiv sam za sebe. 85 odlomaka.
+- **Pitanje faze:** odakle agent zna *naše* politike, a ne opće znanje modela?
+- Call-centar zna politike: 10 kratkih markdown dokumenata koje bi pisali ljudi iz podrške (kupnja i limiti, iskorištavanje po pružatelju, kad kod ne radi, povrat, sigurnost, radno vrijeme, česta pitanja, rječnik, privatnost).
+- **Napisani za RAG:** `##` odjeljak = jedan odlomak, brojke u tekstu su pravila sustava (150 €, 14 dana), svaki odlomak razumljiv sam za sebe, jezik kupaca i sinonimi. 85 odlomaka.
 - **Spring AI:** `EmbeddingModel` (OpenAI `text-embedding-3-small`) + `VectorStore` (pgvector u istoj bazi kao poslovni podaci; nula nove infrastrukture). Ingest idempotentan po hashu datoteke, top-k 3, prag sličnosti 0,35.
 - **Demo (30 s):** admin tab Znanje: „mogu li vratiti bon nakon 20 dana“ → odlomak o roku od 14 dana. Isto pitanje drukčije sročeno → isti odlomak.
+- **🔀 Alternative (jedna rečenica):** vector store i embeddinzi su konfiguracija (in-memory za demo, Qdrant/Redis za skaliranje; Ollama za lokalne embeddinge); pgvector jer je baza već tu.
 - **Pouka:** RAG za demo nije RAG platforma. Vrijednost je u tome što dokumente pišu ljudi iz podrške, a agent ih čita.
 
-## 3. Agent: mozak i ruke (7 min) ⭐
+## 3. Chatbot: model + prompt + memorija + znanje (3,5 min)
 
-- **Spring AI `ChatClient`, jedan bean, četiri sastojka (slajd-dijagram):** system prompt (persona Nola, pravila ponašanja) · memorija po razgovoru · RAG advisor nad bazom znanja · alati (`@Tool` metode koje delegiraju u postojeće servise; kupac dolazi iz prijave kroz `ToolContext`, ne iz razgovora).
-- **Kod na slajdu:** jedna `@Tool` metoda, tri retka delegacije. „Toliko koda treba da agent dobije ruku.“
-- **Demo (2 min, chat u shopu, hrvatski):**
-  1. „Koliko imam na walletu?“ → alat, odgovor s brojkom.
-  2. „Moj Steam kod ne radi, kaže da je nevažeći.“ → kupnje + provjera kod pružatelja → „iskorišten 21. 9., povrat nije moguć“. Pravilo iz sustava, ne iz modela.
-  3. „Kupi mi HT bon od 10 eura.“ → **prijedlog**, gumbi za potvrdu → „Da, potvrđujem.“ → izvršeno. Na ekranu paralelno audit trag (admin tab Audit).
-- **Dvije pouke iz izgradnje (war stories, kratko):**
-  - Memorija razgovora pamti samo tekst. U turnu potvrde model je **izmišljao id-eve**. Rješenje: sustav drži prijedlog radnje (`ConfirmationGate`), alat za potvrdu nema parametara, a potvrda vrijedi samo u idućem turnu. **Prompt nije jamstvo. Kod jest.**
-  - Pravila u promptu („nemoj izmišljati datum“, „bez završnih fraza“) model je kršio u 1 od 10 slučajeva. Ono što mora vrijediti uvijek ide u kod: podatak s uputom, filter odgovora.
-- **Audit od prvog dana:** svaki poziv alata i svaki turn je redak u tablici (tko, što, kada, ishod, trajanje). „Bez toga nema produkcije.“
+- **Pitanje faze:** što dobijemo kad model dobije persona-prompt, memoriju razgovora i bazu znanja, i ništa više?
+- **Spring AI `ChatClient`, jedan bean, tri sastojka (slajd-dijagram):** system prompt (persona Nola, pravila ponašanja, hrvatski) · memorija po razgovoru (`MessageChatMemoryAdvisor`, `conversationId` = razgovor u shopu) · RAG advisor nad bazom znanja. Ulaz i izlaz su tekst: `POST /api/agent/chat`. **Ovaj API se do kraja predavanja više ne mijenja.**
+- **Demo (1 min, chat u shopu):**
+  1. „Mogu li vratiti bon nakon 20 dana?“ → odgovor iz baze znanja, s izvorom. Dobar chatbot.
+  2. „A koji sam bon ja kupio prošli tjedan?“ → Nola ne zna; može samo reći gdje to kupac sam vidi. **Tu stane chatbot.**
+  3. „Zapamti da me zanima Steam.“ → sljedeći turn pokaže memoriju.
+- **Slajd „što chatbot ne može“:** ne vidi kupca, ne vidi kupnje ni wallet, ne može ništa napraviti. Zna *politiku*, ne zna *kupca*. Zato iduća stepenica.
 - **🔀 Alternative (jedna rečenica):** model je konfiguracija (OpenAI, Anthropic, Azure, lokalni Ollama); izbor pao na `gpt-4o` zbog pouzdanog pozivanja alata i hrvatskog.
+- **Pouka:** chatbot je koristan za pitanja o politici, ali call centar živi od pitanja o *mom* računu.
+- **Priprema (TODO):** u repou Faza 3 ima alate od početka; za ovaj demo treba prekidač u agentu (npr. `nottrilix.agent.tools-enabled=false` ili env `NOTTRILIX_TOOLS=off`) koji `ChatClient` digne bez alata, pa ga uključiti uživo za blok 4 (restart agenta traje ~5 s; alternativa: dva agenta na dva porta, ili samo slajd).
 
-## 4. Mreža: sustav kao MCP server, agent kao zasebna aplikacija (5 min)
+## 4. Alati i agentske mogućnosti (6 min) ⭐
 
-- **Motivacija:** „Alat u istom procesu ne možeš nazvati telefonom.“ Isti alati izlaze iz procesa: sustav postaje **MCP server** (`POST /mcp`, HTTP bez sesije), agent je zasebna aplikacija i **MCP klijent**. Krug s lanjskim talkom zatvoren.
+- **Pitanje faze:** kako agentu dati ruke, a ne dati mu ključeve od dućana?
+- **Četvrti sastojak:** alati. `@Tool` metode su **tanki adapteri** nad postojećim servisima (`ShopService`, `WalletService`, `SupportService`…), bez ijednog pravila u sebi. **Kupac dolazi iz prijave kroz `ToolContext`, ne iz razgovora**: model ne može reći „radim za Marka“.
+- **Kod na slajdu:** jedna `@Tool` metoda, tri retka delegacije. „Toliko koda treba da agent dobije ruku.“
+- **Slajd „alati“ (tablica):** čitanja (katalog, kupnje, wallet, provjera bona kod pružatelja, prijave) i **radnje s potvrdom** (kupnja, povrat, blokada) + `confirmPendingAction()` bez parametara. Čega nema među alatima (uplata, goodwill, tuđi podaci, admin radnje), agent **ne može**: prompt injection nema što pozvati.
+- **Demo (2 min, isti chat, alati uključeni):**
+  1. „Koliko imam na walletu?“ → alat, odgovor s brojkom (ono što chatbot nije mogao).
+  2. „Moj Steam kod ne radi, kaže da je nevažeći.“ → kupnje + provjera kod pružatelja → „iskorišten 21. 9., povrat nije moguć“. Pravilo iz sustava, ne iz modela.
+  3. „Kupi mi HT bon od 10 eura.“ → **prijedlog**, gumbi za potvrdu → „Da, potvrđujem.“ → izvršeno. Paralelno admin tab Audit.
+  4. (po volji) „Kupi mi Steam od 50.“ s Markom (wallet 25 €) → `INSUFFICIENT_FUNDS` istom porukom kao u shopu.
+- **Dvije pouke iz izgradnje (war stories, kratko):**
+  - Memorija razgovora pamti samo tekst. U turnu potvrde model je **izmišljao id-eve**. Rješenje: sustav drži prijedlog radnje (`ConfirmationGate`), alat za potvrdu nema parametara, potvrda vrijedi samo u idućem turnu. **Prompt nije jamstvo. Kod jest.**
+  - Pravila u promptu („nemoj izmišljati datum“, „bez završnih fraza“) model je kršio u 1 od 10 slučajeva. Ono što mora vrijediti uvijek ide u kod: podatak s uputom, filter odgovora.
+- **Audit od prvog dana:** svaki poziv alata, dohvat iz baze znanja i turn je redak u tablici (tko, što, kada, ishod, trajanje). „Bez toga nema produkcije.“
+- **Pouka:** model bira *koju dopuštenu* radnju; *smije li*, kaže kod. Pravila ostaju tamo gdje su bila.
+
+## 5. MCP: sustav kao MCP server, agent kao zasebna aplikacija (4,5 min)
+
+- **Pitanje faze:** što od granica iz bloka 4 preživi mrežu?
+- **Motivacija:** „Alat u istom procesu ne možeš nazvati telefonom.“ Isti alati izlaze iz procesa: sustav postaje **MCP server** (`POST /mcp`, HTTP bez sesije, 14 `@McpTool` alata), agent je zasebna aplikacija i **MCP klijent**, bez baze i bez pravila. Krug s lanjskim talkom zatvoren: lani smo MCP servere pisali, danas ih agent konzumira.
 - **Slajd „što od granica preživi mrežu“ (tablica, tri retka):**
-  - tko je kupac: token kupca u zaglavlju **svakog** MCP poziva, sustav ga sam provjerava; model token nikad ne vidi;
+  - tko je kupac: **token kupca u zaglavlju svakog MCP poziva**, sustav ga sam provjerava; model token nikad ne vidi;
   - potvrda radnje: brana **u sustavu**, agent u MCP `_meta` šalje samo `conversationId` i `turn`;
   - audit: omotač oko svakog MCP alata **u sustavu**; vrijedi za svaki klijent, agent ga ne može preskočiti.
-- **Demo (1 min):** dva procesa u istoj konzoli (`[sustav]` / `[agent ]`), jedan turn s potvrdom: isti alat izmjeren s obje strane mreže (17 ms u sustavu, 26 ms iz agenta). Po volji: `curl` na `/mcp` bez tokena → 401, s ključem agenta → `CUSTOMER_REQUIRED`.
+- **Demo (1 min):** dva procesa u istoj konzoli (`[sustav]` / `[agent ]`), jedan turn s potvrdom: isti alat izmjeren s obje strane mreže. Po volji: `curl` na `/mcp` bez tokena → 401, s ključem agenta → `CUSTOMER_REQUIRED`.
 - **Nalaz za publiku (Spring AI 2.0):** RAG advisor je po zadanom redoslijedu **unutar petlje pozivanja alata** pa se dohvat ponavljao pri svakom pozivu modela; vidjelo se tek u auditu na strani sustava. Jedan redak: `.order(ToolCallingAdvisor.DEFAULT_ORDER - 50)`.
 - **Pouke:** granica koja živi u klijentu nije granica; identitet putuje kao vjerodajnica, ne kao podatak; audit na strani koja posjeduje podatke.
 
-## 5. Glas i što ostaje iza razgovora (7 min) ⭐
+## 6. Glas, i što ostaje iza razgovora (6 min)
 
-- **Glas je kanal, ne novi agent (slajd-pipeline):** 🎤 → STT (Spring AI `TranscriptionModel`, OpenAI) → **isti agent** → TTS (Spring AI `TextToSpeechModel`, ElevenLabs ili OpenAI, pružatelj = konfiguracija) → 🔊. Snimka se ne pohranjuje; u audit ide transkript.
-- **Demo (1,5 min, mikrofon u shopu, hrvatski):** prvi put privola; klik, „Kupi mi HT bon od deset eura.“, snimanje stane samo → transkript odmah, Nola (glas „Maja“, `eleven_v4_turbo`) govori prijedlog ~0,2 s nakon odgovora → „Da, potvrđujem.“ → izvršeno. Log na ekranu: `VOICE STT … 486 ms`, `VOICE TTS ElevenLabs stream … prvi zvuk nakon 225 ms`. Ako model potraje, Nola kaže „Samo trenutak.“.
-- **Nalaz (kratko, smiješno):** `language: hr` nije bio dovoljan: isti hrvatski zvuk model je vraćao kao srpsku ćirilicu, bugarski, poljski. Kratki prompt s rječnikom domene (brendovi, „wallet“, „potvrđujem“) riješio je sve uzorke. „STT-u dajte ono što dobije novi agent prvi dan: rječnik.“
-- **Što ostaje iza razgovora (drugi dio bloka):**
-  - audit trag iz Faze 4 već je **transkript**: KUPAC / ALAT / ZNANJE / AGENT po turnovima; ništa se ne bilježi dvaput;
-  - **post-analiza**: utihnuli razgovor → pseudonimizacija (ime → `[KUPAC]`) → model → **strukturirani nalaz** (Spring AI structured output): tema, ishod, raspoloženje, ocjena agenta, prekršena pravila, **rupe u znanju**;
-  - **samoučenje s čovjekom u petlji**: rupa u znanju → prijedlog odlomka → admin ispravi i odobri → odlomak u bazi znanja, agent ga koristi od idućeg pitanja.
-- **Demo (1 min, admin):** tab Razgovori: nalaz glasovnog razgovora (Kupnja / Riješeno / Pozitivno, 5/5); razgovor u kojem je kupac pitao za R1 račun → rupa u znanju → tab Znanje: prijedlog s `PROVJERITI:` → odobri s pravim odgovorom → novi chat: agent zna. Trik: analiza uhvatila i razgovor s pokvarenim STT-om (Neriješeno, ocjena 3) prije nas.
-- **GDPR u kodu (jedan slajd, bez pravnih tonova):** privola za glas s verzijom teksta (403 bez nje) · izvoz svih podataka JSON · brisanje razgovora na zahtjev · retencija po rasporedu (30 / 365 dana) · logovi bez e-maila · agent odgovara na „što čuvate o meni“ iz baze znanja. „Rok čuvanja je posao po rasporedu, izvoz je upit, brisanje je transakcija. Nije teško; teško je ne preskočiti.“
-- **🔀 Alternative (jedna rečenica):** STT/TTS pružatelji su konfiguracija u Spring AI-ju (OpenAI, ElevenLabs, Azure); hrvatski TTS presudio za ElevenLabs.
+- **Pitanje faze:** što se mijenja kad kupac progovori, i što ostaje iza razgovora?
+- **Glas je kanal, ne novi agent (slajd-pipeline):** 🎤 → STT (Spring AI `TranscriptionModel`, OpenAI) → **isti agent** (`/api/agent/chat` iznutra) → TTS (Spring AI `TextToSpeechModel`, ElevenLabs ili OpenAI, pružatelj = konfiguracija) → 🔊. Odgovor **streama**: prvi zvuk 1,6–2,7 s od kraja snimanja, „Samo trenutak.“ ako model potraje, snimanje stane samo na tišinu, klik prekida Nolu. Snimka se ne pohranjuje; u audit ide transkript.
+- **Demo (1,5 min, mikrofon u shopu, hrvatski):** prvi put privola (10 s, uživo); klik, „Kupi mi HT bon od deset eura.“ → transkript odmah, Nola (glas „Maja“, `eleven_v4_turbo`) govori prijedlog → „Da, potvrđujem.“ → izvršeno. Log na ekranu: `VOICE STT … ms`, `VOICE TTS … prvi zvuk nakon … ms`.
+- **Nalaz (kratko, smiješno):** `language: hr` nije bio dovoljan: isti hrvatski zvuk model je vraćao kao srpsku ćirilicu, bugarski, poljski. Kratki prompt s rječnikom domene (brendovi, „wallet“, „potvrđujem“) riješio je sve uzorke. „STT-u dajte ono što dobije novi agent prvi dan: rječnik.“ Drugi: serijske brojeve kupac izgovara bez crtica, pa ih sustav tako i traži.
+- **Što ostaje iza razgovora (2,5 min; prvo za kraćenje ako vrijeme bježi):**
+  - audit trag iz bloka 5 već je **transkript**: KUPAC / ALAT / ZNANJE / AGENT po turnovima; ništa se ne bilježi dvaput;
+  - **post-analiza**: utihnuli razgovor → pseudonimizacija (ime → `[KUPAC]`) → model → **strukturirani nalaz** (Spring AI structured output): tema, ishod, raspoloženje, ocjena agenta, **rupe u znanju**;
+  - **samoučenje s čovjekom u petlji**: rupa u znanju → prijedlog odlomka → admin ispravi i odobri → odlomak u bazi znanja, agent ga koristi od idućeg pitanja;
+  - **GDPR u kodu (jedan slajd):** privola za glas s verzijom teksta · izvoz JSON · brisanje razgovora · retencija po rasporedu (30 / 365 dana) · logovi bez e-maila. „Rok čuvanja je posao po rasporedu, izvoz je upit, brisanje je transakcija. Nije teško; teško je ne preskočiti.“
+- **Demo (30 s, admin):** tab Razgovori: nalaz upravo održanog glasovnog razgovora (gumb „Analiziraj“); tab Znanje: prijedlog iz ranijeg razgovora o R1 računu → odobri → agent zna.
+- **🔀 Alternative (jedna rečenica):** STT/TTS pružatelji su konfiguracija u Spring AI-ju (OpenAI, ElevenLabs, Azure); hrvatski glas presudio za ElevenLabs.
+- **Pouke:** glas nije novi agent; audit trag je više od nadzora; samoučenje da, ali s čovjekom koji odobrava.
 
-## 6. Telefon: poziv s mobitela (6 min) — REZERVIRANO, dopuniti nakon Faze 6
+## 7. Telefon: poziv s mobitela (5 min) — finale
 
-_Blok se piše kad Faza 6 bude gotova. Ono što već znamo iz istraživanja i prošlogodišnjeg pokušaja (`../mcp-demo/INFOBIP_STATUS.md`, `PHONE_NUMBER_RESEARCH.md`, `TELEPHONY_RESEARCH.md`):_
+_Stanje koda (grana `phase6`, 2026-10-02): **simulator poziva verificiran** (`scripts/phone_sim.py` glumi Infobip: webhookovi + WebSocket + PCM), živi poziv kroz Infobip čeka broj i webhookove u portalu. Opis: [PHASE6.md](PHASE6.md). Blok dopuniti mjerenjima (prvi zvuk, turn) kad živi poziv prođe._
 
-- **Arhitektura (slajd):** mobitel → **Infobip** broj (+385 1 …) → webhook (javi se) → **WebSocket s PCM16 zvukom** u oba smjera ⇄ naš adapter: VAD (kad kupac govori) → STT → **isti agent** → TTS → natrag u poziv, s prekidanjem (barge-in). Telefonija je cijev za zvuk; agent, MCP i sustav se ne mijenjaju.
-- **Pravi problem ove faze: tko zove?** Pozivatelj nema token kupca. Opcije za slajd: prepoznavanje po broju + kontrolno pitanje (npr. zadnje 4 znamenke koda ili iznos zadnje kupnje) → sustav agentu izda vjerodajnicu u ime kupca, s rokom i opsegom. Bez provjere: samo pitanja iz baze znanja, bez radnji na računu.
-- **Demo (2 min, finale):** publika čuje: zvonjava → pozdrav → pitanje → Nola odgovara → kupnja uz potvrdu glasom. Log `TELEPHONY` paralelno na ekranu. Rezerva: Infobip **Call Link** (WebRTC iz preglednika, bez broja) i snimka.
-- **War story (ispričati):** poziv odbijan s „The received request was rejected“ jer subscription u portalu nije bio vezan na Calls Configuration; propagacija „par minuta“; efemerni tunel URL koji svaki restart mijenja. Integracije su i to.
-- **🔀 Zašto Infobip:** hrvatska firma (JavaCro kut), PCM16 na žici (bez transkodiranja), službeni ElevenLabs primjer, Call Link za demo bez broja. Alternativa Twilio (µ-law 8 kHz, bez hrvatskog u `<Say>`).
-- **Što treba prije konferencije (organizacijski):** nadoplata Infobip računa (trial istekao ~29. 9.), kupnja HR broja (€8,71 + €8,71, `FORWARD_TO_SUBSCRIPTION` na postojeću konfiguraciju), stalni tunel ili javni host za webhookove, proba s mobitela.
+- **Pitanje faze:** tko zove, i tko mu smije dati ruke? Kupac nema ni preglednik ni prijavu, samo zvuk s jedne i broj pozivatelja s druge strane.
+- **Arhitektura (slajd, dvije ravnine):**
+  - **kontrolna:** mobitel → Infobip HR broj → webhook `CALL_RECEIVED` u agenta → agent pita sustav tko zove, pa se javi (Calls API) → `CALL_ESTABLISHED` → most poziva na naš WebSocket (dialog s `WEBSOCKET` odredištem) → `CALL_FINISHED` → kraj poziva u sustav;
+  - **medijska:** `wss://<tunel>/infobip/media`, **20 ms okviri PCM16 @ 16 kHz u oba smjera** ⇄ agent: energetski VAD (240 ms govora počinje iskaz, 700 ms tišine ga završava) → STT (isti Spring AI `TranscriptionModel`, WAV iz PCM-a) → **isti `AgentService`** → TTS (ElevenLabs **`pcm_16000`**, izravno na liniju, bez transkodiranja) → okviri natrag u taktu od 20 ms. **Barge-in:** kupac progovori, red neizgovorenih okvira se baca. „Samo trenutak.“ nakon 1,2 s čekanja. Jedan poziv = jedan razgovor (`conversationId` = Infobipov `callId`), pa potvrda kupnje radi kroz dva iskaza kao kroz dvije poruke.
+- **Ništa novo iz Spring AI-ja:** isti `ChatClient`, isti `TranscriptionModel` i `TextToSpeechModel`. WebSocket, VAD, pacing i Infobip su obična Java. „Gdje apstrakcija ne seže, obična Java. I to je u redu.“ Jedan sitan ali poučan detalj: telefon traži ElevenLabs jer daje PCM 16 kHz; OpenAI TTS bi dao 24 kHz i tražio resampling.
+- **Pravi problem ove faze: tko zove? (slajd):** rješenje je u sustavu, ne u agentu: `POST /api/phone/calls` (agent zove s vlastitim ključem, uloga AGENT) → broj pozivatelja (samo znamenke, u logu i auditu **maskiran**) → kupac po telefonu → **token kupca za trajanje poziva**, povučen na kraju poziva. Od tog trenutka svaki MCP poziv nosi isti token kao chat: **ista pravila, ista brana potvrde, isti audit**, bez ijedne nove grane u sustavu i bez nove migracije (kanal `PHONE` u postojećim tablicama). **Nepoznat broj:** pozdrav, objašnjenje („broj nije u računu, prijavite se u web shop“), kraj poziva. Iskreno reći: broj pozivatelja je identifikacija, ne autentikacija (spoofing postoji); za radnje s novcem produkcija bi tražila PIN, poziv natrag ili jednokratni kod u aplikaciji.
+- **Demo (2 min, finale):** publika čuje: zvonjava → „Dobar dan, Ana…“ → „Koliko imam na walletu?“ → Nola odgovara → „Kupi mi HT bon od deset eura.“ → prijedlog → „Potvrđujem.“ → izvršeno → upad u riječ. Na ekranu paralelno log `TELEPHONY` / `PHONE` i admin tab Audit s oznakom „poziv“. **Rezerva 1:** `python scripts\phone_sim.py` uživo (isti medijski put, bez Infobipa; publika čuje Nolin odgovor iz zvučnika ako simulator reproducira PCM, inače se vidi transkript). **Rezerva 2:** snimka poziva.
+- **War story (ispričati, iz prvog pokušaja):** poziv odbijan s „The received request was rejected“ jer subscription u portalu nije bio vezan na Calls Configuration; propagacija „par minuta“; tunel URL koji se mijenja sa svakim startom (agent pri startu sam prepiše media-stream konfiguraciju, ali pretplate na događaje na ovom računu nemaju API, pa se mijenjaju ručno u portalu). Integracije su i to.
+- **🔀 Zašto Infobip:** hrvatska firma (JavaCro kut), PCM16 na žici (bez transkodiranja), službeni ElevenLabs primjer, Call Link za demo bez broja. Alternativa Twilio (µ-law 8 kHz, bez hrvatskog u `<Say>`). Telefonija je kod oba „glupa cijev za zvuk“.
+- **Pouke (iz PHASE6.md §9):** telefon nije promijenio ni agenta ni sustav, promijenio je *tko izdaje identitet*: u chatu prijava, na telefonu broj, oboje završi kao isti token u istom zaglavlju; **kanal je omotač, vjerodajnica je granica**. Simulator je vrijedio više od dokumentacije: cijeli medijski put vježba se lokalno, živi poziv dodaje samo webhookove i broj. Nepoznat pozivatelj je slučaj koji treba odlučiti, ne izbjeći.
 
-## 7. Zaključak (2 min)
+## 8. Zaključak (2 min)
 
-- **Rekapitulacija (jedan slajd, tablica po fazama):** kanal / tko je kupac / gdje su pravila / gdje je potvrda / gdje je audit. U svim retcima: pravila, potvrda i audit su u sustavu. Agent se od Faze 3 nije mijenjao: „**Pet faza, nula promjena mozga.**“
+- **Rekapitulacija (jedan slajd, tablica po fazama):** kanal / tko je kupac / gdje su pravila / gdje je potvrda / gdje je audit. U svim retcima: pravila, potvrda i audit su u sustavu. `ChatClient` se od bloka 3 nije mijenjao: „**Od chatbota do telefona: isti mozak.**“
+
+  | Faza | Kanal | Tko je kupac | Pravila | Potvrda | Audit |
+  |---|---|---|---|---|---|
+  | chatbot | tekst | prijava | sustav | — | turn |
+  | alati | tekst | `ToolContext` iz prijave | sustav | sustav | alat + turn |
+  | MCP | tekst | token u zaglavlju | sustav | sustav | sustav, za svaki klijent |
+  | glas | zvuk → tekst | isti token | sustav | sustav | transkript |
+  | telefon | PSTN → zvuk → tekst | broj → token za poziv | sustav | sustav | kanal PHONE |
+
 - **Pet pouka:**
   1. Agent oko postojećeg sustava; pravila ostaju u kodu, model bira među dopuštenim radnjama.
   2. Prompt nije jamstvo. Ono što mora vrijediti uvijek ide u kod (potvrda na serveru, filteri, podaci s uputom).
   3. Granica koja živi u klijentu nije granica; identitet putuje kao vjerodajnica.
   4. Audit trag je više od nadzora: transkript, analiza, izvoz kupcu, dokaz brisanja.
-  5. Samoučenje da, ali s čovjekom koji odobrava; GDPR je najjednostavniji kad je kod.
-- **Do produkcije nedostaje (iskrenost, jedan slajd):** HTTPS i sef za tajne, potpisani ugovori o obradi s pružateljima, streaming glas umjesto push-to-talk, NER umjesto regex pseudonimizacije, brisanje računa, potpisani webhookovi.
+  5. Kanali su adapteri: tekst, glas, telefon. Agentov API se nije promijenio.
+- **Do produkcije nedostaje (iskrenost, jedan slajd):** HTTPS i sef za tajne, autentikacija pozivatelja (ne samo broj), potpisani webhookovi, ugovori o obradi s pružateljima, NER umjesto regex pseudonimizacije, brisanje računa, mjerenje i limiti troška.
 - **CTA:** repo (QR), lanjski talk + ovaj = cijela MCP priča, pitanja.
 
 ---
 
 ## Kod uz svaki blok: što otvoriti i što reći
+
+Blokovi su iz raspodjele vremena gore; faze su grane u repou (Faza 3 pokriva dva bloka: chatbot bez alata, pa alati).
 
 Načelo: po bloku najviše dva do tri mjesta u kodu, svako stane na jedan ekran (do 25 redaka); ostalo je dijagram na slajdu.
 Brojevi redaka su s grane `phase5` (sve faze u konačnom obliku). Za „kako je izgledalo u toj fazi“ služe grane `phase1`–`phase4`;
@@ -148,12 +196,12 @@ Za svaki blok jedna rečenica na slajdu: „Spring AI je dao X, mi smo dodali Y.
 | 5 glas | `TextToSpeechModel` → `ElevenLabsTextToSpeechModel` ili `OpenAiAudioSpeechModel`, izbor kroz `spring.ai.model.audio.speech`; `TextToSpeechPrompt`, `TextToSpeechResponse`; **`stream()`** daje `Flux` chunkova mp3 koje agent odmah prosljeđuje (glas v2) | `spring-ai-starter-model-elevenlabs` (+ OpenAI starter) | `agent/…/VoiceService.java` (`turnStreaming`), `agent/…/application.yml` (elevenlabs: `eleven_v4_turbo`, Maja, `language-code: hr`) | `SpeechText` (iznosi riječima), streaming protokol, „Samo trenutak.“, privola prije poziva, snimka se ne čuva |
 | 5 analiza | **Structured output**: `BeanOutputConverter<ConversationInsight>` (`getFormat()` u prompt, `convert()` iz odgovora); drugi `ChatClient` bean u sustavu (`analysisChatClient`); `Usage` za tokene analize | `spring-ai-starter-model-openai` (sustav opet ima chat model) | `analysis/ConversationAnalyzer.java:96–120`, `analysis/AnalysisConfig.java`, `analysis/ConversationInsight.java` | pseudonimizirani transkript, raspored, prijedlozi za bazu znanja |
 | 5 učenje | isti `VectorStore.add(Document)` kao u Fazi 2, metapodatak `source = nauceno-N` | pgvector starter | `kb/KnowledgeBaseIngestor.java:151–176` | odobravanje s ispravkom, ponovni ingest pri resetu |
-| 6 telefon (plan) | ništa novo iz Spring AI-ja: isti `ChatClient`, `TextToSpeechModel.stream()`; WebSocket, VAD i telefonija su obična Java (Spring WebSocket) | — | `agent/…/telephony/` | „Gdje apstrakcija ne seže, obična Java.“ |
+| 6 telefon | ništa novo iz Spring AI-ja: isti `ChatClient`, `TranscriptionModel` (WAV iz PCM-a), `TextToSpeechModel` s `ElevenLabsTextToSpeechOptions.outputFormat("pcm_16000")`; WebSocket, VAD, pacing i Infobip su obična Java (Spring WebSocket) | `spring-boot-starter-websocket` (agent) | `agent/…/telephony/`, `phone/` u sustavu | „Gdje apstrakcija ne seže, obična Java.“ Identitet pozivatelja izdaje sustav kao token. |
 
 **Za zaključni slajd.** Spring AI je dao: `ChatClient` s advisorima (memorija, RAG), alate (`@Tool`, `ToolCallback`, `ToolContext`), MCP server (`@McpTool`) i MCP klijent (`McpClientCustomizer`, `SyncMcpToolCallbackProvider`), `EmbeddingModel` + `VectorStore`, `TranscriptionModel` + `TextToSpeechModel`, structured output (`BeanOutputConverter`).
 Naše je: poslovna pravila, brana potvrde, audit, identitet kroz token, transkript iz audita, pseudonimizacija, GDPR, samoučenje s odobrenjem. Dva stupca na jednom slajdu.
 
-### Blok 1 (Faza 1): pravila su u kodu
+### Faza 1 (blok 1): pravila su u kodu
 
 _Spring AI: ništa. Namjerno: prvo sustav s pravilima, bez ijednog AI dijela._
 
@@ -165,7 +213,7 @@ _Spring AI: ništa. Namjerno: prvo sustav s pravilima, bez ijednog AI dijela._
 
 Ne otvarati: kontrolere, DTO-e, React.
 
-### Blok 2 (Faza 2): znanje
+### Faza 2 (blok 2): znanje i kontekst
 
 _Spring AI: `EmbeddingModel` (OpenAI) + `VectorStore` (pgvector), `Document`, `SearchRequest`; starteri `spring-ai-starter-model-openai`, `spring-ai-starter-vector-store-pgvector`._
 
@@ -178,7 +226,7 @@ _Spring AI: `EmbeddingModel` (OpenAI) + `VectorStore` (pgvector), `Document`, `S
 | konfiguracija | `src/main/resources/application.yml:9–17, 77` | embedding model, pgvector, prag 0,35 | „Pružatelj je konfiguracija.“ |
 | baza | `db/migration/V3__vector_store.sql:8` | `vector_store` u istoj bazi kao kupci i kupnje | „Nula nove infrastrukture.“ |
 
-### Blok 3 (Faza 3): agent
+### Faza 3 (blokovi 3 i 4): chatbot, pa alati
 
 _Spring AI: `ChatClient`, `ChatMemory` + `MessageChatMemoryAdvisor`, `QuestionAnswerAdvisor` (RAG), `@Tool` + `ToolContext` + `ToolCallback`, `Usage`._
 
@@ -191,7 +239,7 @@ _Spring AI: `ChatClient`, `ChatMemory` + `MessageChatMemoryAdvisor`, `QuestionAn
 | isti slajd | `agent/…/ReplyStyle.java:13–26`, `mcp/SupportMcpTools.java:67` (`REDEMPTION_DATE_HINT`) | završne fraze filtrirane kodom; datum iskorištenja stiže s uputom uz podatak | „Pravilo koje mora vrijediti uvijek postaje kod.“ |
 | slajd „audit“ | `db/migration/V4__audit_events.sql:4`, `mcp/AuditedToolHandler.java:48–80` | omotač oko alata: ulaz, ishod, trajanje → redak u `audit_events` | „Bez ovoga nema produkcije.“ (demo prati admin tab Audit) |
 
-### Blok 4 (Faza 4): mreža
+### Faza 4 (blok 5): MCP
 
 _Spring AI: MCP server (`@McpTool`, `McpMeta`, `SyncMcpAnnotationProviders`, starter `mcp-server-webmvc`), MCP klijent (`SyncMcpToolCallbackProvider`, `McpClientCustomizer`, `ToolContextToMcpMetaConverter`, `McpToolFilter`, starter `mcp-client`), `spring-ai-rag` (`RetrievalAugmentationAdvisor`, `DocumentRetriever`), `ToolCallingAdvisor.DEFAULT_ORDER`._
 
@@ -205,7 +253,7 @@ _Spring AI: MCP server (`@McpTool`, `McpMeta`, `SyncMcpAnnotationProviders`, sta
 | slajd „nalaz o redoslijedu advisora“ | `agent/…/AgentConfig.java:69, 94–98` | `DocumentRetriever` preko MCP-a; `.order(ToolCallingAdvisor.DEFAULT_ORDER - 50)` | „Jedan redak, dva dohvata manje po turnu.“ |
 | demo | `scripts/mcp_direct.py` | isti `POST /mcp` bez tokena (401), s ključem agenta (`CUSTOMER_REQUIRED`), s tokenom kupca | |
 
-### Blok 5 (Faza 5): glas, razgovor kao zapis, GDPR
+### Faza 5 (blok 6): glas, razgovor kao zapis, GDPR
 
 _Spring AI: `TranscriptionModel` (OpenAI STT), `TextToSpeechModel` (ElevenLabs / OpenAI, izbor `spring.ai.model.audio.speech`), structured output `BeanOutputConverter`, drugi `ChatClient` za analizu, isti `VectorStore` za naučene odlomke. GDPR dio je bez Spring AI-ja: JPA, raspored, regex._
 
@@ -222,11 +270,24 @@ _Spring AI: `TranscriptionModel` (OpenAI STT), `TextToSpeechModel` (ElevenLabs /
 | isti slajd | `src/main/resources/kb/10-privatnost-i-osobni-podaci.md` | agent na „što čuvate o meni“ odgovara iz baze znanja | |
 | preglednik (po volji) | `frontend/src/customer/ChatWidget.tsx:97–122` | `MediaRecorder` → multipart → reprodukcija mp3 | |
 
-### Blok 6 (Faza 6): dopuniti kad bude gotova
+### Faza 6 (blok 7): telefon
 
-_Spring AI: ništa novo; telefonija je obična Java oko istog agenta._
+_Spring AI: ništa novo (isti `TranscriptionModel`, `TextToSpeechModel` s `ElevenLabsTextToSpeechOptions.outputFormat("pcm_16000")`); telefonija je obična Java (Spring WebSocket, Infobip Calls API) oko istog agenta. Kod na grani `phase6` (2026-10-02, još necommitano); brojeve redaka upisati kad se kod smiri. Pregled klasa: [PHASE6.md](PHASE6.md) §3–4._
 
-Planirano: paket `agent/…/telephony/` (webhook „javi se“, WebSocket handler: frame → VAD → STT → **isti `AgentService`** → TTS → natrag u poziv), servis u sustavu koji pozivatelju nakon provjere izdaje vjerodajnicu za agenta, `run-phase-6.ps1`. Pokazati tri mjesta: webhook, WS handler s pozivom istog agenta, izdavanje vjerodajnice.
+| Trenutak | Datoteka | Što pokazati | Rečenica |
+|---|---|---|---|
+| slajd „arhitektura: kontrolna ravnina“ | `agent/src/main/java/com/nottrilix/agent/telephony/InfobipWebhookController.java` | `/infobip/call-received` (identitet + javljanje), `/infobip/event` (`CALL_ESTABLISHED` → most, `CALL_FINISHED` → kraj); pri startu prepiše media-stream config na javni `wss://` URL | „Tri webhooka, tri REST poziva. Telefonija je cijev.“ |
+| isti slajd | `agent/…/telephony/InfobipCallsClient.java` | `answer`, `dialogs` (most na `WEBSOCKET` endpoint), `hangup`, media-stream config | |
+| slajd „arhitektura: medijska ravnina“ | `agent/…/telephony/InfobipMediaWebSocketHandler.java` | metadata → `CallSession`; okvir → VAD → iskaz → `turn()` → **isti `AgentService.chat(token, callId, tekst, "PHONE")`** → TTS → red okvira; pacer 20 ms; upad prazni red; filler nakon 1,2 s | „Ista petlja kao glas u pregledniku, samo u stvarnom tempu.“ |
+| isti slajd | `agent/…/telephony/CallSession.java` | energetski VAD (RMS, 240 ms govora, 700 ms tišine, 300 ms pre-rolla), red izlaznih okvira; zvuk kupca se ne čuva | „VAD u 30 redaka; ništa se ne snima.“ |
+| isti slajd | `agent/…/telephony/TelephonySpeech.java` | STT iz WAV omota, TTS `pcm_16000`, pozdrav s imenom, pozdrav nepoznatom, filler | „ElevenLabs daje PCM 16 kHz; zato telefon traži ElevenLabs.“ |
+| isti slajd | `agent/src/main/resources/application.yml` (`nottrilix.telephony.*`) | pozdravi, filler, najdulji poziv, pragovi VAD-a, javni URL | „Sve što se ugađa je konfiguracija.“ |
+| slajd „tko zove“ | `src/main/java/com/nottrilix/phone/PhoneSessionService.java` (`identify`) | broj → znamenke → `findByPhoneDigits` (ili `NOTTRILIX_DEMO_CALLER` → kupac 1) → `TokenService.issue` token za trajanje poziva; nepoznat → bez tokena; audit `PHONE_CALL` s maskiranim brojem | „Sustav izdaje vjerodajnicu u ime kupca. Agent je i dalje nepovjerljiv klijent.“ |
+| isti slajd | `src/main/java/com/nottrilix/api/PhoneController.java`, `config/SecurityConfig.java` (`/api/phone/**` AGENT) | `POST /api/phone/calls`, `/turns`, `/end`; kraj poziva povlači token | „Tri endpointa, nijedno novo pravilo, nijedna nova migracija.“ |
+| isti slajd | `src/main/java/com/nottrilix/phone/PhoneNumbers.java` | `digits` i `mask` („385 91***222“) | „Broj je osobni podatak: u logu maskiran.“ |
+| demo / rezerva | `scripts/phone_sim.py` | glumi Infobip: webhookovi + WebSocket + PCM; `--from` za nepoznat broj | „Simulator je vrijedio više od dokumentacije.“ |
+
+Ne otvarati: `PcmUtil`, `CallRegistry`, `PhoneGateway`, DTO-e, Infobip JSON.
 
 ### Tehnika
 
@@ -234,33 +295,44 @@ Planirano: paket `agent/…/telephony/` (webhook „javi se“, WebSocket handle
 - „Što je faza dodala“ = `git diff --stat phase3 phase4` uživo ili tablica gore; worktree po grani za usporedbu jedne datoteke (npr. `AgentTools.java` u `phase3` uz `SupportMcpTools.java` u `phase5`).
 - Ne otvarati: kontrolere, DTO-e, testove, React osim `ChatWidget`; migracije samo kao „jedna tablica po fazi“ (V3 znanje, V4 audit, V5 razgovori i privole).
 
-## Popis slajdova (radni, ~26)
+## Popis slajdova (radni, ~32)
 
-1. Naslov · 2. Lani / danas (hook) · 3. Teza · 4. Mapa šest faza
-5. NotTrilix: što prodaje, tko koristi · 6. Sustav: jedan Spring Boot, pravila u servisima (kod) · 7. Demo 1
-8. Baza znanja: dokumenti pisani za RAG · 9. Spring AI ingest + pretraga (kod/konfiguracija) · 10. Demo 2
-11. ChatClient: četiri sastojka (dijagram) · 12. `@Tool` u tri retka · 13. Demo 3 · 14. War story: izmišljeni id-evi → potvrda na serveru · 15. Audit
-16. Mreža: dvije aplikacije (dijagram) · 17. Što od granica preživi mrežu (tablica) · 18. Demo 4 + nalaz o redoslijedu advisora
-19. Glas kao kanal (pipeline) · 20. Demo 5 + STT nalaz · 21. Razgovor kao zapis: transkript → nalaz → prijedlog (dijagram) · 22. Demo 6 · 23. GDPR u kodu
-24. Telefon: arhitektura (Faza 6) · 25. Tko zove? · 26. Demo 7 (finale) + war story
-27. Rekapitulacija: pet faza, nula promjena mozga · 28. Pouke · 29. Do produkcije · 30. Hvala / QR
+1. Naslov · 2. Lani / danas (hook) · 3. Teza · 4. **Pojednostavljeno namjerno** (dva stupca) · 5. Mapa faza izgradnje (stepenice)
+6. NotTrilix: što prodaje, tko koristi · 7. Sustav: pravila u servisima (kod) · 8. Demo 1
+9. Baza znanja: dokumenti pisani za RAG · 10. Spring AI ingest + pretraga (kod/konfiguracija) · 11. Demo 2
+12. ChatClient: tri sastojka (dijagram) · 13. Demo 3 (chatbot) · 14. Što chatbot ne može
+15. Četvrti sastojak: `@Tool` u tri retka · 16. Alati: čitanja i radnje s potvrdom (tablica) · 17. Demo 4 · 18. War story: izmišljeni id-evi → potvrda na serveru · 19. Audit
+20. MCP: dvije aplikacije (dijagram) · 21. Što od granica preživi mrežu (tablica) · 22. Demo 5 + nalaz o redoslijedu advisora
+23. Glas kao kanal (pipeline, streaming) · 24. Demo 6 + STT nalaz · 25. Razgovor kao zapis: transkript → nalaz → prijedlog (dijagram) · 26. GDPR u kodu
+27. Telefon: arhitektura (Infobip, WebSocket, VAD, barge-in) · 28. Tko zove? (broj → token za poziv) · 29. Demo 7 (finale) + war story
+30. Rekapitulacija: od chatbota do telefona, isti mozak (tablica) · 31. Pouke + do produkcije · 32. Hvala / QR
 
 ## Demo plan i rezerve
 
 | Demo | Priprema | Rizik | Rezerva |
 |---|---|---|---|
-| Svi | `.\run-phase-5.ps1 -NoBuild -Reset` prije izlaska; ključevi (`openai.key`, `elevenlabs.key`); dva prozora: shop + admin; konzola s logom vidljiva | internet u dvorani, latencija modela (turn 1–5 s, glas 5–8 s) | snimka svakog demo beata (video), `scripts/agent_e2e.py` i `scripts/phase5_e2e.py` kao proba dan prije |
-| 3 (chat) | Marko: wallet 25 € (HT bon 10 € prolazi, Steam 50 € pada na pravilu) | model drukčije sroči odgovor | sve što je bitno je u alatima i auditu, ne u formulaciji |
-| 5 (glas) | mikrofon u pregledniku dopušten, privola dana unaprijed ili uživo (bolje uživo: 10 s) | buka u dvorani, STT | tekstom u isti chat; snimka |
-| 6 (analiza) | jedan razgovor unaprijed analiziran (ne čekati raspored od 2 min), gumb „Analiziraj“ za uživo | analiza 2–8 s | prethodno analizirani razgovori u tabu |
-| 7 (telefon) | Infobip broj, tunel, probni poziv isto jutro | sve (mreža, mobilna, propagacija) | Call Link iz preglednika; snimka poziva |
+| Svi | `.\run-phase-6.ps1 -NoBuild -Reset` prije izlaska (`-NoTunnel` ako se telefon ne demonstrira uživo); ključevi (`openai.key`, `elevenlabs.key`, `infobip.key`); dva prozora: shop + admin; konzola s logom vidljiva, font ≥ 18 | internet u dvorani, latencija modela (turn 1–5 s) | snimka svakog demo beata (video); `scripts/agent_e2e.py`, `scripts/phase5_e2e.py` kao proba dan prije |
+| 3 (chatbot) | agent pokrenut **bez alata** (prekidač, vidi blok 3); Ana prijavljena | model ipak „zna“ nešto o kupcu iz prompta | u promptu nema podataka o kupnjama; pitanje o kupnji uvijek završi s „ne vidim“ |
+| 4 (alati) | agent restartan s alatima (~5 s, dok govorim slajd 15); Marko: wallet 25 € (HT 10 € prolazi, Steam 50 € pada na pravilu) | model drukčije sroči odgovor | sve što je bitno je u alatima i auditu, ne u formulaciji |
+| 5 (MCP) | obje konzole vidljive; `scripts/mcp_direct.py` spreman | ništa posebno | tablica na slajdu |
+| 6 (glas) | mikrofon u pregledniku dopušten, privola uživo (10 s) | buka u dvorani, STT | tekstom u isti chat; snimka |
+| 6b (analiza) | jedan razgovor unaprijed analiziran, gumb „Analiziraj“ za uživo; prijedlog o R1 računu pripremljen **nakon** reseta | analiza 2–8 s | prethodno analizirani razgovori u tabu |
+| 7 (telefon) | Infobip broj + webhookovi u portalu, tunel (`run-phase-6.ps1`), `demo-caller.txt` = moj broj, probni poziv isto jutro; mobitel na zvučnik ili u mikser dvorane | sve (mreža, mobilna, propagacija, Infobip račun) | `scripts\phone_sim.py` uživo (isti medijski put bez Infobipa); Call Link iz preglednika; snimka poziva |
 
-Prije izlaska: `-Reset` briše i odobrene naučene odlomke; ako demo 6 treba već naučen odlomak, pripremiti ga nakon reseta.
+Prije izlaska: `-Reset` briše i odobrene naučene odlomke; ako demo 6b treba već naučen odlomak, pripremiti ga nakon reseta.
 
-## Što još treba napraviti do konferencije
+## Što još treba napraviti do konferencije (11.–14. 10.)
 
-- [ ] Faza 6 (Infobip): adapter (webhook + WebSocket + VAD + streaming), identitet pozivatelja, `run-phase-6.ps1`, `docs/PHASE6.md`; dopuniti blok 6 i slajdove 24–26.
-- [ ] Infobip: nadoplata, HR broj, usmjeravanje na Calls Configuration, stalni tunel; proba s mobitela.
-- [ ] Deck iz ovog nacrta (lanjski `../mcp-demo/presentation/build_pptx.py` može poslužiti kao predložak) + dijagrami iz `docs/PHASE3–5.md`.
-- [ ] Snimke demo beatova (video) kao rezerva; jedna „pretpripremljena“ baza s analiziranim razgovorima.
-- [ ] Generalna proba s mjerenjem vremena: cilj 33 min bez pitanja, 3 min rezerve za demo koji zapne.
+**Kod**
+- [ ] Faza 6 dovršiti: živi poziv kroz Infobip (broj, webhookovi u portalu, tunel), mjerenja (prvi zvuk, turn) za blok 7 i `PHASE6.md` §7–8; commit na `phase6`; brojevi redaka u dodatku „Faza 6“.
+- [ ] Prekidač „agent bez alata“ za demo chatbota (blok 3) + način brzog uključivanja uživo.
+- [ ] Pripremljena baza s jednim analiziranim razgovorom i prijedlogom za bazu znanja (ili skripta koja ih napravi nakon `-Reset`).
+
+**Infobip / organizacija**
+- [ ] Nadoplata računa, HR broj (usmjeravanje na Calls Configuration), pretplate na događaje u portalu (bez API-ja na ovom računu, ručno pri svakoj promjeni tunela); stalni tunel ili javni host; Call Link kao rezerva (vrijedi 24 h, svježi na dan talka).
+- [ ] Mikrofon i zvuk dvorane: kako publika čuje mobitel (zvučnik uz mikrofon ili ulaz u mikser).
+
+**Deck i proba**
+- [ ] Deck iz ovog nacrta (lanjski `../mcp-demo/presentation/build_pptx.py` kao predložak); dijagrami iz `docs/PHASE3–5.md` i arhitektura iz bloka 7; slajd „pojednostavljeno namjerno“.
+- [ ] Snimke demo beatova (video) kao rezerva, posebno poziv.
+- [ ] Generalna proba s mjerenjem vremena: cilj 33 min bez pitanja, 3 min rezerve za demo koji zapne; označiti što se krati prvo (blok 6 drugi dio, pa blok 2).
