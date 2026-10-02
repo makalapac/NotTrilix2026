@@ -97,6 +97,9 @@ nottrilix:
     analysis-retention-days: 365      # after that, analyses remain only anonymous (statistics)
     voice-consent-version: "2026-09"  # new text version = the customer gives consent again
     retention-cron: "0 15 3 * * *"    # once a day (and on every startup)
+  # Phone channel (Phase 6): the presenter's own number stands in for customer 1 (environment only, never in the repo)
+  phone:
+    demo-caller: ${NOTTRILIX_DEMO_CALLER:}
 
 logging:
   level:

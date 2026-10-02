@@ -16,6 +16,10 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
     Optional<Customer> findByEmailIgnoreCase(String email);
 
+    /** Customer by phone number compared as international digits ("385911112222" finds "+385 91 111 2222"; see PhoneNumbers). */
+    @Query("select c from Customer c where replace(replace(replace(replace(c.phone, ' ', ''), '-', ''), '+', ''), '/', '') = :digits")
+    Optional<Customer> findByPhoneDigits(@Param("digits") String digits);
+
     /** Customer locked in the database (FOR UPDATE) for wallet changes and a race-free daily limit check. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from Customer c where c.id = :id")

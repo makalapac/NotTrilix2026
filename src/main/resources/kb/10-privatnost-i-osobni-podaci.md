@@ -26,6 +26,10 @@ Snimka glasa kupca se ne pohranjuje: obradi se u tekst i odmah odbaci. Čuva se 
 Za glasovni razgovor potrebna je privola kupca; kupac je daje u web shopu pri prvom korištenju mikrofona i može je povući u odjeljku Privatnost.
 Glas kupca se ne koristi za prepoznavanje identiteta (nema biometrijske obrade).
 
+## Poziv telefonom
+
+Kupac može nazvati NotTrilix podršku telefonom i razgovarati s agenticom Nolom. Poziv prenosi Infobip (pružatelj telefonije), govor u tekst pretvara OpenAI, a odgovor u govor ElevenLabs, isto kao kod glasovne poruke u web shopu. Na početku poziva Nola kaže da razgovor vodi umjetna inteligencija i da se ne snima; tko to ne želi, može prekinuti poziv i pisati podršci. Snimka poziva se ne pohranjuje, čuva se samo transkript, kao i poruke u chatu. Kupca prepoznajemo po broju telefona s kojeg zove, ako je taj broj zapisan u njegovom računu. S nepoznatog broja Nola može odgovarati samo na opća pitanja, a kupnju, povrat ili blokadu ne može napraviti.
+
 ## Koliko dugo se čuvaju razgovori
 
 Poruke razgovora (chat i transkripti glasa) čuvaju se 30 dana, a zatim se automatski brišu.

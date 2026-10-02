@@ -4,9 +4,9 @@ Pojednostavljeni „produkcijski“ sustav za prodaju bonova: **jedna Spring Boo
 a oko njega agent podrške kao **druga Spring Boot aplikacija**.
 Ovo je polazna točka za predavanje *From REST API to Voice Agent* (JavaCro 2026) — sve kasnije faze grade oko ovog sustava:
 Faza 1 = postojeći sustav (AS IS) · Faza 2 = baza znanja (RAG) · Faza 3 = agent podrške · Faza 4 = mrežni MCP (sustav je MCP server, agent zasebna aplikacija) ·
-Faza 5 = glas, post-analiza razgovora sa samoučenjem i GDPR. AI dijelovi su građeni na **Spring AI**.
+Faza 5 = glas, post-analiza razgovora sa samoučenjem i GDPR · Faza 6 = telefon (Infobip): poziv s mobitela u istog agenta, pozivatelj prepoznat po broju. AI dijelovi su građeni na **Spring AI**.
 
-Status faza i „gdje smo stali“: [PROGRESS.md](PROGRESS.md) · opis po fazama (odluke, verifikacija, zamke): [docs/PHASE1.md](docs/PHASE1.md) · [docs/PHASE2.md](docs/PHASE2.md) · [docs/PHASE3.md](docs/PHASE3.md) · [docs/PHASE4.md](docs/PHASE4.md) · [docs/PHASE5.md](docs/PHASE5.md) · obrada osobnih podataka: [docs/GDPR.md](docs/GDPR.md).
+Status faza i „gdje smo stali“: [PROGRESS.md](PROGRESS.md) · opis po fazama (odluke, verifikacija, zamke): [docs/PHASE1.md](docs/PHASE1.md) · [docs/PHASE2.md](docs/PHASE2.md) · [docs/PHASE3.md](docs/PHASE3.md) · [docs/PHASE4.md](docs/PHASE4.md) · [docs/PHASE5.md](docs/PHASE5.md) · [docs/PHASE6.md](docs/PHASE6.md) · obrada osobnih podataka: [docs/GDPR.md](docs/GDPR.md).
 
 ## Što sustav radi
 
@@ -21,6 +21,7 @@ Status faza i „gdje smo stali“: [PROGRESS.md](PROGRESS.md) · opis po fazama
 - **MCP server (Faza 4):** isti alati dostupni su preko mreže na `POST /mcp` (HTTP bez sesije). Agent je od ove faze **zasebna aplikacija** (`agent\`, port 8090) koja je MCP klijent: nema bazu ni pravila, a u sustav ulazi s tokenom kupca. Kupac se prepoznaje po tokenu, potvrda radnji i audit su na strani sustava, pa vrijede za svakog MCP klijenta. Detalji: [docs/PHASE4.md](docs/PHASE4.md).
 - **Glas (Faza 5):** u chatu gumb s mikrofonom: klik, govor, snimanje stane samo. Snimka ide sustavu i agentu, koji je pretvori u tekst (OpenAI, Spring AI), odgovori istim agentom i odgovor vrati kao govor (ElevenLabs „Maja“ + `eleven_v4_turbo`, ili OpenAI; Spring AI). Odgovor stiže kao stream i svira od prvog chunka; transkript se vidi odmah. Snimka se ne pohranjuje; traži privolu kupca. Detalji: [docs/PHASE5.md](docs/PHASE5.md).
 - **Post-analiza razgovora i samoučenje (Faza 5):** utihnuli razgovori se iz audit traga sastave u transkript, **pseudonimiziraju** i analiziraju modelom (sažetak, tema, ishod, raspoloženje, ocjena agenta, rupe u znanju). Rupe u znanju postaju **prijedlozi za bazu znanja** koje admin odobri (uz ispravke) ili odbije; odobreno odmah ulazi u RAG. Admin tab „Razgovori“ i tab „Znanje“.
+- **Telefon (Faza 6):** Infobip javi poziv agentu i premosti ga na njegov WebSocket (PCM16 okviri u oba smjera); sustav prepozna kupca po broju pozivatelja i agentu izda token kupca za trajanje poziva; VAD, STT, isti agent, TTS u PCM, upad pozivatelja. Simulator poziva `scripts/phone_sim.py` vježba sve bez broja. Detalji: [docs/PHASE6.md](docs/PHASE6.md).
 - **GDPR (Faza 5):** privola za glas s verzijom teksta, izvoz svih podataka kupca (JSON), brisanje razgovora na zahtjev, automatska retencija (30 dana poruke, 365 dana anonimne analize), logovi bez e-maila, agent odgovara na pitanja o privatnosti iz baze znanja. Detalji: [docs/GDPR.md](docs/GDPR.md).
 - **Jedan API** (`/api/**`, Swagger na `/swagger-ui.html`) za sve kanale; pristup bearer tokenom, uloge `CUSTOMER` / `ADMIN` (i `AGENT` za MCP).
 
@@ -41,6 +42,7 @@ Status faza i „gdje smo stali“: [PROGRESS.md](PROGRESS.md) · opis po fazama
 .\run-phase-2.ps1     # Faza 2: isto + baza znanja (traži openai.key ili OPENAI_API_KEY)
 .\run-phase-4.ps1     # Faza 4: sustav (MCP server) + agent (zasebna aplikacija); traži openai.key ili OPENAI_API_KEY
 .\run-phase-5.ps1     # Faza 5: isto + glas (elevenlabs.key je opcionalan), analiza razgovora, GDPR
+.\run-phase-6.ps1     # Faza 6: isto + telefon: tunel (cloudflared) + Infobip (infobip.key); -NoTunnel za simulator
 ```
 
 `run-phase-1.ps1` i `run-phase-2.ps1` pokreću samo sustav; `run-phase-3.ps1`, `run-phase-4.ps1` i `run-phase-5.ps1` na ovoj grani pokreću isto (sustav + agent).
@@ -123,6 +125,7 @@ Odgovor prijave je `{ "token": "...", "user": {realm, id, name, login} }`; dalje
 | `GET /api/shop/privacy/export`, `POST /api/shop/privacy/erase-conversations` | CUSTOMER | izvoz svih podataka kupca (JSON) / brisanje razgovora na zahtjev |
 | `GET /api/admin/conversations?limit=`, `GET …/stats`, `GET …/{id}`, `POST …/{id}/analyze`, `POST …/analyze-idle` | ADMIN | razgovori s analizom, statistika, transkript, analiza sada |
 | `GET /api/admin/kb/suggestions?status=`, `POST …/{id}/approve` `{question, answer}`, `POST …/{id}/reject` | ADMIN | prijedlozi za bazu znanja iz razgovora (samoučenje s odobrenjem) |
+| `POST /api/phone/calls` `{callId, from}`, `POST …/{id}/turns`, `POST …/{id}/end` | AGENT | telefonski kanal: kupac po broju pozivatelja → token kupca za poziv; turnovi i kraj poziva u audit |
 | `POST /mcp` (JSON-RPC: `tools/list`, `tools/call`, …) | CUSTOMER, AGENT | MCP server: 14 alata nad servisima; kupac iz tokena, razgovor i turn u `_meta` |
 | `GET /api/admin/audit?conversationId=&customerId=&limit=` | ADMIN | audit trag agenta: pozivi alata, dohvati iz baze znanja, turnovi razgovora |
 
@@ -169,7 +172,7 @@ src/main/resources/db/migration   V1__schema.sql, V2__seed.sql, V3__vector_store
                                   V5__conversations_privacy.sql (razgovori, analize, prijedlozi za bazu znanja, privole)
 src/main/resources/kb/            10 markdown dokumenata baze znanja (pisani za RAG, vidi docs/PHASE2.md; 10 = privatnost)
 frontend/   Vite + React + TypeScript: src/customer (shop, ChatWidget s glasom i privolom, PrivacyModal), src/admin (tabovi Razgovori, Znanje s prijedlozima, Audit), src/shared
-scripts/    agent_e2e.py (proba razgovora s agentom), mcp_direct.py (MCP pozivi bez agenta), phase5_e2e.py (glas, privatnost, analiza, učenje)
+scripts/    agent_e2e.py (proba razgovora s agentom), mcp_direct.py (MCP pozivi bez agenta), phase5_e2e.py (glas, privatnost, analiza, učenje), phone_sim.py (simulator telefonskog poziva)
 
 agent/      aplikacija agenta (vlastiti pom.xml, port 8090)
   src/main/java/com/nottrilix/agent

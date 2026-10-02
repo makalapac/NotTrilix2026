@@ -58,6 +58,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/customer/login", "/api/auth/admin/login").permitAll()
                         .requestMatchers("/api/shop/**", "/api/agent/**").hasRole("CUSTOMER")
                         .requestMatchers("/api/admin/**", "/api/customers/**").hasRole("ADMIN")
+                        .requestMatchers("/api/phone/**").hasRole("AGENT")
                         // MCP server: the agent connects with its key (tool list), the tools require a customer token
                         .requestMatchers("/mcp", "/mcp/**").hasAnyRole("CUSTOMER", "AGENT")
                         .requestMatchers("/api/**").authenticated()

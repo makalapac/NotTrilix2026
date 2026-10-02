@@ -1,6 +1,6 @@
 # NotTrilix 2026 — napredak
 
-_Zadnje ažurirano: **2026-09-30** · grana `phase5` · konferencija **JavaCro 2026, 11.–14. 10.**_
+_Zadnje ažurirano: **2026-10-02** · grana `phase6` · konferencija **JavaCro 2026, 11.–14. 10.**_
 
 Predavanje: *From REST API to Voice Agent: Building a Java Call Center Agent with Spring AI*.
 Ovaj repo je **novi početak (2026-09-22)**: sustav se gradi ispočetka, faza po faza, svaka na svojoj grani.
@@ -15,7 +15,7 @@ Prethodni pokušaj (`../mcp-demo`) ostaje kao referenca (deck, outline, research
 | 3 | `phase3` | Agent „Nola“ (Spring AI `ChatClient`, `gpt-4o`): system prompt po pozivu, memorija po razgovoru, RAG advisor nad bazom znanja, 11 `@Tool` adaptera nad postojećim servisima (kupac iz prijave kroz `ToolContext`), **potvrda radnji na serveru** (`ConfirmationGate` + `confirmPendingAction`), **audit trag** (`audit_events`, Flyway V4), chat u shopu, admin tab „Audit“, `run-phase-3.ps1`, `scripts/agent_e2e.py` | ✅ gotovo, e2e verificirano | [docs/PHASE3.md](docs/PHASE3.md) |
 | 4 | `phase4` | Mrežni MCP: sustav je **MCP server** (`POST /mcp`, HTTP bez sesije, 14 `@McpTool` alata), agent je **zasebna aplikacija** (`agent\`, :8090) i MCP klijent. Kupac = **token u zaglavlju** svakog MCP poziva, razgovor i turn u MCP `_meta`, **brana potvrde i audit na strani sustava**, baza znanja kroz MCP (`RetrievalAugmentationAdvisor`), `run-phase-4.ps1`, `scripts/mcp_direct.py` | ✅ gotovo, e2e verificirano | [docs/PHASE4.md](docs/PHASE4.md) |
 | 5 | `phase5` | **Glas** (push-to-talk u chatu; STT OpenAI `gpt-4o-mini-transcribe`, TTS ElevenLabs ili OpenAI, sve kroz Spring AI `TranscriptionModel`/`TextToSpeechModel`; snimka se ne pohranjuje), **post-analiza razgovora** (audit trag → transkript → `Pseudonymizer` → `gpt-4o` structured output → nalaz: kategorija, ishod, raspoloženje, ocjena, rupe u znanju; raspored za utihnule razgovore), **samoučenje s odobrenjem** (prijedlozi za bazu znanja → admin odobri/ispravi → ingest `nauceno-N` → RAG), **GDPR** (privola za glas s verzijom teksta, izvoz JSON, brisanje razgovora, retencija 30/365 dana, logovi bez e-maila, KB dokument o privatnosti), Flyway V5, admin tab „Razgovori“ + prijedlozi u „Znanje“, shop „Privatnost“, `run-phase-5.ps1`, `scripts/phase5_e2e.py` | ✅ gotovo, e2e verificirano | [docs/PHASE5.md](docs/PHASE5.md) · [docs/GDPR.md](docs/GDPR.md) |
-| 6 | `phase6` | Telefonija (Infobip, poziv s mobitela) | ⏳ | — |
+| 6 | `phase6` | **Telefon (Infobip)**: webhookovi `CALL_RECEIVED` / `CALL_ESTABLISHED` → javljanje i most na WebSocket agenta (20 ms PCM16 @ 16 kHz), VAD, STT (Spring AI), isti agent, TTS ElevenLabs `pcm_16000`, upad pozivatelja, „Samo trenutak.“; **identitet pozivatelja**: sustav po broju izda token kupca za poziv (`/api/phone/calls`, audit `PHONE_CALL`), turnovi i kraj poziva u audit; simulator `scripts/phone_sim.py`; `run-phase-6.ps1` s cloudflared tunelom | 🔧 simulator verificiran, živi poziv čeka broj | [docs/PHASE6.md](docs/PHASE6.md) |
 
 Za sve AI dijelove okosnica je **Spring AI** (ChatClient, EmbeddingModel, VectorStore, advisori, tool calling, MCP, TranscriptionModel, TextToSpeechModel, structured output).
 
@@ -23,11 +23,13 @@ Za sve AI dijelove okosnica je **Spring AI** (ChatClient, EmbeddingModel, Vector
 
 ```powershell
 cd C:\Development\Projects\JCro2026\NotTrilix\NotTrilix2026
+.\run-phase-6.ps1            # Faza 6: tunel + sustav :8080 + agent :8090 (openai.key, elevenlabs.key, infobip.key); -NoTunnel = samo simulator
 .\run-phase-5.ps1            # sustav :8080 + agent :8090 (traži openai.key; elevenlabs.key opcionalan). -NoBuild | -Reset (svježa baza) | -Stop
                              # run-phase-3/4.ps1 = isto na ovoj grani; run-phase-1/2.ps1 = samo sustav (chat tada vraća 503)
 
 $env:PYTHONIOENCODING = "utf-8"
 python scripts\phase5_e2e.py # Faza 5: glas (probna snimka), privatnost, analiza, učenje (ili pojedinačno: voice | privacy | analysis | learning)
+python scripts\phone_sim.py  # Faza 6: simulirani telefonski poziv (glumi Infobip: webhookovi + WebSocket + PCM)
 python scripts\agent_e2e.py  # proba razgovora s agentom (scenariji A–H + audit); prije toga -Reset
 python scripts\mcp_direct.py # MCP bez agenta: granice sustava sirovim JSON-RPC pozivima; prije toga -Reset
 ```

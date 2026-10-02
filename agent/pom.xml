@@ -42,6 +42,11 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-validation</artifactId>
     </dependency>
+    <!-- Phase 6: Infobip bridges a phone call to our WebSocket (20 ms PCM frames both ways) -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-websocket</artifactId>
+    </dependency>
     <!-- The agent's model (OpenAI gpt-4o) -->
     <dependency>
       <groupId>org.springframework.ai</groupId>

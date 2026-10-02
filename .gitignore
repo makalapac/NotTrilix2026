@@ -13,4 +13,5 @@ src/main/resources/static/
 .DS_Store
 # tajne
 *.key
+demo-caller.txt
 .env

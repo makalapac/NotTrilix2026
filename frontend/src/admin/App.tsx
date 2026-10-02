@@ -192,6 +192,7 @@ const EVENT_TYPE: Record<AuditEvent['eventType'], string> = {
   CHAT_TURN: 'razgovor',
   ANALYSIS: 'analiza',
   PRIVACY: 'privatnost',
+  PHONE_CALL: 'poziv',
 }
 
 /** Agent audit trail: what the agent did, for whom, with what outcome. Clicking a conversation filters. */

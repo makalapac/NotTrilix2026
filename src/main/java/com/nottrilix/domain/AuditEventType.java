@@ -10,5 +10,7 @@ public enum AuditEventType {
     /** Conversation analysis and learning from it (back-office, no customer in the conversation). */
     ANALYSIS,
     /** Privacy: consent, data export, erasure on request, retention. */
-    PRIVACY
+    PRIVACY,
+    /** Phone call: the caller identified (or not) by caller id, and the end of the call. */
+    PHONE_CALL
 }

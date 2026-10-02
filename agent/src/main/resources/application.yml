@@ -65,6 +65,26 @@ nottrilix:
     enabled: true
     max-reply-chars: 600          # a longer reply is cut for speech (chat still gets the full text)
     filler-text: "Samo trenutak."  # what Nola says while the agent is still thinking (synthesized once)
+  # Phase 6: phone channel over Infobip. Without infobip.key the webhooks and the media WebSocket still work for the
+  # simulator (scripts/phone_sim.py); with it, run-phase-6.ps1 opens a tunnel and the media-stream config is re-pointed at startup.
+  telephony:
+    enabled: true
+    base-url: ${INFOBIP_BASE_URL:}
+    api-key: ${INFOBIP_API_KEY:not-set}
+    websocket-endpoint-config-id: ${INFOBIP_WS_CONFIG_ID:6a6cec2b51fd131fab1f459c}   # Infobip media-stream config (account specific, not a secret)
+    public-url: ${NOTTRILIX_PUBLIC_URL:}        # https://<tunnel>; webhooks /infobip/call-received and /infobip/event, media wss://<tunnel>/infobip/media
+    system-url: ${NOTTRILIX_SYSTEM_URL:http://localhost:8080}
+    sample-rate: 16000                          # PCM16 mono on the line; ElevenLabs synthesizes pcm_16000 directly
+    greeting: "Dobar dan{name}, ovdje Nola iz NotTrilix podrške. Razgovor vodi umjetna inteligencija i ne snima se. Kako vam mogu pomoći?"
+    greeting-unknown: "Dobar dan, ovdje NotTrilix podrška. Nažalost, broj s kojeg zovete nije zapisan ni u jednom računu, pa vam telefonom ne mogu pomoći. Prijavite se u web shop i pišite podršci. Doviđenja."
+    filler-text: "Samo trenutak."
+    filler-after-ms: 1200                       # Nola bridges the wait when the agent takes longer than this
+    max-call-seconds: 300
+    vad:                                        # energy-based voice activity detection on the caller's PCM
+      speech-rms: 500
+      min-speech-ms: 240
+      end-silence-ms: 700
+      max-utterance-ms: 10000
   agent:
     name: Nola
     max-history-messages: 20      # how many recent conversation messages the model sees

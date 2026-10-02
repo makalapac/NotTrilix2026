@@ -43,7 +43,7 @@ export interface AuditEvent {
   customerId: number | null
   customerName: string | null
   channel: string
-  eventType: 'TOOL_CALL' | 'KB_RETRIEVAL' | 'CHAT_TURN' | 'ANALYSIS' | 'PRIVACY'
+  eventType: 'TOOL_CALL' | 'KB_RETRIEVAL' | 'CHAT_TURN' | 'ANALYSIS' | 'PRIVACY' | 'PHONE_CALL'
   operation: string
   input: string | null
   outcome: AgentOutcome
