@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="hr">
+<head>
+<meta charset="utf-8">
+<title>NotTrilix konzola</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0b1020; color: #d6deeb; font: 15px/1.45 "Cascadia Mono", Consolas, monospace; }
+  #title { position: fixed; top: 0; left: 0; right: 0; padding: 10px 18px; background: #111a33; color: #9fb3ff; font-weight: 600; font-size: 16px; border-bottom: 1px solid #22305c; }
+  #log { position: absolute; top: 44px; left: 0; right: 0; bottom: 0; padding: 14px 18px; overflow: hidden; white-space: pre-wrap; word-break: break-all; }
+  .line { opacity: 0; transform: translateY(4px); transition: opacity .18s, transform .18s; }
+  .line.show { opacity: 1; transform: none; }
+  .sustav { color: #7ee787; } .agent { color: #ffd166; } .err { color: #ff7b72; } .cmd { color: #ffffff; font-weight: 600; } .dim { color: #8b949e; }
+  .hl { background: rgba(255, 209, 102, .18); outline: 1px solid rgba(255, 209, 102, .5); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div id="title"></div>
+<div id="log"></div>
+<script>
+  // Replays console lines one by one (query: ?src=<json file> with {title, lines:[{text, cls, delay}]}).
+  const params = new URLSearchParams(location.search);
+  const src = params.get('src') || 'faza4-konzola.json';
+  const load = window.DEMO_DATA ? Promise.resolve(window.DEMO_DATA) : fetch(src).then((r) => r.json());
+  load.then(async (data) => {
+    document.getElementById('title').textContent = data.title || '';
+    const log = document.getElementById('log');
+    const maxLines = 30;
+    for (const line of data.lines) {
+      await new Promise((r) => setTimeout(r, line.delay ?? 450));
+      const el = document.createElement('div');
+      el.className = 'line ' + (line.cls || '');
+      el.innerHTML = line.html || escape(line.text || '');
+      log.appendChild(el);
+      requestAnimationFrame(() => el.classList.add('show'));
+      while (log.children.length > maxLines) log.removeChild(log.firstChild);
+    }
+    document.title = 'done';
+  });
+  function escape(s) { return s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+</script>
+</body>
+</html>

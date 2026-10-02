@@ -15,3 +15,8 @@ src/main/resources/static/
 *.key
 demo-caller.txt
 .env
+# demo videos (Playwright): tooling and recordings are not source
+demo-video/node_modules/
+demo-video/out/
+demo-video/samples/
+demo-video/faza4-konzola.json
