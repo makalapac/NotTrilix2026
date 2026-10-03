@@ -28,11 +28,11 @@ Status faza i „gdje smo stali“: [PROGRESS.md](PROGRESS.md) · opis po fazama
 ```
    Shop (React) + chat/glas ──┐                     ┌── PostgreSQL 17 (Docker, :5433): podaci, vector_store, audit_events, conversations
                               ├──> sustav :8080 ────┤    Flyway V1–V5
-   Admin (React) ─────────────┘    REST API + pravila├── OpenAI kroz Spring AI: embeddinzi (baza znanja), gpt-4o (analiza razgovora)
+   Admin (React) ─────────────┘    REST API + pravila├── OpenAI kroz Spring AI: embeddinzi (baza znanja), gpt-5.6-terra (analiza razgovora)
                                    MCP server /mcp   ├── raspored: analiza utihnulih razgovora, retencija podataka
                                       ▲      │ poruka ili snimka + token
                        MCP (alati,    │      ▼
-                       baza znanja)   └── agent :8090 ─── OpenAI gpt-4o (ChatClient), STT gpt-4o-mini-transcribe, TTS ElevenLabs/OpenAI
+                       baza znanja)   └── agent :8090 ─── OpenAI gpt-5.6-terra (ChatClient), STT gpt-4o-mini-transcribe, TTS ElevenLabs/OpenAI
 ```
 
 ## Pokretanje (jedan potez)

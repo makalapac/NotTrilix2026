@@ -186,7 +186,7 @@ Uz njih i dalje svi logovi servisa iz Faze 1 (`PURCHASE OK … channel=AGENT`, `
 ## 9. Što je dodano i promijenjeno
 
 - `pom.xml`: `spring-ai-vector-store-advisor` (uz starter za OpenAI i pgvector iz Faze 2).
-- `application.yml`: `spring.ai.openai.chat.options` (model `gpt-4o`, temperature 0.2), `nottrilix.agent` (name, max-history-messages, confirmation-ttl-minutes).
+- `application.yml`: `spring.ai.openai.chat.options` (model `gpt-5.6-terra` od 2026-10-03, prije `gpt-4o`; `reasoning-effort: none`, temperature 0.2), `nottrilix.agent` (name, max-history-messages, confirmation-ttl-minutes).
 - Paket `com.nottrilix.agent`: `AgentConfig` (ChatClient, memorija, RAG predložak), `AgentService` (turn), `AgentTools` (alati), `AgentContext` (ToolContext ključevi),
   `ConfirmationGate`, `AuditingToolCallback`, `ToolResult`, `AgentTrace`, `ReplyStyle`, `AgentProperties`, `AgentUnavailableException`.
 - `src/main/resources/agent/system-prompt.txt`.

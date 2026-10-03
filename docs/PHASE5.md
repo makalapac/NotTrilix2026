@@ -273,7 +273,7 @@ Konfiguracija sustava: `nottrilix.analysis` (`enabled`, `idle-minutes: 2`, `poll
 - `AgentChatService` (glas, privola, okvir razgovora), `AgentClient.voice` (multipart prema agentu), `NotTrilixApplication` `@EnableScheduling`.
 - Logovi bez e-maila: `RequestLoggingFilter`, `SecurityConfig`, `AuditedToolHandler`.
 - Baza znanja: `kb/10-privatnost-i-osobni-podaci.md`.
-- `application.yml`: chat model `gpt-4o` (analiza), `nottrilix.analysis.*`, `nottrilix.privacy.*`, multipart 10 MB.
+- `application.yml`: chat model `gpt-5.6-terra` (analiza; `reasoning-effort: low`, od 2026-10-03, prije `gpt-4o`), `nottrilix.analysis.*`, `nottrilix.privacy.*`, multipart 10 MB.
 
 **Agent (`agent\`)**
 - `VoiceService`, `VoiceProperties`, `AgentController` (`POST /voice`), `ApiErrors` (`VOICE_UNAVAILABLE`), `pom.xml` (+ ElevenLabs starter), `application.yml` (STT/TTS), system prompt (kanal VOICE, privatnost; bez e-maila kupca).
