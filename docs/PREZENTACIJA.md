@@ -122,7 +122,7 @@ Zbroj izlaganja: 36 min (blok 3 je od 2026-10-03 pola minute dulji zbog beata �
 
 ## 7. Telefon: poziv s mobitela (5 min) — finale
 
-_Stanje koda (grana `phase6`, 2026-10-09): **živi poziv s mobitela prošao** (HR broj +385 1 5809 291): prepoznavanje po broju, pozdrav imenom, wallet, kupnja uz potvrdu, upad u riječ, analiza poslije poziva. Mjerenja i što je trebalo popraviti da prođe: [PHASE6.md](PHASE6.md) §8–9._
+_Stanje koda (grana `phase6`, 2026-10-09): **živi poziv s mobitela prošao** (HR broj, Zagreb): prepoznavanje po broju, pozdrav imenom, wallet, kupnja uz potvrdu, upad u riječ, analiza poslije poziva. Mjerenja i što je trebalo popraviti da prođe: [PHASE6.md](PHASE6.md) §8–9._
 
 - **Pitanje faze:** tko zove, i tko mu smije dati ruke? Kupac nema ni preglednik ni prijavu, samo zvuk s jedne i broj pozivatelja s druge strane.
 - **Arhitektura (slajd, dvije ravnine):**
@@ -322,7 +322,7 @@ Ne otvarati: `PcmUtil`, `CallRegistry`, `PhoneGateway`, DTO-e, Infobip JSON.
 | 5 (MCP) | obje konzole vidljive; `scripts/mcp_direct.py` spreman | ništa posebno | tablica na slajdu |
 | 6 (glas) | mikrofon u pregledniku dopušten, privola uživo (10 s) | buka u dvorani, STT | tekstom u isti chat; snimka |
 | 6b (analiza) | jedan razgovor unaprijed analiziran, gumb „Analiziraj“ za uživo; prijedlog o R1 računu pripremljen **nakon** reseta | analiza 2–8 s | prethodno analizirani razgovori u tabu |
-| 7 (telefon) | HR broj +385 1 5809 291 je usmjeren; ujutro: cloudflared u svom prozoru, `run-phase-6.ps1 -PublicUrl …`, dva URL-a u profile `NotTrilix` / `NotTrilix2` (jednom, URL preživi restarte), `demo-caller.txt` = moj broj, **probni poziv isto jutro i još jedan neposredno prije izlaska** (prvi poziv nakon starta je najsporiji), stanje računa > 5 €; mobitel na zvučnik ili u mikser dvorane | sve (mreža, mobilna, propagacija, Infobip račun) | `scripts\phone_sim.py` uživo (isti medijski put bez Infobipa); Call Link iz preglednika; snimka poziva |
+| 7 (telefon) | HR broj (Zagreb) je usmjeren; ujutro: cloudflared u svom prozoru, `run-phase-6.ps1 -PublicUrl …`, dva URL-a u profile `NotTrilix` / `NotTrilix2` (jednom, URL preživi restarte), `demo-caller.txt` = moj broj, **probni poziv isto jutro i još jedan neposredno prije izlaska** (prvi poziv nakon starta je najsporiji), stanje računa > 5 €; mobitel na zvučnik ili u mikser dvorane | sve (mreža, mobilna, propagacija, Infobip račun) | `scripts\phone_sim.py` uživo (isti medijski put bez Infobipa); Call Link iz preglednika; snimka poziva |
 
 Prije izlaska: `-Reset` briše i odobrene naučene odlomke; ako demo 6b treba već naučen odlomak, pripremiti ga nakon reseta.
 

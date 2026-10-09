@@ -5,7 +5,7 @@
     - the call is public: a cloudflared quick tunnel exposes the agent (webhooks + media WebSocket)
 
   Needs: openai.key, elevenlabs.key (the phone speaks PCM from ElevenLabs), infobip.key (line 1 = API key,
-  line 2 = base URL). Without infobip.key only the simulator works (python scripts\phone_sim.py).
+  line 2 = base URL, optional line 3 = media-stream config id, otherwise the agent creates one and logs it). Without infobip.key only the simulator works (python scripts\phone_sim.py).
   Optional demo-caller.txt: your own mobile number -> stands in for customer 1 (Ana); never committed (.gitignore).
 
   .\run-phase-6.ps1            build + start (tunnel, system, agent; Ctrl+C stops all)
@@ -42,12 +42,13 @@ if (-not (Test-Path $keyFile) -and -not $env:OPENAI_API_KEY) {
     throw "Faza 6 treba OpenAI kljuc: stavi ga u $keyFile (jedna linija, gitignored) ili postavi OPENAI_API_KEY."
 }
 
-# Infobip (line 1 = API key, line 2 = base URL)
+# Infobip (line 1 = API key, line 2 = base URL, optional line 3 = media-stream config id)
 $infobipFile = Join-Path $PSScriptRoot "infobip.key"
 if (Test-Path $infobipFile) {
     $lines = Get-Content $infobipFile | Where-Object { $_.Trim() -ne "" }
     $env:INFOBIP_API_KEY = $lines[0].Trim()
     $env:INFOBIP_BASE_URL = $lines[1].Trim()
+    if ($lines.Count -ge 3 -and $lines[2].Trim()) { $env:INFOBIP_WS_CONFIG_ID = $lines[2].Trim() }
     Write-Host "Infobip kljuc: ucitan iz infobip.key"
 } else {
     Write-Host "Infobip kljuc: nije pronadjen - telefon radi samo kroz simulator (scripts\phone_sim.py)" -ForegroundColor Yellow

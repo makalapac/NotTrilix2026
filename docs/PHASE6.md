@@ -1,6 +1,6 @@
 # Faza 6 — Telefon: poziv s mobitela u istog agenta (Infobip)
 
-_Status: **kod gotov, simulator verificiran 2026-10-02, živi poziv s mobitela prošao 2026-10-09** (HR broj +385 1 5809 291) · grana `phase6` (iz `phase5`) · što je živi test tražio da se popravi: poglavlje 9._
+_Status: **kod gotov, simulator verificiran 2026-10-02, živi poziv s mobitela prošao 2026-10-09** (HR broj, Zagreb) · grana `phase6` (iz `phase5`) · što je živi test tražio da se popravi: poglavlje 9._
 
 Faza 5 je dala glas u pregledniku: kupac je prijavljen, klikne mikrofon, govori, sluša. Faza 6 miče preglednik: **kupac bira telefonski broj**.
 Nema prijave, nema tokena, nema ekrana; postoji samo zvuk s jedne i broj pozivatelja s druge strane.
@@ -84,9 +84,9 @@ Prompt za kanal `PHONE` traži isto što i za `VOICE` (kratko, bez znamenki) i k
 
 | Što | Stanje / kako |
 |---|---|
-| Račun i ključ | `infobip.key` (redak 1 ključ, redak 2 bazni URL); stanje računa se vidi s `GET /account/1/balance` |
+| Račun i ključ | `infobip.key` (redak 1 ključ, redak 2 bazni URL, redak 3 po želji ID media-stream konfiguracije); stanje računa se vidi s `GET /account/1/balance` |
 | Calls configuration | postoji od lanjske probe (`cabb314c-…`, ime „NotTrilix“) |
-| Media-stream config (`WEBSOCKET_ENDPOINT`, 16000 Hz) | postoji (`6a6cec2b…`); agent je pri startu prepiše na aktualni tunel |
+| Media-stream config (`WEBSOCKET_ENDPOINT`, 16000 Hz) | ID u `infobip.key` (3. redak); bez njega agent pri startu napravi novu i ispiše njezin ID; agent je pri startu prepiše na aktualni tunel |
 | Pretplate na događaje (notification profiles) | u portalu: `CALL_RECEIVED` → `https://<tunel>/infobip/call-received`, ostali događaji → `…/infobip/event`, s filtrom na Calls configuration (bez filtra Infobip odbija poziv: „The received request was rejected“) |
 | Broj | HR fiksni broj (Zagreb 01): ~8,80 € mjesečno + ~8,80 € aktivacija, kupnja u portalu ili `POST /numbers/1/numbers`; broj se usmjeri na Calls configuration (`FORWARD_TO_SUBSCRIPTION`) |
 | Bez broja | Call Link (WebRTC iz preglednika na istu Calls configuration) iz portala |
@@ -160,7 +160,7 @@ Isti alati, ista brana, isti audit kao u chatu; kanal je `PHONE`, razgovor je `c
 **Brojke po turnu** (simulator, 16 kHz PCM): kraj govora → kraj iskaza 0,7 s (VAD) · STT 0,5–0,9 s · agent 2,5–3,1 s · TTS prvi zvuk 0,15–0,27 s nakon odgovora ·
 „Samo trenutak.“ 1,2 s nakon iskaza ako odgovor još nije tu. Pozivatelj čuje prvi zvuk 2,3–2,9 s nakon što zašuti, a odgovor na pitanje 4–5 s.
 
-**Živi poziv kroz Infobip (2026-10-09, mobitel → HR broj +385 1 5809 291, četiri poziva):** prepoznavanje po broju (`demo-caller.txt`), pozdrav imenom, wallet, kupnja HT bona uz potvrdu, „kod ne radi“ s provjerom kod pružatelja, prijedlog povrata, tri upada u riječ, odbijanje zahtjeva izvan opsega, odgovor o privatnosti iz baze znanja; sustav je razgovore poslije sam analizirao (KUPNJA / RIJEŠENO, ocjena 5, rupa u znanju „je li razgovor tajan“ → prijedlog odlomka). **Brojke po turnu:** kraj govora → kraj iskaza 0,7 s (VAD) · STT 0,5–1,1 s (`gpt-4o-transcribe`) · agent 2,2–6,1 s (`gpt-5.6-terra`; dva poziva modela kad ima alata) · TTS prvi zvuk 0,15–0,25 s · most na WebSocket 0,6 s nakon `CALL_RECEIVED`, `CALL_ESTABLISHED` odmah zatim. Pozivatelj čuje „Provjeravam.“ oko 3 s nakon što zašuti, odgovor 4–8 s. Tri od četiri poziva prvo su pukla; svaki uzrok i popravak su u poglavlju 9.
+**Živi poziv kroz Infobip (2026-10-09, mobitel → HR broj (Zagreb), četiri poziva):** prepoznavanje po broju (`demo-caller.txt`), pozdrav imenom, wallet, kupnja HT bona uz potvrdu, „kod ne radi“ s provjerom kod pružatelja, prijedlog povrata, tri upada u riječ, odbijanje zahtjeva izvan opsega, odgovor o privatnosti iz baze znanja; sustav je razgovore poslije sam analizirao (KUPNJA / RIJEŠENO, ocjena 5, rupa u znanju „je li razgovor tajan“ → prijedlog odlomka). **Brojke po turnu:** kraj govora → kraj iskaza 0,7 s (VAD) · STT 0,5–1,1 s (`gpt-4o-transcribe`) · agent 2,2–6,1 s (`gpt-5.6-terra`; dva poziva modela kad ima alata) · TTS prvi zvuk 0,15–0,25 s · most na WebSocket 0,6 s nakon `CALL_RECEIVED`, `CALL_ESTABLISHED` odmah zatim. Pozivatelj čuje „Provjeravam.“ oko 3 s nakon što zašuti, odgovor 4–8 s. Tri od četiri poziva prvo su pukla; svaki uzrok i popravak su u poglavlju 9.
 
 **Testovi**: sustav 50 (+ `PhoneNumbersTest`), agent 28 (+ `CallSessionTest`: VAD, PCM okviri, streamani chunkovi bez praznina).
 

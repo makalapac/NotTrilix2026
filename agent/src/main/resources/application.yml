@@ -72,7 +72,7 @@ nottrilix:
     enabled: true
     base-url: ${INFOBIP_BASE_URL:}
     api-key: ${INFOBIP_API_KEY:not-set}
-    websocket-endpoint-config-id: ${INFOBIP_WS_CONFIG_ID:6a6cec2b51fd131fab1f459c}   # Infobip media-stream config (account specific, not a secret)
+    websocket-endpoint-config-id: ${INFOBIP_WS_CONFIG_ID:}   # Infobip media-stream config id (account specific; empty = created at startup and logged, then keep it in infobip.key line 3)
     public-url: ${NOTTRILIX_PUBLIC_URL:}        # https://<tunnel>; webhooks /infobip/call-received and /infobip/event, media wss://<tunnel>/infobip/media
     system-url: ${NOTTRILIX_SYSTEM_URL:http://localhost:8080}
     sample-rate: 16000                          # PCM16 mono on the line; ElevenLabs synthesizes pcm_16000 directly

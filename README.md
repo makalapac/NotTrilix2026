@@ -1,184 +1,199 @@
 # NotTrilix 2026
 
-Pojednostavljeni „produkcijski“ sustav za prodaju bonova: **jedna Spring Boot aplikacija** (API + dva React frontenda) i **PostgreSQL** baza,
-a oko njega agent podrške kao **druga Spring Boot aplikacija**.
-Ovo je polazna točka za predavanje *From REST API to Voice Agent* (JavaCro 2026) — sve kasnije faze grade oko ovog sustava:
-Faza 1 = postojeći sustav (AS IS) · Faza 2 = baza znanja (RAG) · Faza 3 = agent podrške · Faza 4 = mrežni MCP (sustav je MCP server, agent zasebna aplikacija) ·
-Faza 5 = glas, post-analiza razgovora sa samoučenjem i GDPR · Faza 6 = telefon (Infobip): poziv s mobitela u istog agenta, pozivatelj prepoznat po broju. AI dijelovi su građeni na **Spring AI**.
+A deliberately simplified "production" system for selling prepaid vouchers: **one Spring Boot application** (API + two React frontends) with a **PostgreSQL** database,
+and next to it a customer-support agent as a **second Spring Boot application**.
+It is the demo for the talk *From REST API to Voice Agent: Building a Java Call Center Agent with Spring AI* (JavaCro 2026). Every later phase is built around this system:
+Phase 1 = the existing system (as is) · Phase 2 = knowledge base (RAG) · Phase 3 = support agent · Phase 4 = MCP over the network (the system is an MCP server, the agent a separate application) ·
+Phase 5 = voice, post-call analysis with self-learning, GDPR · Phase 6 = telephone (Infobip): a call from a mobile phone into the same agent, the caller recognised by number. All AI parts are built on **Spring AI**.
 
-Status faza i „gdje smo stali“: [PROGRESS.md](PROGRESS.md) · opis po fazama (odluke, verifikacija, zamke): [docs/PHASE1.md](docs/PHASE1.md) · [docs/PHASE2.md](docs/PHASE2.md) · [docs/PHASE3.md](docs/PHASE3.md) · [docs/PHASE4.md](docs/PHASE4.md) · [docs/PHASE5.md](docs/PHASE5.md) · [docs/PHASE6.md](docs/PHASE6.md) · obrada osobnih podataka: [docs/GDPR.md](docs/GDPR.md).
+The application itself speaks Croatian (the agent "Nola", the UI, the knowledge base), as does the per-phase documentation.
+Phase status and "where we are": [PROGRESS.md](PROGRESS.md) · per-phase write-ups (decisions, verification, pitfalls): [docs/PHASE1.md](docs/PHASE1.md) · [docs/PHASE2.md](docs/PHASE2.md) · [docs/PHASE3.md](docs/PHASE3.md) · [docs/PHASE4.md](docs/PHASE4.md) · [docs/PHASE5.md](docs/PHASE5.md) · [docs/PHASE6.md](docs/PHASE6.md) · personal data: [docs/GDPR.md](docs/GDPR.md) · model choice: [docs/MODEL.md](docs/MODEL.md).
 
-## Što sustav radi
+## What the system does
 
-- **Proizvodi:** Telekom bonovi (A1, HT) i Gaming bonovi (Steam, PlayStation, Xbox), denominacije u EUR.
-- **Zaliha:** unaprijed generirani bonovi (serijski broj + aktivacijski kod), 8 po proizvodu.
-- **Wallet:** svaki kupac ima wallet; kupnja se **naplaćuje s walleta** (uz potvrdu u dijalogu), povrat ide natrag na wallet, kupac može nadoplatiti wallet (simulirano plaćanje karticom), sve promjene su u knjizi promjena.
-- **Kupci (shop, `/`):** prijava e-mailom i lozinkom, katalog (dostupno / rasprodano — kupac ne vidi stanje zalihe), kupnja bona s walleta (odmah dobiju kod), „Moj wallet“ (stanje + povijest), pregled svojih kupnji.
-- **Admin (`/admin/`):** prijava korisničkim imenom i lozinkom; pregled svih transakcija (filtri), kupci s walletima (uplata podrške, povijest), stanje zaliha, podrška — povrat novca na wallet, blokada bona, prijave kupaca.
-- **Provjera bona kod pružatelja:** fiktivni upit prema A1/HT/Steam/PlayStation/Xbox („je li bon iskorišten?“) — support za bilo koji bon, kupac za vlastite; odgovor sadrži status kod pružatelja, datum iskorištenja, referencu i simuliranu latenciju.
-- **Baza znanja (Faza 2, Spring AI):** 9 markdown dokumenata podrške (`src/main/resources/kb/`) → pri startu ingest u pgvector (OpenAI embeddinzi) → semantička pretraga za support (admin tab „Znanje“, `GET /api/admin/kb/search?q=…`). Detalji: [docs/PHASE2.md](docs/PHASE2.md).
-- **Agent podrške „Nola“ (Faza 3, Spring AI `ChatClient`):** u shopu gumb „Chat s podrškom“. Agent odgovara iz baze znanja i djeluje kroz alate nad istim servisima (kupnje, wallet, provjera bona, kupnja, povrat, blokada, prijava) — uvijek u ime prijavljenog kupca i uz ista poslovna pravila. Kupnja, povrat i blokada traže **potvrdu kupca** (stanje drži server). Svaki poziv alata, dohvat iz baze znanja i turn razgovora je u **audit tragu** (admin tab „Audit“). Detalji: [docs/PHASE3.md](docs/PHASE3.md).
-- **MCP server (Faza 4):** isti alati dostupni su preko mreže na `POST /mcp` (HTTP bez sesije). Agent je od ove faze **zasebna aplikacija** (`agent\`, port 8090) koja je MCP klijent: nema bazu ni pravila, a u sustav ulazi s tokenom kupca. Kupac se prepoznaje po tokenu, potvrda radnji i audit su na strani sustava, pa vrijede za svakog MCP klijenta. Detalji: [docs/PHASE4.md](docs/PHASE4.md).
-- **Glas (Faza 5):** u chatu gumb s mikrofonom: klik, govor, snimanje stane samo. Snimka ide sustavu i agentu, koji je pretvori u tekst (OpenAI, Spring AI), odgovori istim agentom i odgovor vrati kao govor (ElevenLabs „Maja“ + `eleven_v4_turbo`, ili OpenAI; Spring AI). Odgovor stiže kao stream i svira od prvog chunka; transkript se vidi odmah. Snimka se ne pohranjuje; traži privolu kupca. Detalji: [docs/PHASE5.md](docs/PHASE5.md).
-- **Post-analiza razgovora i samoučenje (Faza 5):** utihnuli razgovori se iz audit traga sastave u transkript, **pseudonimiziraju** i analiziraju modelom (sažetak, tema, ishod, raspoloženje, ocjena agenta, rupe u znanju). Rupe u znanju postaju **prijedlozi za bazu znanja** koje admin odobri (uz ispravke) ili odbije; odobreno odmah ulazi u RAG. Admin tab „Razgovori“ i tab „Znanje“.
-- **Telefon (Faza 6):** Infobip javi poziv agentu i premosti ga na njegov WebSocket (PCM16 okviri u oba smjera); sustav prepozna kupca po broju pozivatelja i agentu izda token kupca za trajanje poziva; VAD, STT, isti agent, TTS u PCM, upad pozivatelja. Simulator poziva `scripts/phone_sim.py` vježba sve bez broja. Detalji: [docs/PHASE6.md](docs/PHASE6.md).
-- **GDPR (Faza 5):** privola za glas s verzijom teksta, izvoz svih podataka kupca (JSON), brisanje razgovora na zahtjev, automatska retencija (30 dana poruke, 365 dana anonimne analize), logovi bez e-maila, agent odgovara na pitanja o privatnosti iz baze znanja. Detalji: [docs/GDPR.md](docs/GDPR.md).
-- **Jedan API** (`/api/**`, Swagger na `/swagger-ui.html`) za sve kanale; pristup bearer tokenom, uloge `CUSTOMER` / `ADMIN` (i `AGENT` za MCP).
+- **Products:** telecom top-up vouchers (A1, HT) and gaming vouchers (Steam, PlayStation, Xbox), denominations in EUR.
+- **Stock:** pre-generated vouchers (serial number + activation code), 8 per product.
+- **Wallet:** every customer has a wallet; a purchase is **charged to the wallet** (with a confirmation dialog), a refund goes back to the wallet, the customer can top the wallet up (simulated card payment); every change is in the wallet ledger.
+- **Customers (shop, `/`):** login with e-mail and password, catalogue (available / sold out; the customer never sees stock levels), purchase from the wallet (the code is shown right away), "Moj wallet" (balance + history), own purchases.
+- **Admin (`/admin/`):** login with username and password; all transactions (filters), customers with wallets (support top-up, history), stock, support: refund to the wallet, block a voucher, customer tickets.
+- **Voucher check at the provider:** a simulated query to A1/HT/Steam/PlayStation/Xbox ("has the voucher been redeemed?"); support for any voucher, a customer for their own; the answer carries the provider status, redemption date, a reference and simulated latency.
+- **Knowledge base (Phase 2, Spring AI):** 10 markdown support documents (`src/main/resources/kb/`) → ingested into pgvector at startup (OpenAI embeddings) → semantic search for support (admin tab "Znanje", `GET /api/admin/kb/search?q=…`). Details: [docs/PHASE2.md](docs/PHASE2.md).
+- **Support agent "Nola" (Phase 3, Spring AI `ChatClient`):** the "Chat s podrškom" button in the shop. The agent answers from the knowledge base and acts through tools over the same services (purchases, wallet, voucher check, purchase, refund, block, ticket), always on behalf of the logged-in customer and under the same business rules. Purchase, refund and block require the **customer's confirmation** (the server holds the pending action). Every tool call, knowledge-base retrieval and conversation turn is in the **audit trail** (admin tab "Audit"). Details: [docs/PHASE3.md](docs/PHASE3.md).
+- **MCP server (Phase 4):** the same tools are available over the network at `POST /mcp` (stateless HTTP). From this phase on the agent is a **separate application** (`agent\`, port 8090) acting as an MCP client: no database, no rules, and it enters the system with the customer's token. The customer comes from the token, confirmation and audit live in the system, so they hold for every MCP client. Details: [docs/PHASE4.md](docs/PHASE4.md).
+- **Voice (Phase 5):** a microphone button in the chat: click, speak, recording stops on silence. The recording goes to the system and the agent, which transcribes it (OpenAI, Spring AI), answers with the same agent and returns the reply as speech (ElevenLabs "Maja" + `eleven_v4_turbo`, or OpenAI; Spring AI). The reply streams and plays from the first chunk; the transcript shows immediately. Recordings are not stored; the customer's consent is required. Details: [docs/PHASE5.md](docs/PHASE5.md).
+- **Post-call analysis and self-learning (Phase 5):** idle conversations are assembled from the audit trail into a transcript, **pseudonymised** and analysed by the model (summary, topic, outcome, sentiment, agent score, knowledge gaps). Knowledge gaps become **knowledge-base proposals** that an admin approves (with edits) or rejects; approved sections enter RAG immediately. Admin tabs "Razgovori" and "Znanje".
+- **Telephone (Phase 6):** Infobip reports the call to the agent and bridges it to the agent's WebSocket (PCM16 frames both ways); the system recognises the customer by caller id and issues the agent a customer token for the duration of the call; VAD, STT, the same agent, TTS as PCM, barge-in. The call simulator `scripts/phone_sim.py` exercises all of it without a phone number. Details: [docs/PHASE6.md](docs/PHASE6.md).
+- **GDPR (Phase 5):** voice consent with the consent-text version, export of all customer data (JSON), deletion of conversations on request, automatic retention (30 days for messages, 365 days for anonymous analyses), logs without e-mail addresses, and the agent answers privacy questions from the knowledge base. Details: [docs/GDPR.md](docs/GDPR.md).
+- **One API** (`/api/**`, Swagger at `/swagger-ui.html`) for all channels; bearer-token access, roles `CUSTOMER` / `ADMIN` (and `AGENT` for MCP).
 
 ```
-   Shop (React) + chat/glas ──┐                     ┌── PostgreSQL 17 (Docker, :5433): podaci, vector_store, audit_events, conversations
-                              ├──> sustav :8080 ────┤    Flyway V1–V5
-   Admin (React) ─────────────┘    REST API + pravila├── OpenAI kroz Spring AI: embeddinzi (baza znanja), gpt-5.6-terra (analiza razgovora)
-                                   MCP server /mcp   ├── raspored: analiza utihnulih razgovora, retencija podataka
-                                      ▲      │ poruka ili snimka + token
-                       MCP (alati,    │      ▼
-                       baza znanja)   └── agent :8090 ─── OpenAI gpt-5.6-terra (ChatClient), STT gpt-4o-mini-transcribe, TTS ElevenLabs/OpenAI
+   Shop (React) + chat/voice ──┐                     ┌── PostgreSQL 17 (Docker, :5433): data, vector_store, audit_events, conversations
+                               ├──> system :8080 ────┤    Flyway V1–V5
+   Admin (React) ──────────────┘    REST API + rules ├── OpenAI through Spring AI: embeddings (knowledge base), gpt-5.6-terra (conversation analysis)
+                                    MCP server /mcp  ├── schedules: analysis of idle conversations, data retention
+                                       ▲      │ message or recording + token
+                        MCP (tools,    │      ▼
+                        knowledge)     └── agent :8090 ─── OpenAI gpt-5.6-terra (ChatClient), STT gpt-4o-mini-transcribe (phone: gpt-4o-transcribe), TTS ElevenLabs/OpenAI
 ```
 
-## Pokretanje (jedan potez)
+## Running it (one command)
 
 ```powershell
-.\run-phase-1.ps1     # Faza 1 (radi i bez OpenAI ključa)
-.\run-phase-2.ps1     # Faza 2: isto + baza znanja (traži openai.key ili OPENAI_API_KEY)
-.\run-phase-4.ps1     # Faza 4: sustav (MCP server) + agent (zasebna aplikacija); traži openai.key ili OPENAI_API_KEY
-.\run-phase-5.ps1     # Faza 5: isto + glas (elevenlabs.key je opcionalan), analiza razgovora, GDPR
-.\run-phase-6.ps1     # Faza 6: isto + telefon: tunel (cloudflared) + Infobip (infobip.key); -NoTunnel za simulator
+.\run-phase-1.ps1     # Phase 1 (works without an OpenAI key)
+.\run-phase-2.ps1     # Phase 2: the same + knowledge base (needs openai.key or OPENAI_API_KEY)
+.\run-phase-4.ps1     # Phase 4: system (MCP server) + agent (separate application); needs openai.key or OPENAI_API_KEY
+.\run-phase-5.ps1     # Phase 5: the same + voice (elevenlabs.key is optional), conversation analysis, GDPR
+.\run-phase-6.ps1     # Phase 6: the same + telephone: tunnel (cloudflared) + Infobip (infobip.key); -NoTunnel for the simulator
 ```
 
-`run-phase-1.ps1` i `run-phase-2.ps1` pokreću samo sustav; `run-phase-3.ps1`, `run-phase-4.ps1` i `run-phase-5.ps1` na ovoj grani pokreću isto (sustav + agent).
-ElevenLabs ključ: datoteka `elevenlabs.key` (gitignored); bez njega agent govori kroz OpenAI TTS.
+`run-phase-1.ps1` and `run-phase-2.ps1` start only the system; `run-phase-3.ps1`, `run-phase-4.ps1` and `run-phase-5.ps1` start the same thing on this branch (system + agent).
+ElevenLabs key: the file `elevenlabs.key` (gitignored); without it the agent speaks through OpenAI TTS.
 
-Skripta: provjeri/pokrene Docker Desktop → podigne PostgreSQL (`docker compose up --wait`) → nađe JDK 25 → učita `openai.key` ako postoji → `mvn package`
-(uključivo build React frontenda; prvi put skida Node i npm pakete, par minuta) → pokrene aplikaciju u istom prozoru (logovi u konzoli).
-Faza 4 builda i agenta (`agent\`), pokrene sustav, pričeka ga, pa pokrene agenta; oba procesa pišu u isti prozor (oznake `[sustav]` i `[agent ]`), Ctrl+C gasi oba.
-OpenAI ključ: datoteka `openai.key` u korijenu projekta (jedna linija, gitignored) — trebaju ga baza znanja i agent; bez njega sve iz Faze 1 radi, a baza znanja i agent javljaju da nisu dostupni (503).
+The script: checks/starts Docker Desktop → brings up PostgreSQL (`docker compose up --wait`) → finds JDK 25 → loads `openai.key` if present → `mvn package`
+(including the React frontend build; the first run downloads Node and npm packages, a few minutes) → starts the application in the same window (logs in the console).
+Phase 4 also builds the agent (`agent\`), starts the system, waits for it, then starts the agent; both processes write to the same window (tags `[sustav]` = system and `[agent ]`), Ctrl+C stops both.
+OpenAI key: the file `openai.key` in the project root (one line, gitignored); the knowledge base and the agent need it; without it everything from Phase 1 works, while the knowledge base and the agent report themselves unavailable (503).
+Infobip: the file `infobip.key` (line 1 = API key, line 2 = base URL, optional line 3 = media-stream config id); `demo-caller.txt` holds your own mobile number, which stands in for customer 1 (Ana). Both are gitignored.
 
-| Opcija | Što radi |
+| Option | What it does |
 |---|---|
-| `-NoBuild` | preskoči Maven build, koristi postojeći `target\nottrilix-2026.jar` (i `agent\target\nottrilix-agent.jar`) |
-| `-Reset` | obriši bazu (docker volume) → svježi seed (i ponovni ingest baze znanja) |
-| `-Stop` | ugasi PostgreSQL container (aplikaciju gasiš s Ctrl+C) |
+| `-NoBuild` | skip the Maven build, use the existing `target\nottrilix-2026.jar` (and `agent\target\nottrilix-agent.jar`) |
+| `-Reset` | drop the database (docker volume) → fresh seed (and a new knowledge-base ingest) |
+| `-Stop` | stop the PostgreSQL container (the application is stopped with Ctrl+C) |
+| `-PublicUrl https://…` (Phase 6) | use a tunnel started separately (its URL survives application restarts; the Infobip webhooks are set once) |
 
-Adrese: **Shop** http://localhost:8080/ · **Admin** http://localhost:8080/admin/ · **API/Swagger** http://localhost:8080/swagger-ui.html · **MCP** http://localhost:8080/mcp · **Agent** http://localhost:8090/chat
+Addresses: **Shop** http://localhost:8080/ · **Admin** http://localhost:8080/admin/ · **API/Swagger** http://localhost:8080/swagger-ui.html · **MCP** http://localhost:8080/mcp · **Agent** http://localhost:8090/chat
 
-Preduvjeti: Docker Desktop, JDK 25 (`C:\Program Files\Java\jdk-25*`), Maven 3.9+. Node **nije** potreban (Maven ga skida u `./node`).
+Prerequisites: Docker Desktop, JDK 25 (`C:\Program Files\Java\jdk-25*`), Maven 3.9+. Node is **not** required (Maven downloads it into `./node`). The scripts are PowerShell (Windows); on other systems run the same steps by hand (`docker compose up -d`, `mvn package`, `java -jar`).
 
-## Demo podaci (Flyway `V2__seed.sql`)
+## Demo data (Flyway `V2__seed.sql`)
 
-- **Kupci (e-mail / lozinka · wallet):** `ana.anic@example.com` / `ana123` · 115 € — `marko.maric@example.com` / `marko123` · 25 € — `ivana.ivic@example.com` / `ivana123` · 50 € (Marko ne može kupiti Steam 50 € bez nadoplate).
-- **Admin (korisničko ime / lozinka):** `admin` / `admin123`.
-- **Proizvodi:** A1 5/10/20 € · HT 5/10/25 € · Steam 10/25/50 € · PlayStation 20/50 € · Xbox 15/30 €.
-- **Bonovi:** serijski `PREFIX-DENOMINACIJA-NNN` (npr. `STM-25-003`), 12-znamenkasti kod.
-- **Povijest:** 6 transakcija (web + kiosk; aktivni, iskorišteni, jedan povrat s blokiranim bonom) i 2 prijave podrške (1 otvorena).
+- **Customers (e-mail / password · wallet):** `ana.anic@example.com` / `ana123` · 115 € — `marko.maric@example.com` / `marko123` · 25 € — `ivana.ivic@example.com` / `ivana123` · 50 € (Marko cannot buy Steam 50 € without a top-up).
+- **Admin (username / password):** `admin` / `admin123`.
+- **Products:** A1 5/10/20 € · HT 5/10/25 € · Steam 10/25/50 € · PlayStation 20/50 € · Xbox 15/30 €.
+- **Vouchers:** serial `PREFIX-DENOMINATION-NNN` (e.g. `STM-25-003`), 12-digit activation code.
+- **History:** 6 transactions (web + kiosk; active, redeemed, one refund with a blocked voucher) and 2 support tickets (1 open).
 
-## Poslovna pravila (servisni sloj, `application.yml → nottrilix.rules`)
+All credentials are demo values for a local run; change them before exposing the system anywhere.
 
-| Pravilo | Greška (HTTP 409) |
+## Business rules (service layer, `application.yml → nottrilix.rules`)
+
+| Rule | Error (HTTP 409) |
 |---|---|
-| Dnevni limit kupnje po kupcu: **150 €** | `DAILY_LIMIT_EXCEEDED` |
-| Na walletu mora biti dovoljno sredstava za cijenu bona | `INSUFFICIENT_FUNDS` |
-| Bon mora postojati na zalihi (zaključavanje reda u bazi) | `OUT_OF_STOCK` |
-| Uplata na wallet: najviše **500 €** po uplati | `TOPUP_LIMIT_EXCEEDED` |
-| Povrat samo unutar **14 dana** i samo ako bon nije iskorišten; iznos ide na wallet, bon se blokira | `REFUND_WINDOW_EXPIRED`, `VOUCHER_ALREADY_REDEEMED`, `ALREADY_REFUNDED` |
-| Blokada bona: ne za iskorišten / već blokiran | `VOUCHER_ALREADY_REDEEMED`, `ALREADY_BLOCKED` |
-| Prijava se može vezati samo na transakciju istog kupca | `TRANSACTION_CUSTOMER_MISMATCH` |
+| Daily purchase limit per customer: **150 €** | `DAILY_LIMIT_EXCEEDED` |
+| The wallet must cover the voucher price | `INSUFFICIENT_FUNDS` |
+| The voucher must be in stock (row lock in the database) | `OUT_OF_STOCK` |
+| Wallet top-up: at most **500 €** per top-up | `TOPUP_LIMIT_EXCEEDED` |
+| Refund only within **14 days** and only if the voucher is not redeemed; the amount goes to the wallet, the voucher is blocked | `REFUND_WINDOW_EXPIRED`, `VOUCHER_ALREADY_REDEEMED`, `ALREADY_REFUNDED` |
+| Blocking a voucher: not for redeemed / already blocked | `VOUCHER_ALREADY_REDEEMED`, `ALREADY_BLOCKED` |
+| A ticket can only reference a transaction of the same customer | `TRANSACTION_CUSTOMER_MISMATCH` |
 
-Greške su uvijek `{ "error": "KOD", "message": "poruka" }` (404 `NOT_FOUND`, 400 `VALIDATION_ERROR`, 401 `UNAUTHORIZED` / `INVALID_CREDENTIALS`, 403 `FORBIDDEN`).
+Errors are always `{ "error": "CODE", "message": "text" }` (404 `NOT_FOUND`, 400 `VALIDATION_ERROR`, 401 `UNAUTHORIZED` / `INVALID_CREDENTIALS`, 403 `FORBIDDEN`).
 
-## Prijava i pristup
+## Login and access
 
-Spring Security, lozinke bcrypt u bazi, **bearer token** (bez sesija i kolačića; token u `localStorage`, zaseban ključ za shop i admin pa oba mogu biti prijavljena u istom pregledniku).
+Spring Security, bcrypt passwords in the database, **bearer token** (no sessions or cookies; the token lives in `localStorage` under separate keys for the shop and the admin, so both can be logged in in the same browser).
 
-| Tko | Prijava | Uloga | Smije |
+| Who | Login | Role | May use |
 |---|---|---|---|
-| Kupac | `POST /api/auth/customer/login` `{email, password}` | `CUSTOMER` | `/api/shop/**` (katalog, kupnja, vlastite kupnje), `/api/agent/**` (razgovor s agentom) |
+| Customer | `POST /api/auth/customer/login` `{email, password}` | `CUSTOMER` | `/api/shop/**` (catalogue, purchase, own purchases), `/api/agent/**` (conversation with the agent) |
 | Admin/support | `POST /api/auth/admin/login` `{username, password}` | `ADMIN` | `/api/admin/**`, `/api/customers/**` |
-| Aplikacija agenta | ključ agenta kao bearer token (`nottrilix.mcp.agent-key`) | `AGENT` | `/mcp`: spajanje i popis alata; alati rade tek uz token kupca |
+| Agent application | the agent key as bearer token (`nottrilix.mcp.agent-key`) | `AGENT` | `/mcp`: connecting and listing tools; tools work only with a customer token. `/api/phone/**` |
 
-Odgovor prijave je `{ "token": "...", "user": {realm, id, name, login} }`; dalje `Authorization: Bearer <token>`. `GET /api/auth/me` = tko sam, `POST /api/auth/logout` poništava token. Statika, Swagger i login endpointi su javni; sve ostalo pod `/api/**` traži prijavu. U Swaggeru gumb *Authorize* prima token.
+The login response is `{ "token": "...", "user": {realm, id, name, login} }`; afterwards `Authorization: Bearer <token>`. `GET /api/auth/me` = who am I, `POST /api/auth/logout` revokes the token. Static files, Swagger and the login endpoints are public; everything else under `/api/**` requires a login. In Swagger the *Authorize* button takes the token.
 
-## API (sažetak)
+## API (summary)
 
-| Metoda i putanja | Uloga | Opis |
+| Method and path | Role | Description |
 |---|---|---|
-| `POST /api/auth/customer/login`, `POST /api/auth/admin/login` | — | prijava → token |
-| `GET /api/auth/me`, `POST /api/auth/logout` | bilo koja | tko sam / odjava |
-| `GET /api/shop/catalog` | CUSTOMER | katalog (dostupno / rasprodano) |
-| `POST /api/shop/purchase` `{productId}` | CUSTOMER | kupnja za prijavljenog kupca, naplata s walleta → `{transaction (s bonom), walletBalanceEur}` |
-| `GET /api/shop/transactions` | CUSTOMER | kupnje prijavljenog kupca |
-| `GET /api/shop/wallet`, `POST /api/shop/wallet/topup` `{amountEur}` | CUSTOMER | wallet (stanje + povijest) / nadoplata (simulirano) |
-| `GET /api/shop/vouchers/{serial}/check` | CUSTOMER | provjera vlastitog bona kod pružatelja (tuđi bon = 404) |
-| `GET /api/customers`, `GET /api/customers/{id}` | ADMIN | kupci (sa stanjem walleta) |
-| `GET /api/admin/customers/{id}/wallet`, `POST /api/admin/customers/{id}/wallet/topup` `{amountEur, note}` | ADMIN | wallet kupca / uplata podrške |
-| `GET /api/admin/transactions?status=&brand=&customerId=` | ADMIN | sve transakcije |
-| `GET /api/admin/transactions/{id}` | ADMIN | jedna transakcija |
-| `POST /api/admin/transactions/{id}/refund` | ADMIN | povrat novca na wallet kupca |
-| `POST /api/admin/vouchers/{serial}/block` | ADMIN | blokada bona |
-| `GET /api/admin/vouchers/{serial}/check` | ADMIN | provjera iskorištenosti bona kod pružatelja (fiktivni upit) |
-| `GET /api/admin/stock` | ADMIN | zaliha po proizvodu/statusu |
-| `GET /api/admin/tickets`, `POST /api/admin/tickets`, `POST /api/admin/tickets/{id}/resolve` | ADMIN | podrška |
-| `GET /api/admin/kb/search?q=&topK=`, `GET /api/admin/kb/status`, `POST /api/admin/kb/ingest?force=` | ADMIN | baza znanja: semantička pretraga, stanje, ponovni ingest (503 `KB_UNAVAILABLE` bez ključa) |
-| `POST /api/agent/chat` `{conversationId?, message}` | CUSTOMER | poruka agentu → `{conversationId, reply, toolCalls, sources, pendingAction, …}`; sustav je prosljeđuje aplikaciji agenta (503 `AGENT_UNAVAILABLE` ako agent ne radi) |
-| `POST /api/agent/voice` (multipart `audio`, `conversationId?`) | CUSTOMER | glasovna poruka → `{transcript, chat, audioBase64, audioMimeType, sttMs, ttsMs, ttsProvider}`; 403 `CONSENT_REQUIRED` bez privole |
-| `POST /api/agent/voice/stream` (multipart) · `GET /api/agent/voice/filler` | CUSTOMER | isto kao stream: JSON redci `transcript`, `chat`, `audio` pa mp3 kako nastaje (preglednik svira odmah) · fraza „Samo trenutak.“ (mp3) |
-| `GET /api/shop/privacy`, `POST /api/shop/privacy/consent` `{type}`, `DELETE /api/shop/privacy/consent/{type}` | CUSTOMER | pregled podataka i rokova, davanje i povlačenje privole (VOICE) |
-| `GET /api/shop/privacy/export`, `POST /api/shop/privacy/erase-conversations` | CUSTOMER | izvoz svih podataka kupca (JSON) / brisanje razgovora na zahtjev |
-| `GET /api/admin/conversations?limit=`, `GET …/stats`, `GET …/{id}`, `POST …/{id}/analyze`, `POST …/analyze-idle` | ADMIN | razgovori s analizom, statistika, transkript, analiza sada |
-| `GET /api/admin/kb/suggestions?status=`, `POST …/{id}/approve` `{question, answer}`, `POST …/{id}/reject` | ADMIN | prijedlozi za bazu znanja iz razgovora (samoučenje s odobrenjem) |
-| `POST /api/phone/calls` `{callId, from}`, `POST …/{id}/turns`, `POST …/{id}/end` | AGENT | telefonski kanal: kupac po broju pozivatelja → token kupca za poziv; turnovi i kraj poziva u audit |
-| `POST /mcp` (JSON-RPC: `tools/list`, `tools/call`, …) | CUSTOMER, AGENT | MCP server: 14 alata nad servisima; kupac iz tokena, razgovor i turn u `_meta` |
-| `GET /api/admin/audit?conversationId=&customerId=&limit=` | ADMIN | audit trag agenta: pozivi alata, dohvati iz baze znanja, turnovi razgovora |
+| `POST /api/auth/customer/login`, `POST /api/auth/admin/login` | — | login → token |
+| `GET /api/auth/me`, `POST /api/auth/logout` | any | who am I / logout |
+| `GET /api/shop/catalog` | CUSTOMER | catalogue (available / sold out) |
+| `POST /api/shop/purchase` `{productId}` | CUSTOMER | purchase for the logged-in customer, charged to the wallet → `{transaction (with the voucher), walletBalanceEur}` |
+| `GET /api/shop/transactions` | CUSTOMER | the logged-in customer's purchases |
+| `GET /api/shop/wallet`, `POST /api/shop/wallet/topup` `{amountEur}` | CUSTOMER | wallet (balance + history) / top-up (simulated) |
+| `GET /api/shop/vouchers/{serial}/check` | CUSTOMER | check an own voucher at the provider (someone else's voucher = 404) |
+| `GET /api/customers`, `GET /api/customers/{id}` | ADMIN | customers (with wallet balances) |
+| `GET /api/admin/customers/{id}/wallet`, `POST /api/admin/customers/{id}/wallet/topup` `{amountEur, note}` | ADMIN | a customer's wallet / support top-up |
+| `GET /api/admin/transactions?status=&brand=&customerId=` | ADMIN | all transactions |
+| `GET /api/admin/transactions/{id}` | ADMIN | one transaction |
+| `POST /api/admin/transactions/{id}/refund` | ADMIN | refund to the customer's wallet |
+| `POST /api/admin/vouchers/{serial}/block` | ADMIN | block a voucher |
+| `GET /api/admin/vouchers/{serial}/check` | ADMIN | redemption check at the provider (simulated query) |
+| `GET /api/admin/stock` | ADMIN | stock per product/status |
+| `GET /api/admin/tickets`, `POST /api/admin/tickets`, `POST /api/admin/tickets/{id}/resolve` | ADMIN | support tickets |
+| `GET /api/admin/kb/search?q=&topK=`, `GET /api/admin/kb/status`, `POST /api/admin/kb/ingest?force=` | ADMIN | knowledge base: semantic search, status, re-ingest (503 `KB_UNAVAILABLE` without a key) |
+| `POST /api/agent/chat` `{conversationId?, message}` | CUSTOMER | message to the agent → `{conversationId, reply, toolCalls, sources, pendingAction, …}`; the system forwards it to the agent application (503 `AGENT_UNAVAILABLE` when the agent is down) |
+| `POST /api/agent/voice` (multipart `audio`, `conversationId?`) | CUSTOMER | voice message → `{transcript, chat, audioBase64, audioMimeType, sttMs, ttsMs, ttsProvider}`; 403 `CONSENT_REQUIRED` without consent |
+| `POST /api/agent/voice/stream` (multipart) · `GET /api/agent/voice/filler` | CUSTOMER | the same as a stream: JSON lines `transcript`, `chat`, `audio`, then mp3 as it is produced (the browser plays immediately) · the "Samo trenutak." phrase (mp3) |
+| `GET /api/shop/privacy`, `POST /api/shop/privacy/consent` `{type}`, `DELETE /api/shop/privacy/consent/{type}` | CUSTOMER | data overview and retention periods, giving and withdrawing consent (VOICE) |
+| `GET /api/shop/privacy/export`, `POST /api/shop/privacy/erase-conversations` | CUSTOMER | export of all customer data (JSON) / deletion of conversations on request |
+| `GET /api/admin/conversations?limit=`, `GET …/stats`, `GET …/{id}`, `POST …/{id}/analyze`, `POST …/analyze-idle` | ADMIN | conversations with analyses, statistics, transcript, analyse now |
+| `GET /api/admin/kb/suggestions?status=`, `POST …/{id}/approve` `{question, answer}`, `POST …/{id}/reject` | ADMIN | knowledge-base proposals from conversations (self-learning with approval) |
+| `POST /api/phone/calls` `{callId, from}`, `POST …/{id}/turns`, `POST …/{id}/end` | AGENT | phone channel: customer by caller id → customer token for the call; turns and the end of the call go to the audit trail |
+| `POST /mcp` (JSON-RPC: `tools/list`, `tools/call`, …) | CUSTOMER, AGENT | MCP server: 14 tools over the services; customer from the token, conversation and turn in `_meta` |
+| `GET /api/admin/audit?conversationId=&customerId=&limit=` | ADMIN | the agent's audit trail: tool calls, knowledge-base retrievals, conversation turns |
 
-## Logovi
+## Logs
 
-Logback (`logback-spring.xml`): sve na konzolu (u boji) i u `logs/nottrilix-2026.log`. Svaki HTTP zahtjev s korisnikom (`HTTP` logger: `POST /api/shop/purchase user=customer:ana.anic@example.com -> 201 (60 ms)`),
-svaka prijava/odjava i odbijeni pristup (`AUTH` logger: `LOGIN OK`, `LOGIN FAILED`, `AUTH 401/403`, `TOKEN issued/revoked`),
-svaka poslovna operacija (`PURCHASE OK …`, `PURCHASE DENIED reason=OUT_OF_STOCK …`, `WALLET DEBIT/CREDIT/TOPUP …`, `REFUND OK …`, `TICKET …`, `VOUCHER CHECK …`), svaki „poziv“ pružatelju (`PROVIDER` logger) i svaki odbijeni zahtjev.
-Baza znanja: `KB` logger (`KB INGEST …`, `KB SEARCH …`). MCP server: `MCP` logger (`MCP tools/call purchaseVoucher user=customer:… conv=… turn=2 -> CONFIRMATION_REQUIRED`, `CONFIRM PURCHASE 5 … -> ceka potvrdu kupca`)
-i `AUDIT` logger (zrcalo tablice `audit_events`: `TOOL_CALL purchaseVoucher … -> DENIED | INSUFFICIENT_FUNDS: …`).
-Agent piše u istu konzolu s oznakom `[agent ]` (`TURN n conv=… msg='…'`, `TOOL purchaseVoucher … (12 ms preko MCP-a)`, `TURN n … OK 2981 ms, alati=[…], tokeni=…`, `VOICE STT … / TTS …`) i u `logs/nottrilix-agent.log`; retci sustava imaju oznaku `[sustav]`.
-Faza 5: `ANALYSIS` logger (`ANALYSIS conv=… OK 4 s -> KUPNJA / RIJESENO / …`), `LEARN` (prijedlozi i odobrenja), `PRIVACY` (privola, izvoz, brisanje, retencija), `CONVERSATION`. Identitet u logovima je `customer#2`, ne e-mail.
-SQL ispis: `logging.level.org.hibernate.SQL: DEBUG` u `application.yml`.
+Logback (`logback-spring.xml`): everything to the console (coloured) and to `logs/nottrilix-2026.log`. Every HTTP request with its user (`HTTP` logger: `POST /api/shop/purchase user=customer#1 -> 201 (60 ms)`),
+every login/logout and denied access (`AUTH` logger: `LOGIN OK`, `LOGIN FAILED`, `AUTH 401/403`, `TOKEN issued/revoked`),
+every business operation (`PURCHASE OK …`, `PURCHASE DENIED reason=OUT_OF_STOCK …`, `WALLET DEBIT/CREDIT/TOPUP …`, `REFUND OK …`, `TICKET …`, `VOUCHER CHECK …`), every "call" to a provider (`PROVIDER` logger) and every rejected request.
+Knowledge base: `KB` logger (`KB INGEST …`, `KB SEARCH …`). MCP server: `MCP` logger (`MCP tools/call purchaseVoucher user=customer#1 conv=… turn=2 -> CONFIRMATION_REQUIRED`)
+and the `AUDIT` logger (a mirror of the `audit_events` table: `TOOL_CALL purchaseVoucher … -> DENIED | INSUFFICIENT_FUNDS: …`).
+The agent writes to the same console with the `[agent ]` tag (`TURN n conv=… msg='…'`, `TOOL purchaseVoucher … (12 ms preko MCP-a)`, `TURN n … OK 2981 ms, alati=[…], tokeni=…`, `VOICE STT … / TTS …`, `TELEPHONY …`, `CALL …`) and to `logs/nottrilix-agent.log`; the system's lines carry the `[sustav]` tag.
+Phase 5: `ANALYSIS` logger (`ANALYSIS conv=… OK 4 s -> KUPNJA / RIJESENO / …`), `LEARN` (proposals and approvals), `PRIVACY` (consent, export, deletion, retention), `CONVERSATION`. Identity in the logs is `customer#2`, never an e-mail address; phone numbers are masked.
+Log messages are in Croatian, like the UI. SQL output: `logging.level.org.hibernate.SQL: DEBUG` in `application.yml`.
 
-## Razvoj
+## Development
 
-- Sustav: `mvn -DskipTests package` (ili samo `mvn test`: pravila u `ShopServiceTest`, granice MCP-a u `ConfirmationGateTest`, `SupportMcpToolsTest`, `AuditedToolHandlerTest`). Agent: `mvn -f agent\pom.xml package`. Build treba JDK 25 (`JAVA_HOME`). Na Windowsu build ne prolazi dok aplikacija radi (drži jar u `target\`).
-- Proba agenta protiv pokrenutih aplikacija: `python scripts\agent_e2e.py` (scenariji A–H + audit; prije toga `-Reset`, a za hrvatske znakove u konzoli `$env:PYTHONIOENCODING = "utf-8"`).
-- MCP bez agenta: `python scripts\mcp_direct.py` (sirovi JSON-RPC pozivi: bez tokena, s ključem agenta, s tokenom kupca, potvrda kroz dva turna).
-- Faza 5: `python scripts\phase5_e2e.py` (glas s probnom snimkom, privatnost, analiza razgovora, učenje); probna snimka nastaje iz `openai.key` (TTS), ključ se ne ispisuje.
-- Frontend s hot-reloadom: aplikacija upaljena na 8080, pa u `frontend/`: `npm install && npm run dev` → http://localhost:5173 (i `/admin/`), `/api` se proxyja na 8080.
-- Preskoči frontend u Maven buildu: `-Dskip.installnodenpm -Dskip.npm`.
+- System: `mvn -DskipTests package` (or just `mvn test`: the rules in `ShopServiceTest`, the MCP boundaries in `ConfirmationGateTest`, `SupportMcpToolsTest`, `AuditedToolHandlerTest`). Agent: `mvn -f agent\pom.xml package`. The build needs JDK 25 (`JAVA_HOME`). On Windows the build fails while the application is running (it holds the jar in `target\`).
+- Agent rehearsal against the running applications: `python scripts\agent_e2e.py` (scenarios A–H + audit; `-Reset` first, and for Croatian characters in the console `$env:PYTHONIOENCODING = "utf-8"`).
+- MCP without the agent: `python scripts\mcp_direct.py` (raw JSON-RPC calls: without a token, with the agent key, with a customer token, confirmation across two turns).
+- Phase 5: `python scripts\phase5_e2e.py` (voice with a test recording, privacy, conversation analysis, learning); the test recording is synthesised with `openai.key` (TTS), the key is never printed.
+- Phase 6: `python scripts\phone_sim.py` plays Infobip (webhooks + WebSocket + PCM) against the running agent; `--from "+385 99 000 0000"` for an unknown caller.
+- Frontend with hot reload: application running on 8080, then in `frontend/`: `npm install && npm run dev` → http://localhost:5173 (and `/admin/`), `/api` is proxied to 8080.
+- Skip the frontend in the Maven build: `-Dskip.installnodenpm -Dskip.npm`.
+- Fallback demo videos of phases 1–5 (Playwright against the real system): `demo-video/README.md`.
 
-## Struktura
+## Structure
 
 ```
 src/main/java/com/nottrilix
-  domain/    entiteti + enumi (Customer (+wallet), WalletEntry, AdminUser, Product, Voucher, Transaction, SupportTicket, AuditEvent)
-  repo/      Spring Data repozitoriji (FOR UPDATE za kupca/bon/transakciju)
-  service/   CatalogService, ShopService, WalletService, SupportService, VoucherCheckService  <- poslovna pravila; AuditService
-  provider/  ProviderGateway (sučelje prema pružatelju) + SimulatedProviderGateway (fiktivni A1/HT/Steam/...)
-  kb/        baza znanja: KbMarkdownParser (md -> odlomci), KnowledgeBaseIngestor (Spring AI VectorStore, idempotentno; + naučeni odlomci iz kb_suggestions),
-             KnowledgeBaseService (pretraga), KnowledgeLearningService (prijedlozi: odobri/odbij -> ingest)
-  analysis/  post-analiza razgovora: ConversationAnalyzer (pseudonimizirani transkript -> Spring AI structured output -> ConversationInsight),
-             AnalysisScheduler (utihnuli razgovori), AnalysisConfig (ChatClient za analizu)
-  privacy/   GDPR: PrivacyService (privole, izvoz, brisanje), RetentionJob (rok čuvanja), Pseudonymizer, PrivacyProperties
-  mcp/       MCP server: SupportMcpTools (@McpTool adapteri nad servisima), McpCall (kupac iz tokena, razgovor iz _meta),
-             ConfirmationGate (potvrda radnji), AuditedToolHandler (audit na granici), McpServerConfig, ToolResult
-  agent/     veza prema aplikaciji agenta: AgentClient (HTTP, tekst i snimka), AgentChatService (prosljeđivanje + audit turna + okvir razgovora + privola za glas)
+  domain/    entities + enums (Customer (+wallet), WalletEntry, AdminUser, Product, Voucher, Transaction, SupportTicket, AuditEvent)
+  repo/      Spring Data repositories (FOR UPDATE on customer/voucher/transaction)
+  service/   CatalogService, ShopService, WalletService, SupportService, VoucherCheckService  <- business rules; AuditService
+  provider/  ProviderGateway (interface towards the provider) + SimulatedProviderGateway (simulated A1/HT/Steam/...)
+  kb/        knowledge base: KbMarkdownParser (md -> sections), KnowledgeBaseIngestor (Spring AI VectorStore, idempotent; + learned sections from kb_suggestions),
+             KnowledgeBaseService (search), KnowledgeLearningService (proposals: approve/reject -> ingest), KnowledgeBaseWarmup
+  analysis/  post-call analysis: ConversationAnalyzer (pseudonymised transcript -> Spring AI structured output -> ConversationInsight),
+             AnalysisScheduler (idle conversations), AnalysisConfig (ChatClient for the analysis)
+  privacy/   GDPR: PrivacyService (consents, export, deletion), RetentionJob (retention), Pseudonymizer, PrivacyProperties
+  phone/     phone channel: PhoneSessionService (caller id -> customer token for the call), PhoneNumbers (digits, masking), PhoneProperties
+  mcp/       MCP server: SupportMcpTools (@McpTool adapters over the services), McpCall (customer from the token, conversation from _meta),
+             ConfirmationGate (action confirmation), AuditedToolHandler (audit at the boundary), McpServerConfig, ToolResult
+  agent/     link to the agent application: AgentClient (HTTP, text and recording), AgentChatService (forwarding + turn audit + conversation frame + voice consent)
   auth/      Realm (CUSTOMER, ADMIN, AGENT), AuthUser, LoginToken, NotTrilixAuthenticationProvider (bcrypt), TokenService, BearerTokenFilter
-  api/       kontroleri (Auth, Shop, Customers, Admin, KnowledgeBase, Agent, Audit), dto/ (recordi), ApiExceptionHandler
+  api/       controllers (Auth, Shop, Customers, Admin, KnowledgeBase, Agent, Audit, Conversation, Privacy, Phone), dto/ (records), ApiExceptionHandler
   config/    SecurityConfig, RulesProperties, AppConfig (Clock, OpenAPI), WebConfig, RequestLoggingFilter
-src/main/resources/db/migration   V1__schema.sql, V2__seed.sql, V3__vector_store.sql (pgvector), V4__audit_events.sql (audit trag agenta),
-                                  V5__conversations_privacy.sql (razgovori, analize, prijedlozi za bazu znanja, privole)
-src/main/resources/kb/            10 markdown dokumenata baze znanja (pisani za RAG, vidi docs/PHASE2.md; 10 = privatnost)
-frontend/   Vite + React + TypeScript: src/customer (shop, ChatWidget s glasom i privolom, PrivacyModal), src/admin (tabovi Razgovori, Znanje s prijedlozima, Audit), src/shared
-scripts/    agent_e2e.py (proba razgovora s agentom), mcp_direct.py (MCP pozivi bez agenta), phase5_e2e.py (glas, privatnost, analiza, učenje), phone_sim.py (simulator telefonskog poziva)
+src/main/resources/db/migration   V1__schema.sql, V2__seed.sql, V3__vector_store.sql (pgvector), V4__audit_events.sql (the agent's audit trail),
+                                  V5__conversations_privacy.sql (conversations, analyses, knowledge-base proposals, consents)
+src/main/resources/kb/            10 markdown knowledge-base documents (written for RAG, see docs/PHASE2.md; 10 = privacy)
+frontend/   Vite + React + TypeScript: src/customer (shop, ChatWidget with voice and consent, PrivacyModal), src/admin (tabs Razgovori, Znanje with proposals, Audit), src/shared
+scripts/    agent_e2e.py (agent rehearsal), mcp_direct.py (MCP calls without the agent), phase5_e2e.py (voice, privacy, analysis, learning), phone_sim.py (phone call simulator)
+demo-video/ Playwright recordings of phases 1–5 as a fallback for the talk
 
-agent/      aplikacija agenta (vlastiti pom.xml, port 8090)
+agent/      the agent application (own pom.xml, port 8090)
   src/main/java/com/nottrilix/agent
-             AgentConfig (ChatClient, memorija, RAG preko MCP-a), AgentService (turn), AgentController (POST /chat, POST /voice),
-             VoiceService (STT -> agent -> TTS, Spring AI TranscriptionModel + TextToSpeechModel),
-             McpClientConfig (token kupca po pozivu, _meta, filtar alata), SystemGateway (tko je kupac, što čeka potvrdu, baza znanja),
-             TracingToolCallback, CustomerToken, TurnContext, ToolOutcome, ReplyStyle
-  src/main/resources/agent/system-prompt.txt (persona i pravila ponašanja agenta; parametri se pune po pozivu)
+             AgentConfig (ChatClient, memory, RAG over MCP), AgentService (turn), AgentController (POST /chat, POST /voice, /voice/stream),
+             VoiceService (STT -> agent -> TTS, Spring AI TranscriptionModel + TextToSpeechModel), AgentWarmup (model and STT warmed at startup),
+             McpClientConfig (customer token per call, _meta, tool filter), SystemGateway (who the customer is, what awaits confirmation, knowledge base),
+             TracingToolCallback, CustomerToken, TurnContext, ToolOutcome, ReplyStyle, SpeechText (amounts spoken as words)
+             telephony/ (Phase 6): InfobipWebhookController (call received -> bridge to our WebSocket, events), InfobipMediaWebSocketHandler (PCM frames, VAD, turn, pacing, barge-in),
+             CallSession (VAD, frame queue), TelephonySpeech (STT/TTS for the line), InfobipCallsClient (Calls API), PhoneGateway (the system's /api/phone), CallRegistry, PhoneCall, PcmUtil
+  src/main/resources/agent/system-prompt.txt (the agent's persona and rules, in Croatian; parameters filled per call)
 ```
+
+## License
+
+[MIT](LICENSE).
