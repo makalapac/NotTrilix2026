@@ -1,6 +1,6 @@
 # Faza 6 — Telefon: poziv s mobitela u istog agenta (Infobip)
 
-_Status: **kod gotov, simulator verificiran 2026-10-02** · grana `phase6` (iz `phase5`) · živi poziv kroz Infobip čeka broj i webhookove u portalu (poglavlja 5 i 8)._
+_Status: **kod gotov, simulator verificiran 2026-10-02, živi poziv s mobitela prošao 2026-10-09** (HR broj +385 1 5809 291) · grana `phase6` (iz `phase5`) · što je živi test tražio da se popravi: poglavlje 9._
 
 Faza 5 je dala glas u pregledniku: kupac je prijavljen, klikne mikrofon, govori, sluša. Faza 6 miče preglednik: **kupac bira telefonski broj**.
 Nema prijave, nema tokena, nema ekrana; postoji samo zvuk s jedne i broj pozivatelja s druge strane.
@@ -105,6 +105,18 @@ python scripts\phone_sim.py --from "+385 99 000 0000"   # nepoznat pozivatelj
 Skripta učitava `infobip.key` (u `INFOBIP_API_KEY`, `INFOBIP_BASE_URL`), `demo-caller.txt` (u `NOTTRILIX_DEMO_CALLER`), diže `cloudflared tunnel --url http://localhost:8090`,
 iz njegova loga pročita `https://…trycloudflare.com` i preda ga agentu kao `NOTTRILIX_PUBLIC_URL`. Agent pri startu prepiše media-stream config i u log ispiše dvije webhook adrese za portal.
 
+**Tunel odvojeno od aplikacija (za demo):** quick tunnel mijenja URL pri svakom startu, a webhookovi u portalu se mijenjaju ručno.
+Zato se tunel pokrene jednom, u vlastitom prozoru, a aplikacije se dižu (i restartaju) s tim URL-om:
+
+```powershell
+& "C:\Program Files (x86)\cloudflared\cloudflared.exe" tunnel --url http://localhost:8090 --no-autoupdate   # ispiše https://<x>.trycloudflare.com
+.\run-phase-6.ps1 -NoBuild -PublicUrl https://<x>.trycloudflare.com                                       # bez vlastitog tunela
+```
+
+U portalu (Developer Tools → Subscriptions Management → Notification profiles) profil `NotTrilix` dobije `https://<x>…/infobip/call-received`,
+profil `NotTrilix2` dobije `https://<x>…/infobip/event`; pretplata (kanal VOICE_VIDEO, filtar na Calls konfiguraciju) ostaje. Prvi quick-tunnel
+zahtjev zna isteći (`context deadline exceeded`): ponoviti. Broj je u portalu usmjeren na Calls konfiguraciju („Forward to Subscription“).
+
 ## 7. Jedan poziv u logu
 
 Simulirani poziv (`scripts\phone_sim.py`): Ana zove, pita za wallet, kupi HT bon uz potvrdu. Sustav i agent u istoj konzoli, skraćeno:
@@ -148,7 +160,7 @@ Isti alati, ista brana, isti audit kao u chatu; kanal je `PHONE`, razgovor je `c
 **Brojke po turnu** (simulator, 16 kHz PCM): kraj govora → kraj iskaza 0,7 s (VAD) · STT 0,5–0,9 s · agent 2,5–3,1 s · TTS prvi zvuk 0,15–0,27 s nakon odgovora ·
 „Samo trenutak.“ 1,2 s nakon iskaza ako odgovor još nije tu. Pozivatelj čuje prvi zvuk 2,3–2,9 s nakon što zašuti, a odgovor na pitanje 4–5 s.
 
-**Živi poziv kroz Infobip**: čeka broj (stanje računa 5 €, HR broj ≈ 17,6 € prvi mjesec) i webhookove u portalu; kontrolna ravnina (javljanje, most, prekid) je ista kao u lanjskoj probi koja je prošla uživo. Vidi poglavlje 5.
+**Živi poziv kroz Infobip (2026-10-09, mobitel → HR broj +385 1 5809 291, četiri poziva):** prepoznavanje po broju (`demo-caller.txt`), pozdrav imenom, wallet, kupnja HT bona uz potvrdu, „kod ne radi“ s provjerom kod pružatelja, prijedlog povrata, tri upada u riječ, odbijanje zahtjeva izvan opsega, odgovor o privatnosti iz baze znanja; sustav je razgovore poslije sam analizirao (KUPNJA / RIJEŠENO, ocjena 5, rupa u znanju „je li razgovor tajan“ → prijedlog odlomka). **Brojke po turnu:** kraj govora → kraj iskaza 0,7 s (VAD) · STT 0,5–1,1 s (`gpt-4o-transcribe`) · agent 2,2–6,1 s (`gpt-5.6-terra`; dva poziva modela kad ima alata) · TTS prvi zvuk 0,15–0,25 s · most na WebSocket 0,6 s nakon `CALL_RECEIVED`, `CALL_ESTABLISHED` odmah zatim. Pozivatelj čuje „Provjeravam.“ oko 3 s nakon što zašuti, odgovor 4–8 s. Tri od četiri poziva prvo su pukla; svaki uzrok i popravak su u poglavlju 9.
 
 **Testovi**: sustav 50 (+ `PhoneNumbersTest`), agent 28 (+ `CallSessionTest`: VAD, PCM okviri, streamani chunkovi bez praznina).
 
@@ -159,6 +171,13 @@ Isti alati, ista brana, isti audit kao u chatu; kanal je `PHONE`, razgovor je `c
 | Telefon nije promijenio ni agenta ni sustav; promijenio je **tko izdaje identitet** | U chatu identitet dolazi iz prijave, na telefonu iz broja. Oboje završava kao isti token u istom zaglavlju. Kanal je omotač, vjerodajnica je granica. |
 | Simulator je vrijedio više od dokumentacije | Cijeli medijski put (okviri, VAD, STT, agent, TTS, pacing, upad) vježba se lokalno, bez troška i bez čekanja pružatelja. Živi poziv onda dodaje samo dvije stvari: webhookove i broj. |
 | Nepoznat pozivatelj je slučaj koji treba odlučiti, ne izbjeći | Najjednostavniji pošten odgovor: reci što se dogodilo i gdje se dalje može. |
+| **Živi test, 2026-10-09:** `answer` preko API-ja bez medija ostavi PSTN poziv u `PRE_ESTABLISHED`; `CALL_ESTABLISHED` nikad ne stigne, pozivatelj čuje tišinu | Most odmah po `CALL_RECEIVED`: dialog s djetetom `WEBSOCKET`; platforma sama javi poziv kad se naša noga spoji. Lanjski WebRTC Call Link prikrivao je razliku. Stari put (`answer` + provjera stanja) ostaje kao rezerva. |
+| Infobipov ID poziva ima 68 znakova; naši ID-evi razgovora 64 (`varchar(64)` u `audit_events`, validacije) | Dva poziva su prošla kao „nepoznat pozivatelj“ prije nego je itko pogledao duljinu. Agent za duge ID-eve izvede `tel-<digest>` i njega šalje sustavu; Infobipov ID ostaje prema Infobipu i u logu. Bez migracije. |
+| **Noga bez okvira umire za ~0,3 s** | Pacer (okvir svakih 20 ms) ne smije blokirati: prva sinteza „Samo trenutak.“ (1–2,5 s) išla je s njegove niti, pa je svaki *prvi* poziv nakon starta pukao 0,3 s nakon što je filler trebao krenuti, a svaki drugi prošao. Sad: fraze sintetizirane pri startu (`TelephonySpeech.warmUp`), filler s druge niti, okvir tišine kad Nola šuti. U telefoniji je tišina greška, ne pauza. |
+| STT na liniji griješi više nego u pregledniku | Linija je uskopojasna (8 kHz). Na 7 stvarnih iskaza: `gpt-4o-mini-transcribe` 3 greške (uklj. ćirilicu na „Da, potvrđujem“), `gpt-transcribe` 1 (ćirilica), `gpt-4o-transcribe` 0, ista brzina (0,8 s) → telefon ima svoj model (`nottrilix.telephony.stt-model`), preglednik ostaje na miniju. |
+| Eho Nolina glasa izgleda kao govor pozivatelja | Prvi iskaz jednog poziva bio je doslovno kraj njezina pozdrava. Upad u riječ sad traži jasno glasniji zvuk (`vad.barge-in-rms: 1500`) od praga govora (500). |
+| Prvi dohvat iz baze znanja nakon pauze traje ~1 s, ostali 0,15 s | Veza prema embedding servisu zahladi. Sustav je svakih 30 s grije (`KnowledgeBaseWarmup`), bez loga; prvi turn poziva više ne plaća sekundu. |
+| Ista fraza „Samo trenutak.“ u svakom turnu iritira | Četiri kratke fraze u rotaciji, start nakon 1,5 s. Prava mjera je latencija modela: `NOTTRILIX_CHAT_MODEL=gpt-5.4-mini` skida oko sekundu po turnu, uz rizik izmišljanja pravila ([MODEL.md](MODEL.md)). |
 
 ## 10. Poznata ograničenja
 
@@ -167,14 +186,19 @@ Isti alati, ista brana, isti audit kao u chatu; kanal je `PHONE`, razgovor je `c
 - **Turn po turn**: Nola govori tek kad pozivatelj zašuti; nema simultanog slušanja (duplex), ali ima upad.
 - **Jedan poziv istodobno** je pretpostavka demoa: media stream se po `callId` ne mora poklapati s pozivom koji smo javili, pa se uzima najnoviji poziv bez medija.
 - **Webhookovi bez potpisa, tunel bez autentikacije**: samo za demo, ne ostavljati upaljeno.
-- **Pretplate na događaje se mijenjaju ručno** u portalu pri svakoj promjeni tunela (Subscriptions API nije dostupan na računu).
+- **Pretplate na događaje se mijenjaju ručno** u portalu pri svakoj promjeni tunela (Subscriptions API nije dostupan na računu); zato tunel u vlastitom prozoru (poglavlje 6).
+- **Quick tunnel bez računa** nema jamstva; na dan demoa ga pokrenuti ranije i provjeriti `GET https://<x>/infobip/status` izvana.
+- **Dump iskaza** (`NOTTRILIX_DUMP_UTTERANCES=<mapa>`) sprema zvuk pozivatelja kao WAV: samo za podešavanje STT-a i VAD-a, nikad u demou (zvuk kupca se inače ne čuva).
 
 ## 11. Što je dodano i promijenjeno
 
 **Sustav**: `phone/PhoneSessionService`, `phone/PhoneNumbers`, `phone/PhoneProperties`, `api/PhoneController`, DTO-i `PhoneCallStart`, `PhoneIdentity`, `PhoneTurn`, `PhoneCallEnd`;
+nakon živog testa: validacije ID-eva `[A-Za-z0-9_-]{1,128}` (`PhoneCallStart`, `PhoneController`, `mcp/McpCall`), `kb/KnowledgeBaseWarmup`;
 `AuditEventType.PHONE_CALL`; `CustomerRepository.findByPhoneDigits`; `SecurityConfig` (`/api/phone/**` AGENT); `application.yml` (`nottrilix.phone.demo-caller`); admin tab Audit (oznaka „poziv“);
 baza znanja `10-privatnost-i-osobni-podaci.md` (odjeljak „Poziv telefonom“). Testovi: `PhoneNumbersTest`.
 
 **Agent**: paket `telephony` (poglavlje 4), `pom.xml` (+ `spring-boot-starter-websocket`), `application.yml` (`nottrilix.telephony.*`), system prompt (kanal `PHONE`). Testovi: `CallSessionTest`.
+Nakon živog testa: `PhoneCall.conversationId` (izvedeni ID), `InfobipCallsClient.state`, dialog odmah po `CALL_RECEIVED` + provjera stanja kao rezerva (`InfobipWebhookController`),
+`TelephonySpeech.warmUp` + fraze u rotaciji + `stt-model`, `CallSession.silenceFrame` + `bargeInRms`, `AgentService` validacija ID-a razgovora, dump iskaza za podešavanje; `run-phase-6.ps1 -PublicUrl`.
 
 **Ostalo**: `run-phase-6.ps1`, `scripts/phone_sim.py`, `.gitignore` (`demo-caller.txt`), [GDPR.md](GDPR.md) (telefonski kanal).

@@ -32,10 +32,10 @@ class PhoneGateway {
     }
 
     /** Caller id -> customer identity; the system masks the number in its own records. */
-    PhoneCall.Identity identify(String callId, String from, String to) {
+    PhoneCall.Identity identify(PhoneCall call, String from, String to) {
         try {
             Map<String, Object> body = new HashMap<>();
-            body.put("callId", callId);
+            body.put("callId", call.conversationId);
             body.put("from", from);
             body.put("to", to);
             PhoneCall.Identity identity = http.post().uri("/api/phone/calls")
@@ -45,7 +45,7 @@ class PhoneGateway {
                     .body(PhoneCall.Identity.class);
             return identity == null ? PhoneCall.Identity.unknown() : identity;
         } catch (RestClientException e) {
-            log.error("CALL {} identitet pozivatelja nije dohvaćen iz sustava: {}", callId, e.getMessage());
+            log.error("CALL {} identitet pozivatelja nije dohvaćen iz sustava: {}", call.callId, e.getMessage());
             return PhoneCall.Identity.unknown();
         }
     }
@@ -63,7 +63,7 @@ class PhoneGateway {
             body.put("durationMs", durationMs);
             body.put("promptTokens", promptTokens);
             body.put("completionTokens", completionTokens);
-            http.post().uri("/api/phone/calls/{id}/turns", call.callId)
+            http.post().uri("/api/phone/calls/{id}/turns", call.conversationId)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(body)
                     .retrieve()
@@ -80,7 +80,7 @@ class PhoneGateway {
             body.put("reason", reason);
             body.put("durationMs", durationMs);
             body.put("turns", call.turns.get());
-            http.post().uri("/api/phone/calls/{id}/end", call.callId)
+            http.post().uri("/api/phone/calls/{id}/end", call.conversationId)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(body)
                     .retrieve()

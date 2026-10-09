@@ -15,13 +15,18 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * The control plane of a phone call, as Infobip reports it (webhooks; demo: no signature check). CALL_RECEIVED: the
  * system says who is calling and the call is answered; CALL_ESTABLISHED: the call is bridged to our media WebSocket;
  * CALL_FINISHED / CALL_FAILED: the call is closed in the system. Only calls we answered are bridged, so the events of
- * the bridged leg itself are ignored.
+ * the bridged leg itself are ignored. Events depend on the subscriptions in the Infobip portal, so after answering
+ * the call state is also polled for a few seconds and the call is bridged as soon as it is ESTABLISHED, event or not.
  */
 @RestController
 @RequestMapping("/infobip")
@@ -29,6 +34,8 @@ class InfobipWebhookController {
 
     private static final Logger log = LoggerFactory.getLogger("TELEPHONY");
     private static final String MEDIA_CONFIG_NAME = "nottrilix-media";
+    /** Seconds after answering at which the call state is checked when no CALL_ESTABLISHED event has arrived. */
+    private static final List<Integer> BRIDGE_CHECKS_SECONDS = List.of(2, 4, 7);
 
     private final InfobipCallsClient infobip;
     private final CallRegistry registry;
@@ -36,6 +43,11 @@ class InfobipWebhookController {
     private final TelephonyProperties props;
     private final Clock clock;
     private volatile String wsConfigId;
+    private final ScheduledExecutorService checks = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "telephony-bridge-check");
+        t.setDaemon(true);
+        return t;
+    });
 
     InfobipWebhookController(InfobipCallsClient infobip, CallRegistry registry, PhoneGateway gateway,
                              TelephonyProperties props, Clock clock) {
@@ -89,6 +101,10 @@ class InfobipWebhookController {
         String type = extract(body, "type");
         String callId = extract(body, "callId");
         log.info("TELEPHONY event {} call={}", type, callId);
+        if (type != null && (type.endsWith("FINISHED") || type.endsWith("FAILED"))) {
+            String details = String.valueOf(body.get("properties"));   // why Infobip ended the call
+            log.info("TELEPHONY event {} detalji: {}", type, details.length() > 700 ? details.substring(0, 700) + "…" : details);
+        }
         if (callId == null) {
             return Map.of("ok", false);
         }
@@ -128,37 +144,68 @@ class InfobipWebhookController {
 
     private PhoneCall received(String callId, String from, String to) {
         PhoneCall call = registry.register(callId, from);
-        call.identity = gateway.identify(callId, from, to);
-        log.info("CALL {} dolazni poziv, pozivatelj {}", callId, call.identity.identified()
-                ? "customer#" + call.identity.customerId() + " (" + call.identity.customerName() + ")" : "nepoznat");
+        call.identity = gateway.identify(call, from, to);
+        log.info("CALL {} dolazni poziv (razgovor {}), pozivatelj {}", callId, call.conversationId,
+                call.identity.identified()
+                        ? "customer#" + call.identity.customerId() + " (" + call.identity.customerName() + ")" : "nepoznat");
         if (infobip.configured()) {
-            try {
-                infobip.answer(callId);
-            } catch (RuntimeException e) {
-                log.error("CALL {} javljanje nije uspjelo: {}", callId, e.getMessage());
+            // Dialog first: Infobip answers the inbound call itself once our WebSocket leg is up. Answering by API
+            // without media left a PSTN call in PRE_ESTABLISHED and CALL_ESTABLISHED never came (live test 2026-10-09).
+            if (!bridge(call)) {
+                try {
+                    infobip.answer(callId);
+                    BRIDGE_CHECKS_SECONDS.forEach(s -> checks.schedule(() -> bridgeIfEstablished(call), s, TimeUnit.SECONDS));
+                } catch (RuntimeException e) {
+                    log.error("CALL {} javljanje nije uspjelo: {}", callId, e.getMessage());
+                }
             }
         }
         return call;
     }
 
-    private void bridge(PhoneCall call) {
-        if (call.bridged) {
-            log.info("CALL {} već premošten", call.callId);
+    /** Fallback for a missing CALL_ESTABLISHED event: ask Infobip for the call state and bridge once it is established. */
+    private void bridgeIfEstablished(PhoneCall call) {
+        if (call.bridged || call.ended) {
             return;
         }
-        call.bridged = true;
+        try {
+            String state = infobip.state(call.callId);
+            if ("ESTABLISHED".equals(state) || "PRE_ESTABLISHED".equals(state)) {
+                log.warn("CALL {} stanje ESTABLISHED bez događaja CALL_ESTABLISHED (provjeri pretplatu u portalu): most preko provjere stanja",
+                        call.callId);
+                bridge(call);
+            } else {
+                log.info("CALL {} provjera stanja: {}", call.callId, state);
+            }
+        } catch (RuntimeException e) {
+            log.warn("CALL {} provjera stanja nije uspjela: {}", call.callId, e.getMessage());
+        }
+    }
+
+    /** Bridges the call to our media WebSocket (an Infobip dialog); true when the dialog exists or is not needed. */
+    private boolean bridge(PhoneCall call) {
+        synchronized (call) {
+            if (call.bridged) {
+                log.info("CALL {} već premošten", call.callId);
+                return true;
+            }
+            call.bridged = true;
+        }
         if (!infobip.configured()) {
-            return;
+            return true;
         }
         if (wsConfigId == null || wsConfigId.isBlank()) {
             log.error("CALL {} nema media-stream config: postavi NOTTRILIX_PUBLIC_URL ili pozovi POST /infobip/setup?wss=...",
                     call.callId);
-            return;
+            return false;
         }
         try {
             infobip.connectToWebSocket(call.callId, wsConfigId);
+            return true;
         } catch (RuntimeException e) {
+            call.bridged = false;
             log.error("CALL {} most na WebSocket nije uspio: {}", call.callId, e.getMessage());
+            return false;
         }
     }
 

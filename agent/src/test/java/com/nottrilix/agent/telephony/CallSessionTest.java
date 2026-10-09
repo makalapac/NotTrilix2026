@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /** The VAD cuts the caller's audio into utterances and flags the onset of speech (barge-in); PCM helpers behave. */
 class CallSessionTest {
 
-    private static final TelephonyProperties.Vad VAD = new TelephonyProperties.Vad(500, 240, 700, 10_000);
+    private static final TelephonyProperties.Vad VAD = new TelephonyProperties.Vad(500, 240, 700, 10_000, 1500);
     private static final int FRAME = 640; // 20 ms @ 16 kHz, 16-bit mono
 
     private static byte[] frame(int amplitude) {

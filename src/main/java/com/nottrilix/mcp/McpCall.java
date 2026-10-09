@@ -22,7 +22,7 @@ public record McpCall(AuthUser user, Map<String, Object> meta) {
     public static final String TURN = "turn";
     public static final String CHANNEL = "channel";
 
-    private static final Pattern CONVERSATION = Pattern.compile("[A-Za-z0-9-]{1,64}");
+    private static final Pattern CONVERSATION = Pattern.compile("[A-Za-z0-9_-]{1,128}");   // phone: conversationId = Infobip callId (68 chars)
 
     /** The call currently executing (the tool runs on the HTTP request thread, so the authenticated user is available). */
     public static McpCall current(Map<String, Object> meta) {

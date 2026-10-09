@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Phone", description = "Telefonski kanal (uloga AGENT): prepoznavanje pozivatelja po broju, bilježenje turnova i kraja poziva")
 public class PhoneController {
 
-    private static final String CALL_ID = "[A-Za-z0-9-]{1,64}";
+    private static final String CALL_ID = "[A-Za-z0-9_-]{1,128}";   // Infobip call ids are 68 characters
 
     private final PhoneSessionService phone;
 

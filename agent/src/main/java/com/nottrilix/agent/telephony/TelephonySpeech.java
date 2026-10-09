@@ -11,10 +11,15 @@ import org.springframework.ai.audio.tts.TextToSpeechPrompt;
 import org.springframework.ai.audio.tts.TextToSpeechResponse;
 import org.springframework.ai.elevenlabs.ElevenLabsTextToSpeechModel;
 import org.springframework.ai.elevenlabs.ElevenLabsTextToSpeechOptions;
+import org.springframework.ai.openai.OpenAiAudioTranscriptionOptions;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 /**
@@ -31,7 +36,8 @@ class TelephonySpeech {
     private final TranscriptionModel stt;
     private final TextToSpeechModel tts;
     private final TelephonyProperties props;
-    private volatile byte[] filler;
+    private volatile List<byte[]> fillers;
+    private final AtomicInteger nextFiller = new AtomicInteger();
     private volatile byte[] greetingUnknown;
 
     TelephonySpeech(ObjectProvider<TranscriptionModel> stt, ObjectProvider<TextToSpeechModel> tts,
@@ -46,6 +52,25 @@ class TelephonySpeech {
         }
     }
 
+    /** Synthesizes the cached phrases once at startup, so the first call does not pay for them mid-call. */
+    @EventListener(ApplicationReadyEvent.class)
+    public void warmUp() {
+        if (!available()) {
+            return;
+        }
+        Thread.startVirtualThread(() -> {
+            try {
+                long start = System.nanoTime();
+                filler();
+                greetingUnknown();
+                log.info("TELEPHONY govor zagrijan: {} i pozdrav nepoznatom sintetizirani ({} ms)", props.fillerTexts(),
+                        (System.nanoTime() - start) / 1_000_000);
+            } catch (RuntimeException e) {
+                log.warn("TELEPHONY zagrijavanje govora nije uspjelo: {}", e.getMessage());
+            }
+        });
+    }
+
     boolean available() {
         return stt != null && tts instanceof ElevenLabsTextToSpeechModel;
     }
@@ -58,7 +83,11 @@ class TelephonySpeech {
                 return "utterance.wav";
             }
         };
-        AudioTranscriptionResponse response = stt.call(new AudioTranscriptionPrompt(resource));
+        // a phone-specific model when configured; language and the domain prompt stay from the defaults
+        AudioTranscriptionPrompt prompt = props.sttModel() == null || props.sttModel().isBlank()
+                ? new AudioTranscriptionPrompt(resource)
+                : new AudioTranscriptionPrompt(resource, OpenAiAudioTranscriptionOptions.builder().model(props.sttModel()).build());
+        AudioTranscriptionResponse response = stt.call(prompt);
         String text = response.getResult() == null ? "" : response.getResult().getOutput();
         return text == null ? "" : text.strip();
     }
@@ -116,13 +145,16 @@ class TelephonySpeech {
         return cached;
     }
 
-    /** "Samo trenutak." while the agent is still thinking; synthesized once. */
+    /** A short "still here" phrase while the agent is thinking: the configured phrases in rotation, synthesized once. */
     byte[] filler() {
-        byte[] cached = filler;
+        List<byte[]> cached = fillers;
         if (cached == null) {
-            cached = speak(props.fillerText());
-            filler = cached;
+            cached = props.fillerTexts().stream().map(this::speak).toList();
+            fillers = cached;
         }
-        return cached;
+        if (cached.isEmpty()) {
+            return new byte[0];
+        }
+        return cached.get(Math.floorMod(nextFiller.getAndIncrement(), cached.size()));
     }
 }

@@ -78,14 +78,16 @@ nottrilix:
     sample-rate: 16000                          # PCM16 mono on the line; ElevenLabs synthesizes pcm_16000 directly
     greeting: "Dobar dan{name}, ovdje Nola iz NotTrilix podrške. Razgovor vodi umjetna inteligencija i ne snima se. Kako vam mogu pomoći?"
     greeting-unknown: "Dobar dan, ovdje NotTrilix podrška. Nažalost, broj s kojeg zovete nije zapisan ni u jednom računu, pa vam telefonom ne mogu pomoći. Prijavite se u web shop i pišite podršci. Doviđenja."
-    filler-text: "Samo trenutak."
-    filler-after-ms: 1200                       # Nola bridges the wait when the agent takes longer than this
+    filler-texts: ["Samo trenutak.", "Provjeravam.", "Trenutak, molim.", "Pogledat ću."]   # in rotation, not the same every turn
+    filler-after-ms: 1500                       # Nola bridges the wait when the agent takes longer than this
     max-call-seconds: 300
+    stt-model: ${NOTTRILIX_PHONE_STT_MODEL:gpt-4o-transcribe}   # phone line only (narrow-band audio); empty = the shared default above
     vad:                                        # energy-based voice activity detection on the caller's PCM
       speech-rms: 500
       min-speech-ms: 240
       end-silence-ms: 700
       max-utterance-ms: 10000
+      barge-in-rms: 1500                        # interrupting Nola takes a clearly louder voice than her own echo
   agent:
     name: Nola
     max-history-messages: 20      # how many recent conversation messages the model sees

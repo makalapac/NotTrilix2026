@@ -60,6 +60,14 @@ class InfobipCallsClient {
                 .retrieve().toBodilessEntity();
     }
 
+    /** Current state of a call as Infobip sees it (ESTABLISHED, FINISHED, ...); null when unknown. */
+    @SuppressWarnings("unchecked")
+    String state(String callId) {
+        Map<String, Object> call = client().get().uri("/calls/1/calls/{id}", callId).retrieve().body(Map.class);
+        Object state = call == null ? null : call.get("state");
+        return state == null ? null : String.valueOf(state);
+    }
+
     void hangup(String callId) {
         log.info("CALL {} prekidam", callId);
         client().post().uri("/calls/1/calls/{id}/hangup", callId)

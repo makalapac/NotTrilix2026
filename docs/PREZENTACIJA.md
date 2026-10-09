@@ -122,7 +122,7 @@ Zbroj izlaganja: 36 min (blok 3 je od 2026-10-03 pola minute dulji zbog beata �
 
 ## 7. Telefon: poziv s mobitela (5 min) — finale
 
-_Stanje koda (grana `phase6`, 2026-10-02): **simulator poziva verificiran** (`scripts/phone_sim.py` glumi Infobip: webhookovi + WebSocket + PCM), živi poziv kroz Infobip čeka broj i webhookove u portalu. Opis: [PHASE6.md](PHASE6.md). Blok dopuniti mjerenjima (prvi zvuk, turn) kad živi poziv prođe._
+_Stanje koda (grana `phase6`, 2026-10-09): **živi poziv s mobitela prošao** (HR broj +385 1 5809 291): prepoznavanje po broju, pozdrav imenom, wallet, kupnja uz potvrdu, upad u riječ, analiza poslije poziva. Mjerenja i što je trebalo popraviti da prođe: [PHASE6.md](PHASE6.md) §8–9._
 
 - **Pitanje faze:** tko zove, i tko mu smije dati ruke? Kupac nema ni preglednik ni prijavu, samo zvuk s jedne i broj pozivatelja s druge strane.
 - **Arhitektura (slajd, dvije ravnine):**
@@ -131,7 +131,7 @@ _Stanje koda (grana `phase6`, 2026-10-02): **simulator poziva verificiran** (`sc
 - **Ništa novo iz Spring AI-ja:** isti `ChatClient`, isti `TranscriptionModel` i `TextToSpeechModel`. WebSocket, VAD, pacing i Infobip su obična Java. „Gdje apstrakcija ne seže, obična Java. I to je u redu.“ Jedan sitan ali poučan detalj: telefon traži ElevenLabs jer daje PCM 16 kHz; OpenAI TTS bi dao 24 kHz i tražio resampling.
 - **Pravi problem ove faze: tko zove? (slajd):** rješenje je u sustavu, ne u agentu: `POST /api/phone/calls` (agent zove s vlastitim ključem, uloga AGENT) → broj pozivatelja (samo znamenke, u logu i auditu **maskiran**) → kupac po telefonu → **token kupca za trajanje poziva**, povučen na kraju poziva. Od tog trenutka svaki MCP poziv nosi isti token kao chat: **ista pravila, ista brana potvrde, isti audit**, bez ijedne nove grane u sustavu i bez nove migracije (kanal `PHONE` u postojećim tablicama). **Nepoznat broj:** pozdrav, objašnjenje („broj nije u računu, prijavite se u web shop“), kraj poziva. Iskreno reći: broj pozivatelja je identifikacija, ne autentikacija (spoofing postoji); za radnje s novcem produkcija bi tražila PIN, poziv natrag ili jednokratni kod u aplikaciji.
 - **Demo (2 min, finale):** publika čuje: zvonjava → „Dobar dan, Ana…“ → „Koliko imam na walletu?“ → Nola odgovara → „Kupi mi HT bon od deset eura.“ → prijedlog → „Potvrđujem.“ → izvršeno → upad u riječ. Na ekranu paralelno log `TELEPHONY` / `PHONE` i admin tab Audit s oznakom „poziv“. **Rezerva 1:** `python scripts\phone_sim.py` uživo (isti medijski put, bez Infobipa; publika čuje Nolin odgovor iz zvučnika ako simulator reproducira PCM, inače se vidi transkript). **Rezerva 2:** snimka poziva.
-- **War story (ispričati, iz prvog pokušaja):** poziv odbijan s „The received request was rejected“ jer subscription u portalu nije bio vezan na Calls Configuration; propagacija „par minuta“; tunel URL koji se mijenja sa svakim startom (agent pri startu sam prepiše media-stream konfiguraciju, ali pretplate na događaje na ovom računu nemaju API, pa se mijenjaju ručno u portalu). Integracije su i to.
+- **War stories (ispričati dvije-tri, ne sve):** iz lanjskog pokušaja: poziv odbijan s „The received request was rejected“ jer subscription u portalu nije bio vezan na Calls Configuration; propagacija „par minuta“; tunel URL koji se mijenja sa svakim startom (agent pri startu sam prepiše media-stream konfiguraciju, ali pretplate na događaje na ovom računu nemaju API, pa se mijenjaju ručno u portalu). Integracije su i to. Iz ovogodišnjeg živog testa (2026-10-09, `PHASE6.md` §9): (1) `answer` preko API-ja bez medija ostavi PSTN poziv u `PRE_ESTABLISHED` i `CALL_ESTABLISHED` nikad ne stigne; rješenje je dialog odmah po `CALL_RECEIVED`, platforma sama javi poziv kad se naš WebSocket spoji (lanjski WebRTC Call Link to je prikrivao); (2) Infobipov ID poziva ima 68 znakova, naš `conversation_id` 64: dva poziva „nepoznat pozivatelj“ prije nego je itko pogledao duljinu; (3) **noga bez zvuka umire za 0,3 s**: prvo sintetiziranje „Samo trenutak.“ išlo je s niti koja šalje okvire, pa je svaki prvi poziv nakon restarta pukao, a svaki drugi prošao. Rečenica za slajd: „U telefoniji je tišina greška, ne pauza.“
 - **🔀 Zašto Infobip:** hrvatska firma (JavaCro kut), PCM16 na žici (bez transkodiranja), službeni ElevenLabs primjer, Call Link za demo bez broja. Alternativa Twilio (µ-law 8 kHz, bez hrvatskog u `<Say>`). Telefonija je kod oba „glupa cijev za zvuk“.
 - **Pouke (iz PHASE6.md §9):** telefon nije promijenio ni agenta ni sustav, promijenio je *tko izdaje identitet*: u chatu prijava, na telefonu broj, oboje završi kao isti token u istom zaglavlju; **kanal je omotač, vjerodajnica je granica**. Simulator je vrijedio više od dokumentacije: cijeli medijski put vježba se lokalno, živi poziv dodaje samo webhookove i broj. Nepoznat pozivatelj je slučaj koji treba odlučiti, ne izbjeći.
 
@@ -322,7 +322,7 @@ Ne otvarati: `PcmUtil`, `CallRegistry`, `PhoneGateway`, DTO-e, Infobip JSON.
 | 5 (MCP) | obje konzole vidljive; `scripts/mcp_direct.py` spreman | ništa posebno | tablica na slajdu |
 | 6 (glas) | mikrofon u pregledniku dopušten, privola uživo (10 s) | buka u dvorani, STT | tekstom u isti chat; snimka |
 | 6b (analiza) | jedan razgovor unaprijed analiziran, gumb „Analiziraj“ za uživo; prijedlog o R1 računu pripremljen **nakon** reseta | analiza 2–8 s | prethodno analizirani razgovori u tabu |
-| 7 (telefon) | Infobip broj + webhookovi u portalu, tunel (`run-phase-6.ps1`), `demo-caller.txt` = moj broj, probni poziv isto jutro; mobitel na zvučnik ili u mikser dvorane | sve (mreža, mobilna, propagacija, Infobip račun) | `scripts\phone_sim.py` uživo (isti medijski put bez Infobipa); Call Link iz preglednika; snimka poziva |
+| 7 (telefon) | HR broj +385 1 5809 291 je usmjeren; ujutro: cloudflared u svom prozoru, `run-phase-6.ps1 -PublicUrl …`, dva URL-a u profile `NotTrilix` / `NotTrilix2` (jednom, URL preživi restarte), `demo-caller.txt` = moj broj, probni poziv isto jutro, stanje računa > 5 €; mobitel na zvučnik ili u mikser dvorane | sve (mreža, mobilna, propagacija, Infobip račun) | `scripts\phone_sim.py` uživo (isti medijski put bez Infobipa); Call Link iz preglednika; snimka poziva |
 
 Prije izlaska: `-Reset` briše i odobrene naučene odlomke; ako demo 6b treba već naučen odlomak, pripremiti ga nakon reseta.
 
@@ -331,12 +331,12 @@ Prije izlaska: `-Reset` briše i odobrene naučene odlomke; ako demo 6b treba ve
 ## Što još treba napraviti do konferencije (11.–14. 10.)
 
 **Kod**
-- [ ] Faza 6 dovršiti: živi poziv kroz Infobip (broj, webhookovi u portalu, tunel), mjerenja (prvi zvuk, turn) za blok 7 i `PHASE6.md` §7–8; commit na `phase6`; brojevi redaka u dodatku „Faza 6“.
+- [x] Faza 6: živi poziv s mobitela prošao 2026-10-09 (broj, webhookovi, zaseban tunel); mjerenja i popravci u `PHASE6.md` §8–9. Ostaje: snimka poziva kao rezervni video, brojevi redaka u dodatku „Faza 6“.
 - [ ] Prekidač „agent bez alata“ za demo chatbota (blok 3) + način brzog uključivanja uživo.
 - [ ] Pripremljena baza s jednim analiziranim razgovorom i prijedlogom za bazu znanja (ili skripta koja ih napravi nakon `-Reset`).
 
 **Infobip / organizacija**
-- [ ] Nadoplata računa, HR broj (usmjeravanje na Calls Configuration), pretplate na događaje u portalu (bez API-ja na ovom računu, ručno pri svakoj promjeni tunela); stalni tunel ili javni host; Call Link kao rezerva (vrijedi 24 h, svježi na dan talka).
+- [x] HR broj kupljen i usmjeren, pretplate u portalu rade (2026-10-09). Ostaje: nadoplata računa prije talka (stanje oko 2 €), ujutro tunel u svom prozoru + dva URL-a u profile; Call Link kao rezerva.
 - [ ] Mikrofon i zvuk dvorane: kako publika čuje mobitel (zvučnik uz mikrofon ili ulaz u mikser).
 
 **Deck i proba**

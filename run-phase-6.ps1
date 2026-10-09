@@ -10,6 +10,7 @@
 
   .\run-phase-6.ps1            build + start (tunnel, system, agent; Ctrl+C stops all)
   .\run-phase-6.ps1 -NoBuild   skip the build
+  .\run-phase-6.ps1 -PublicUrl https://x.trycloudflare.com   tunnel started separately (its URL survives app restarts)
   .\run-phase-6.ps1 -Reset     drop the database (fresh seed), then start
   .\run-phase-6.ps1 -NoTunnel  no public URL (simulator only)
   .\run-phase-6.ps1 -Stop      stop the PostgreSQL container
@@ -21,10 +22,17 @@ param(
     [switch]$NoBuild,
     [switch]$Reset,
     [switch]$Stop,
-    [switch]$NoTunnel
+    [switch]$NoTunnel,
+    [string]$PublicUrl   # tunnel started separately: cloudflared tunnel --url http://localhost:8090 (implies -NoTunnel)
 )
 
 $ErrorActionPreference = 'Stop'
+if ($PublicUrl) {
+    $env:NOTTRILIX_PUBLIC_URL = $PublicUrl.TrimEnd('/')
+    $NoTunnel = $true
+    Write-Host "Javni URL agenta (zaseban tunel): $env:NOTTRILIX_PUBLIC_URL" -ForegroundColor Green
+    Write-Host "Webhookovi za Infobip portal: $env:NOTTRILIX_PUBLIC_URL/infobip/call-received  i  $env:NOTTRILIX_PUBLIC_URL/infobip/event" -ForegroundColor Green
+}
 $keyFile = Join-Path $PSScriptRoot "openai.key"
 if ($Stop) {
     & (Join-Path $PSScriptRoot "run-phase-1.ps1") -Stop

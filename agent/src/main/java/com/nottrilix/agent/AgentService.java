@@ -36,7 +36,7 @@ import java.util.regex.Pattern;
 public class AgentService {
 
     private static final Logger log = LoggerFactory.getLogger("AGENT");
-    private static final Pattern CONVERSATION_ID = Pattern.compile("[A-Za-z0-9-]{1,64}");
+    private static final Pattern CONVERSATION_ID = Pattern.compile("[A-Za-z0-9_-]{1,128}");   // phone: conversationId = Infobip callId (68 chars)
     private static final DateTimeFormatter TODAY = DateTimeFormatter.ofPattern("d.M.yyyy.");
     private static final String NO_PENDING_ACTION = "nema";
 

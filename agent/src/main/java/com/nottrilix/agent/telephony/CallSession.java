@@ -23,9 +23,12 @@ final class CallSession {
     final String callId;
     final int sampleRate;
     final int frameBytes;
+    /** One frame of digital silence: sent whenever nothing is queued, so the stream never goes quiet. */
+    final byte[] silenceFrame;
     final Queue<byte[]> outbound = new ConcurrentLinkedQueue<>();
 
     private final double speechRms;
+    private final double bargeInRms;
     private final int minSpeechMs;
     private final int endSilenceMs;
     private final int maxUtteranceMs;
@@ -44,7 +47,9 @@ final class CallSession {
         this.callId = callId;
         this.sampleRate = sampleRate;
         this.frameBytes = sampleRate * 2 * FRAME_MS / 1000;
+        this.silenceFrame = PcmUtil.silence(frameBytes);
         this.speechRms = vad.speechRms();
+        this.bargeInRms = vad.bargeInRms() > 0 ? vad.bargeInRms() : vad.speechRms();
         this.minSpeechMs = vad.minSpeechMs();
         this.endSilenceMs = vad.endSilenceMs();
         this.maxUtteranceMs = vad.maxUtteranceMs();
@@ -52,7 +57,8 @@ final class CallSession {
 
     /** Feeds one inbound 20 ms frame. */
     FeedResult feed(byte[] frame) {
-        boolean loud = PcmUtil.rms(frame) >= speechRms;
+        // while Nola speaks, only clearly louder sound counts as the caller (her own echo must not interrupt her)
+        boolean loud = PcmUtil.rms(frame) >= (!inUtterance && speaking() ? bargeInRms : speechRms);
         if (inUtterance) {
             utterance.writeBytes(frame);
             utteranceMs += FRAME_MS;

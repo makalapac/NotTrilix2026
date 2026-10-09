@@ -14,7 +14,10 @@ import org.springframework.web.socket.handler.AbstractWebSocketHandler;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -25,6 +28,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * The media plane of a phone call. Infobip bridges the answered call here as a WebSocket: the first message is JSON
@@ -42,6 +46,14 @@ class InfobipMediaWebSocketHandler extends AbstractWebSocketHandler {
     private static final int FRAME_MS = 20;
 
     /** Everything one bridged WebSocket carries. */
+    /**
+     * Debug aid for tuning STT and VAD on real phone audio: set NOTTRILIX_DUMP_UTTERANCES to a directory and every
+     * caller utterance is written there as WAV. Off by default: the caller's audio is not kept.
+     */
+    private static final Path DUMP_DIR = System.getenv("NOTTRILIX_DUMP_UTTERANCES") == null
+            ? null : Path.of(System.getenv("NOTTRILIX_DUMP_UTTERANCES"));
+    private final AtomicInteger dumped = new AtomicInteger();
+
     private static final class Media {
         final WebSocketSession ws;
         final PhoneCall call;
@@ -165,6 +177,7 @@ class InfobipMediaWebSocketHandler extends AbstractWebSocketHandler {
         PhoneCall call = m.call;
         long start = System.nanoTime();
         try {
+            dumpUtterance(call, pcm, m.session.sampleRate);
             String text = speech.transcribe(pcm, m.session.sampleRate);
             long sttMs = (System.nanoTime() - start) / 1_000_000;
             if (text.isBlank()) {
@@ -178,14 +191,16 @@ class InfobipMediaWebSocketHandler extends AbstractWebSocketHandler {
                 m.hangupWhenDone = true;
                 return;
             }
-            ScheduledFuture<?> filler = pacer.schedule(() -> {
+            // The pacer thread only paces: anything that may block (a cold filler synthesis took ~1 s and starved the
+            // stream until Infobip dropped the leg) runs on the pipeline.
+            ScheduledFuture<?> filler = pacer.schedule(() -> pipeline.submit(() -> {
                 if (!m.session.speaking()) {
                     m.session.enqueueAudio(speech.filler());
                 }
-            }, props.fillerAfterMs(), TimeUnit.MILLISECONDS);
+            }), props.fillerAfterMs(), TimeUnit.MILLISECONDS);
             AgentChatResponse chat;
             try {
-                chat = agent.chat(call.identity.customerToken(), call.callId, text, CHANNEL);
+                chat = agent.chat(call.identity.customerToken(), call.conversationId, text, CHANNEL);
             } finally {
                 filler.cancel(false);
             }
@@ -216,12 +231,29 @@ class InfobipMediaWebSocketHandler extends AbstractWebSocketHandler {
         }
     }
 
-    /** Every 20 ms: one queued frame to the caller; silence otherwise. Ends the call when it is time. */
+    private void dumpUtterance(PhoneCall call, byte[] pcm, int sampleRate) {
+        if (DUMP_DIR == null) {
+            return;
+        }
+        try {
+            Files.createDirectories(DUMP_DIR);
+            Path file = DUMP_DIR.resolve(call.conversationId + "-" + dumped.incrementAndGet() + ".wav");
+            Files.write(file, PcmUtil.toWav(pcm, sampleRate));
+            log.info("CALL {} iskaz spremljen za analizu: {}", call.callId, file);
+        } catch (IOException e) {
+            log.warn("CALL {} iskaz nije spremljen: {}", call.callId, e.getMessage());
+        }
+    }
+
+    /**
+     * Every 20 ms: one queued frame to the caller, a frame of silence otherwise (a telephony stream is constant
+     * bit rate: a leg that stops sending looks dead to the other side). Ends the call when it is time.
+     */
     private void tick(Media m) {
         try {
             byte[] frame = m.session.outbound.poll();
+            m.ws.sendMessage(new BinaryMessage(frame != null ? frame : m.session.silenceFrame));
             if (frame != null) {
-                m.ws.sendMessage(new BinaryMessage(frame));
                 return;
             }
             boolean tooLong = Duration.between(m.call.startedAt, Instant.now(clock)).toSeconds() > props.maxCallSeconds();
@@ -279,7 +311,7 @@ class InfobipMediaWebSocketHandler extends AbstractWebSocketHandler {
 
     @Override
     public void handleTransportError(WebSocketSession ws, Throwable exception) {
-        log.warn("TELEPHONY greška prijenosa na {}: {}", ws.getId(), exception.getMessage());
+        log.warn("TELEPHONY greška prijenosa na {}: {}", ws.getId(), exception.toString());
     }
 
     @PreDestroy
