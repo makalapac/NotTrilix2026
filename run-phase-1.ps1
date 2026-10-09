@@ -46,8 +46,14 @@ function Test-Port([int]$port) {
 
 # Starts a java process in this window (shares the console) and returns it; waits for the port to come up.
 function Start-App([string]$name, [string]$jarPath, [int]$port, [int]$timeoutSeconds) {
+    # ZGC: sub-millisecond pauses. The phone media leg dies when no frame leaves for ~0.3 s, so a GC pause of that
+    # size in the agent costs a call; the GC log (logs\gc-<app>.log) shows whether a pause ever came close.
+    $gcLog = Join-Path $PSScriptRoot ("logs\gc-" + [IO.Path]::GetFileNameWithoutExtension($jarPath) + ".log")
+    New-Item -ItemType Directory -Force (Join-Path $PSScriptRoot "logs") | Out-Null
     $process = Start-Process -FilePath "java" -NoNewWindow -PassThru `
-        -ArgumentList @("-Dfile.encoding=UTF-8", "-Dstdout.encoding=UTF-8", "-jar", "`"$jarPath`"")
+        -ArgumentList @("-XX:+UseZGC", "-Xlog:gc*:file=`"$gcLog`":time,uptime:filecount=2,filesize=5m",
+                        "--enable-native-access=ALL-UNNAMED",
+                        "-Dfile.encoding=UTF-8", "-Dstdout.encoding=UTF-8", "-jar", "`"$jarPath`"")
     $deadline = (Get-Date).AddSeconds($timeoutSeconds)
     while (-not (Test-Port $port)) {
         if ($process.HasExited) { throw "$name se ugasio pri pokretanju (vidi log iznad)." }

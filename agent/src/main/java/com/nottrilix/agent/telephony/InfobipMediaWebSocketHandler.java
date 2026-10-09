@@ -60,6 +60,7 @@ class InfobipMediaWebSocketHandler extends AbstractWebSocketHandler {
         final CallSession session;
         volatile ScheduledFuture<?> ticker;
         volatile boolean busy;
+        long lastTickNanos;   // pacer watchdog: a late tick means the thread did not run (GC, JIT, OS)
         volatile boolean hangupWhenDone;
         volatile boolean hungUp;
 
@@ -251,8 +252,18 @@ class InfobipMediaWebSocketHandler extends AbstractWebSocketHandler {
      */
     private void tick(Media m) {
         try {
+            long now = System.nanoTime();
+            if (m.lastTickNanos != 0 && now - m.lastTickNanos > 120_000_000L) {
+                log.warn("CALL {} pacer kasni {} ms (nit nije dobila red: GC ili JIT?)", m.call.callId,
+                        (now - m.lastTickNanos) / 1_000_000);
+            }
+            m.lastTickNanos = now;
             byte[] frame = m.session.outbound.poll();
             m.ws.sendMessage(new BinaryMessage(frame != null ? frame : m.session.silenceFrame));
+            long sendMs = (System.nanoTime() - now) / 1_000_000;
+            if (sendMs > 100) {
+                log.warn("CALL {} slanje okvira blokiralo {} ms (zastoj prema Infobipu / tunelu)", m.call.callId, sendMs);
+            }
             if (frame != null) {
                 return;
             }

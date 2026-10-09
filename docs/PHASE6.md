@@ -177,7 +177,8 @@ Isti alati, ista brana, isti audit kao u chatu; kanal je `PHONE`, razgovor je `c
 | STT na liniji griješi više nego u pregledniku | Linija je uskopojasna (8 kHz). Na 7 stvarnih iskaza: `gpt-4o-mini-transcribe` 3 greške (uklj. ćirilicu na „Da, potvrđujem“), `gpt-transcribe` 1 (ćirilica), `gpt-4o-transcribe` 0, ista brzina (0,8 s) → telefon ima svoj model (`nottrilix.telephony.stt-model`), preglednik ostaje na miniju. |
 | Eho Nolina glasa izgleda kao govor pozivatelja | Prvi iskaz jednog poziva bio je doslovno kraj njezina pozdrava. Upad u riječ sad traži jasno glasniji zvuk (`vad.barge-in-rms: 1500`) od praga govora (500). |
 | Prvi dohvat iz baze znanja nakon pauze traje ~1 s, ostali 0,15 s | Veza prema embedding servisu zahladi. Sustav je svakih 30 s grije (`KnowledgeBaseWarmup`), bez loga; prvi turn poziva više ne plaća sekundu. |
-| Ista fraza „Samo trenutak.“ u svakom turnu iritira | Četiri kratke fraze u rotaciji, start nakon 1,5 s. Prava mjera je latencija modela: `NOTTRILIX_CHAT_MODEL=gpt-5.4-mini` skida oko sekundu po turnu, uz rizik izmišljanja pravila ([MODEL.md](MODEL.md)). |
+| **Prvi poziv nakon restarta pukao i nakon grijanja fraza**, pri kraju duge rečenice (Infobip: `hangupSource=PLATFORM`, tunel bez prespajanja, naš log prazan) | Hladan JVM: nit pacera stane na >0,3 s (G1 pauza ili JIT). Sad obje aplikacije rade na **ZGC** (`-XX:+UseZGC`, pauze ≤ 0,02 ms u GC logu `logs/gc-nottrilix-agent.log`), pacer ima stražara (upozorenje ako tick kasni >120 ms ili slanje blokira >100 ms) i agent pri startu zagrije model i STT (`AgentWarmup`). Prvi poziv nakon toga: 6 turnova bez upozorenja. Pouka: u telefoniji je JVM pauza od pola sekunde prekinut poziv. |
+| Ista fraza „Samo trenutak.“ u svakom turnu iritira | Četiri kratke fraze u rotaciji, start tek nakon 2,5 s: od 23 izmjerena turna 16 je bilo brže od 3 s i prolazi bez fraze, fraza ostaje za turnove s alatima. Prava mjera je latencija modela: `NOTTRILIX_CHAT_MODEL=gpt-5.4-mini` skida oko sekundu po turnu, uz rizik izmišljanja pravila ([MODEL.md](MODEL.md)). |
 
 ## 10. Poznata ograničenja
 
@@ -188,6 +189,7 @@ Isti alati, ista brana, isti audit kao u chatu; kanal je `PHONE`, razgovor je `c
 - **Webhookovi bez potpisa, tunel bez autentikacije**: samo za demo, ne ostavljati upaljeno.
 - **Pretplate na događaje se mijenjaju ručno** u portalu pri svakoj promjeni tunela (Subscriptions API nije dostupan na računu); zato tunel u vlastitom prozoru (poglavlje 6).
 - **Quick tunnel bez računa** nema jamstva; na dan demoa ga pokrenuti ranije i provjeriti `GET https://<x>/infobip/status` izvana.
+- **Prvi turn prvog poziva** nakon starta je i dalje najsporiji (hladni HTTP klijenti, JIT): grijanje pri startu pomaže, probni poziv prije izlaska pomaže još više.
 - **Dump iskaza** (`NOTTRILIX_DUMP_UTTERANCES=<mapa>`) sprema zvuk pozivatelja kao WAV: samo za podešavanje STT-a i VAD-a, nikad u demou (zvuk kupca se inače ne čuva).
 
 ## 11. Što je dodano i promijenjeno
@@ -199,6 +201,6 @@ baza znanja `10-privatnost-i-osobni-podaci.md` (odjeljak „Poziv telefonom“).
 
 **Agent**: paket `telephony` (poglavlje 4), `pom.xml` (+ `spring-boot-starter-websocket`), `application.yml` (`nottrilix.telephony.*`), system prompt (kanal `PHONE`). Testovi: `CallSessionTest`.
 Nakon živog testa: `PhoneCall.conversationId` (izvedeni ID), `InfobipCallsClient.state`, dialog odmah po `CALL_RECEIVED` + provjera stanja kao rezerva (`InfobipWebhookController`),
-`TelephonySpeech.warmUp` + fraze u rotaciji + `stt-model`, `CallSession.silenceFrame` + `bargeInRms`, `AgentService` validacija ID-a razgovora, dump iskaza za podešavanje; `run-phase-6.ps1 -PublicUrl`.
+`TelephonySpeech.warmUp` + fraze u rotaciji + `stt-model`, `CallSession.silenceFrame` + `bargeInRms`, `AgentService` validacija ID-a razgovora, dump iskaza za podešavanje, `AgentWarmup` (model + STT pri startu), stražar pacera; `run-phase-6.ps1 -PublicUrl`, `run-phase-1.ps1` (ZGC + GC log + `--enable-native-access`).
 
 **Ostalo**: `run-phase-6.ps1`, `scripts/phone_sim.py`, `.gitignore` (`demo-caller.txt`), [GDPR.md](GDPR.md) (telefonski kanal).

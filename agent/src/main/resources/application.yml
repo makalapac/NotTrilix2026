@@ -79,7 +79,7 @@ nottrilix:
     greeting: "Dobar dan{name}, ovdje Nola iz NotTrilix podrške. Razgovor vodi umjetna inteligencija i ne snima se. Kako vam mogu pomoći?"
     greeting-unknown: "Dobar dan, ovdje NotTrilix podrška. Nažalost, broj s kojeg zovete nije zapisan ni u jednom računu, pa vam telefonom ne mogu pomoći. Prijavite se u web shop i pišite podršci. Doviđenja."
     filler-texts: ["Samo trenutak.", "Provjeravam.", "Trenutak, molim.", "Pogledat ću."]   # in rotation, not the same every turn
-    filler-after-ms: 1500                       # Nola bridges the wait when the agent takes longer than this
+    filler-after-ms: 2500                       # Nola bridges the wait only when the agent is slow (tool turns); quick answers come without a phrase
     max-call-seconds: 300
     stt-model: ${NOTTRILIX_PHONE_STT_MODEL:gpt-4o-transcribe}   # phone line only (narrow-band audio); empty = the shared default above
     vad:                                        # energy-based voice activity detection on the caller's PCM
